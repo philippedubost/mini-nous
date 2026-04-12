@@ -503,13 +503,8 @@ function Landing({ go }) {
 function Processing({ go }) {
   const [progress, setProgress] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
-  const [boxes, setBoxes] = useState([]);
 
   useEffect(() => {
-    // Reveal bboxes
-    FACES.forEach((f, i) => {
-      setTimeout(() => setBoxes(b => [...b, i]), f.delay * 1000 + 350);
-    });
 
     // Progress
     const prog = setInterval(() => {
@@ -542,19 +537,12 @@ function Processing({ go }) {
           On regarde votre photo de près…
         </h2>
 
-        {/* Photo + bboxes */}
+        {/* Photo */}
         <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
           marginBottom:28, boxShadow:'0 24px 60px rgba(0,0,0,.5)' }}>
           <img src={IMG.before} alt="Analyse" style={{ width:'100%', display:'block',
             filter:'brightness(.82) contrast(1.08) saturate(.9)' }}/>
           <div className="scan-line"/>
-          {FACES.map((f, i) => boxes.includes(i) && (
-            <div key={i} className="bbox" style={{ top:f.top, left:f.left,
-              width:f.w, height:f.h }}>
-              <div className="bbox-label">{f.name}</div>
-            </div>
-          ))}
-          {/* Dark gradient bottom */}
           <div style={{ position:'absolute', inset:0, pointerEvents:'none',
             background:'linear-gradient(180deg,transparent 55%,rgba(44,31,20,.65) 100%)' }}/>
         </div>
@@ -577,9 +565,9 @@ function Processing({ go }) {
         {/* Stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
           {[
-            { l:'Personnages repérés', v:`${boxes.length}/7` },
-            { l:'Fidélité',           v:'97.4%' },
-            { l:'Détails dessinés',   v: boxes.length > 4 ? `${boxes.length * 412}` : '—' },
+            { l:'Personnages repérés', v:'7/7' },
+            { l:'Fidélité',          v:'97.4%' },
+            { l:'Détails dessinés',  v:'2 884' },
           ].map(s => (
             <div key={s.l} style={{ background:'rgba(255,255,255,.05)',
               border:'1px solid rgba(255,255,255,.08)', borderRadius:14, padding:'18px 14px' }}>
