@@ -107,6 +107,9 @@ input{font-family:inherit}
   .hero-img{order:-1}
   .hero-text{order:1}
   .hide-mobile{display:none !important}
+  .how-cards{grid-template-columns:1fr !important; gap:12px !important}
+  .how-card{display:flex !important; align-items:center; gap:16px; text-align:left !important; padding:16px 18px !important}
+  .how-card p{margin:0}
 }
 </style>
 </head>
@@ -359,18 +362,6 @@ function Landing({ go }) {
               Une photo de groupe suffit. Notre technologie et nos équipes détectent et tracent
               les personnages pour une découpe précise, fabriquée à Nantes.
             </p>
-            <div style={{ display:'flex', gap:18, flexWrap:'wrap', marginBottom:38 }}>
-              {['7 jours de délai', 'Fabriqué en France'].map(t => (
-                <span key={t} style={{ display:'flex', alignItems:'center', gap:6,
-                  color:'var(--bark)', fontSize:'.83rem', fontWeight:600 }}>
-                  <svg width="17" height="17" viewBox="0 0 17 17"><circle cx="8.5" cy="8.5" r="7.5"
-                    fill="#4A8A52" fillOpacity=".15"/><path d="M5.5 8.5l2.5 2.5 4.5-4.5"
-                    stroke="#4A8A52" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {t}
-                </span>
-              ))}
-            </div>
             <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
                 display:'flex', alignItems:'center', gap:10 }}
@@ -416,48 +407,35 @@ function Landing({ go }) {
       </section>
 
       {/* Before / After */}
-      <section style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
+      <section style={{ padding:'60px 28px', background:'var(--bark-pale)' }}>
         <div style={{ maxWidth:900, margin:'0 auto', textAlign:'center' }}>
-          <div className="tag" style={{ background:'rgba(122,92,56,.12)',
-            color:'var(--bark)', marginBottom:16 }}>
-            🎨 La magie en action
-          </div>
-          <h2 style={{ color:'var(--dark)', marginBottom:12 }}>
-            De la photo au chef-d'œuvre
+          <h2 style={{ color:'var(--dark)', marginBottom:28 }}>
+            De la photo au personnage en bois
           </h2>
-          <p style={{ color:'var(--muted)', maxWidth:460, margin:'0 auto 40px',
-            lineHeight:1.7 }}>
-            Glissez le curseur pour découvrir la transformation. Chaque silhouette
-            est générée et gravée à l'identique.
-          </p>
           <BeforeAfter/>
         </div>
       </section>
 
       {/* How it works */}
-      <section style={{ padding:'80px 28px', background:'var(--cream)' }}>
-        <div style={{ maxWidth:960, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:48 }}>Comment ça marche ?</h2>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:32 }}>
+      <section style={{ padding:'60px 28px', background:'var(--cream)' }}>
+        <div style={{ maxWidth:860, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:32 }}>Comment ça marche ?</h2>
+          <div className="how-cards" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }}>
             {[
-              { icon:'📸', step:'1', title:'Envoyez votre photo',
-                desc:'Une photo de groupe avec 2 à 8 personnes — floue ou parfaite, on s\'adapte.' },
-              { icon:'🪚', step:'2', title:'On fabrique votre groupe',
-                desc:'Nos équipes découpent et assemblent chaque personnage en bois, d\'après votre photo.' },
-              { icon:'📦', step:'3', title:'On livre chez vous',
-                desc:'Emballé avec soin dans notre boîte kraft, livré en 5 jours partout en France.' },
+              { icon:'📸', title:'Envoyez votre photo',
+                desc:'Une photo de groupe avec 2 à 8 personnes.' },
+              { icon:'🪚', title:'On fabrique votre groupe',
+                desc:'Nos équipes découpent chaque personnage en bois d\'après votre photo.' },
+              { icon:'📦', title:'Livré chez vous en 5 jours',
+                desc:'Dans notre boîte kraft, partout en France.' },
             ].map(s => (
-              <div key={s.step} style={{ background:'var(--bark-pale)', borderRadius:20,
-                padding:'36px 28px', textAlign:'center' }}>
-                <div style={{ fontSize:'2.4rem', marginBottom:12 }}>{s.icon}</div>
-                <div className="tag" style={{ background:'var(--clay-pale)',
-                  color:'var(--clay)', marginBottom:12 }}>
-                  Étape {s.step}
-                </div>
-                <h3 style={{ color:'var(--dark)', marginBottom:10, fontSize:'1.05rem' }}>
+              <div key={s.title} className="how-card" style={{ background:'var(--bark-pale)',
+                borderRadius:16, padding:'24px 20px', textAlign:'center' }}>
+                <div style={{ fontSize:'2rem', marginBottom:10 }}>{s.icon}</div>
+                <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1rem' }}>
                   {s.title}
                 </h3>
-                <p style={{ color:'var(--muted)', fontSize:'.85rem', lineHeight:1.7 }}>
+                <p style={{ color:'var(--muted)', fontSize:'.82rem', lineHeight:1.6 }}>
                   {s.desc}
                 </p>
               </div>
@@ -504,34 +482,6 @@ function Landing({ go }) {
             ))}
           </div>
 
-          {/* Testimonial */}
-          <div style={{ marginTop:40, background:'#fff', borderRadius:20,
-            padding:'28px 32px', boxShadow:'0 8px 28px rgba(44,31,20,.08)',
-            textAlign:'left', display:'flex', gap:18, alignItems:'flex-start' }}>
-            <div style={{ fontSize:'2.2rem', flexShrink:0 }}>💬</div>
-            <div>
-              <p style={{ fontSize:'.92rem', color:'var(--text)', fontStyle:'italic',
-                lineHeight:1.7, marginBottom:10 }}>
-                "Le rendu est bluffant — ma mère a pleuré quand elle a ouvert le paquet.
-                Les proportions sont parfaites, on reconnaît vraiment chaque membre de la famille.
-                Livré en 5 jours, emballage magnifique."
-              </p>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:36, height:36, borderRadius:'50%',
-                  background:'linear-gradient(135deg,var(--clay-light),var(--bark-light))',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  color:'#fff', fontWeight:700, fontSize:'.9rem' }}>C</div>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:'.85rem', color:'var(--dark)' }}>
-                    Cléa T. <span className="stars" style={{ fontSize:'.75rem' }}>★★★★★</span>
-                  </div>
-                  <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>
-                    Famille de 7 • Nantes
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
