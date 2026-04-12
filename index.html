@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les MiniNous — Vos personnages, taillés dans le bois.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root {
+  --clay:#C0684A; --clay-light:#E8A088; --clay-pale:#FAF0EB; --clay-deep:#8A4030;
+  --bark:#7A5C38; --bark-light:#C4A882; --bark-pale:#F5EDE0;
+  --forest:#4A8A52; --forest-light:#A8D4AC; --forest-pale:#EBF4EC;
+  --cream:#FAF7F2; --dark:#2C1F14; --text:#3D3530; --muted:#9A8F88;
+  --t:.32s cubic-bezier(.4,0,.2,1);
+  --t-spring:.48s cubic-bezier(.34,1.56,.64,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Montserrat',sans-serif;background:var(--cream);color:var(--text);overflow-x:hidden}
+h1,h2,h3,h4{font-family:'Quicksand',sans-serif;font-weight:700;line-height:1.15}
+img{display:block;max-width:100%}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input{font-family:inherit}
+
+/* Screens */
+.screen{min-height:100vh;animation:screenIn .5s cubic-bezier(.4,0,.2,1) both}
+@keyframes screenIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* Nav */
+.nav-glass{background:rgba(250,247,242,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(196,168,130,.2)}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:100px;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+/* Buttons */
+.btn-clay{background:linear-gradient(135deg,var(--clay) 0%,#A85238 100%);color:#fff;border-radius:100px;font-family:'Quicksand',sans-serif;font-weight:700;transition:all var(--t-spring);box-shadow:0 8px 24px rgba(192,104,74,.38)}
+.btn-clay:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 14px 36px rgba(192,104,74,.52)}
+.btn-clay:active{transform:scale(.97)}
+.btn-bark{background:linear-gradient(135deg,var(--bark) 0%,#5A4228 100%);color:#fff;border-radius:100px;font-family:'Quicksand',sans-serif;font-weight:700;transition:all var(--t);box-shadow:0 6px 18px rgba(122,92,56,.32)}
+.btn-bark:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(122,92,56,.45)}
+.btn-ghost{border:2px solid var(--bark-light);color:var(--bark);border-radius:100px;font-family:'Quicksand',sans-serif;font-weight:700;transition:all var(--t)}
+.btn-ghost:hover{background:var(--bark-pale);border-color:var(--bark)}
+
+/* Before/After */
+.ba-wrap{position:relative;overflow:hidden;border-radius:20px;cursor:ew-resize;user-select:none;touch-action:none}
+.ba-after{position:absolute;inset:0;overflow:hidden}
+.ba-handle{position:absolute;top:0;bottom:0;width:3px;background:#fff;transform:translateX(-50%);z-index:10;pointer-events:none}
+.ba-btn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;pointer-events:none;left:50%;transform:translate(-50%,-50%)}
+
+/* Dropzone */
+.dropzone{border:3px dashed var(--bark-light);transition:all .3s ease;background:linear-gradient(135deg,var(--bark-pale) 0%,var(--cream) 100%);border-radius:28px}
+.dropzone.drag-over,.dropzone:hover{border-color:var(--clay);background:linear-gradient(135deg,var(--clay-pale) 0%,var(--cream) 100%);transform:scale(1.01)}
+
+/* Bounding boxes */
+.bbox{position:absolute;border:2.5px solid #00FF88;border-radius:4px;box-shadow:0 0 14px rgba(0,255,136,.5),inset 0 0 14px rgba(0,255,136,.05);animation:bboxIn .35s ease-out both;pointer-events:none}
+.bbox-label{position:absolute;top:-22px;left:0;background:#00FF88;color:#001A0A;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap}
+@keyframes bboxIn{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+.scan-line{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#00FF88 40%,#00FF88 60%,transparent);box-shadow:0 0 20px #00FF88;animation:scan 2s linear infinite;pointer-events:none}
+@keyframes scan{from{top:0}to{top:100%}}
+
+/* Progress */
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--clay),var(--bark-light));border-radius:100px;transition:width .5s ease;position:relative;overflow:hidden}
+.prog-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);animation:shimmer 1.4s linear infinite}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* Toggle */
+.tgl-track{width:52px;height:28px;border-radius:100px;transition:background .3s;cursor:pointer;position:relative;flex-shrink:0}
+.tgl-thumb{position:absolute;top:4px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.22);transition:left var(--t-spring)}
+
+/* Figurine card */
+.fig-card{transition:all var(--t-spring);cursor:pointer;text-align:center;position:relative}
+.fig-card:hover{transform:translateY(-10px) scale(1.06)}
+.fig-card.active{transform:translateY(-10px) scale(1.06)}
+.fig-ring{position:absolute;inset:-10px;border-radius:18px;border:2px solid var(--clay);box-shadow:0 0 24px rgba(192,104,74,.45);pointer-events:none;animation:screenIn .3s ease}
+
+/* Side panel */
+.side-panel{border-left:1px solid rgba(255,255,255,.08);animation:panelIn .4s var(--t-spring) both}
+@keyframes panelIn{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+
+/* Stripe modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(44,31,20,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:200;display:flex;align-items:center;justify-content:center;animation:screenIn .3s ease}
+
+/* Timeline */
+.tl-item{animation:tlIn .5s ease both}
+@keyframes tlIn{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+
+/* Pulse */
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+
+/* Spin */
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin{animation:spin .75s linear infinite}
+
+/* Review stars */
+.stars{color:#F5C518;letter-spacing:2px}
+
+/* Responsive */
+@media(max-width:768px){
+  .two-col{grid-template-columns:1fr !important}
+  .hero-grid{grid-template-columns:1fr !important}
+  .hide-mobile{display:none !important}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── ASSETS ──────────────────────────────────────────────────── */
+const IMG = {
+  hero:      'images/hero.webp',
+  before:    'images/avant.webp',
+  after:     'images/apres.webp',
+  upload:    'images/527aeebb-1231-4d0c-beb3-04f39541f80c.jpg',
+  lifestyle: 'images/af5dfcad-37bc-4917-99fd-c47c7d53d8a2.jpg',
+  atelier:   'images/apres.webp',
+};
+
+/* Face boxes on the "before" photo — 7 people */
+const FACES = [
+  { top:'14%', left:'3.5%',  w:'12%', h:'24%', delay:.3,  name:'Thomas' },
+  { top:'14%', left:'17%',   w:'12%', h:'24%', delay:.65, name:'Léa' },
+  { top:'14%', left:'31%',   w:'12%', h:'24%', delay:.95, name:'Mamie' },
+  { top:'40%', left:'42%',   w:'9%',  h:'17%', delay:1.2, name:'Loulou' },
+  { top:'14%', left:'47%',   w:'12%', h:'24%', delay:1.45,name:'Théo' },
+  { top:'14%', left:'63%',   w:'12%', h:'24%', delay:1.7, name:'Sophie' },
+  { top:'14%', left:'79%',   w:'12%', h:'24%', delay:1.95,name:'Emma' },
+];
+
+const PEOPLE = [
+  { id:0, name:'Thomas', h:118, style:'man'   },
+  { id:1, name:'Léa',    h:108, style:'teen'  },
+  { id:2, name:'Mamie',  h:105, style:'elder' },
+  { id:3, name:'Loulou', h:64,  style:'baby'  },
+  { id:4, name:'Théo',   h:114, style:'teen'  },
+  { id:5, name:'Sophie', h:110, style:'woman' },
+  { id:6, name:'Emma',   h:104, style:'woman' },
+];
+
+const PROC_STEPS = [
+  'On regarde votre photo de près…',
+  'On reconnaît chaque visage (7 trouvés)…',
+  'On dessine les contours de chaque personnage…',
+  'On prépare les gabarits sur mesure…',
+  'On vérifie les proportions de chacun…',
+  'Dernière touche avant de vous montrer ça…',
+  'Voici votre groupe !',
+];
+
+/* ─── SVG FIGURINE ────────────────────────────────────────────── */
+function Figurine({ person, scale = 1, selected, regen }) {
+  const h = person.h * scale;
+  const w = h * 0.56;
+  const cx = w / 2;
+  const hr = h * 0.125; // head radius
+  const bodyY = hr * 2 + 3;
+  const bodyH = h * 0.34;
+  const legH = h * 0.27;
+  const isBaby = person.style === 'baby';
+  const isElder = person.style === 'elder';
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none"
+      style={{
+        filter: selected
+          ? 'drop-shadow(0 0 14px rgba(192,104,74,.65))'
+          : 'drop-shadow(0 3px 8px rgba(122,92,56,.22))',
+        opacity: regen ? 0.25 : 1,
+        transition: 'opacity .3s, filter .3s',
+        ...(regen ? { filter:'blur(3px)' } : {}),
+      }}>
+      {/* Head */}
+      <circle cx={cx} cy={hr + 1} r={hr} stroke="#7A5C38" strokeWidth="2.2" fill="#F5EDE0"/>
+      {/* Hair suggestion */}
+      {(person.style === 'woman' || person.style === 'elder') && (
+        <path d={`M${cx - hr * .8} ${hr * .6} Q${cx} ${-2} ${cx + hr * .8} ${hr * .6}`}
+          stroke="#7A5C38" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+      )}
+      {isElder && (
+        <path d={`M${cx - hr * .5} ${hr * .3} Q${cx} ${-4} ${cx + hr * .5} ${hr * .3}`}
+          stroke="#C4A882" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeDasharray="2 2"/>
+      )}
+      {/* Neck */}
+      <line x1={cx} y1={hr * 2 + 1} x2={cx} y2={bodyY} stroke="#7A5C38" strokeWidth="1.8"/>
+      {/* Body */}
+      <rect x={cx - w * .21} y={bodyY} width={w * .42} height={bodyH}
+        rx={isBaby ? 8 : 5} stroke="#7A5C38" strokeWidth="2.2" fill="#F5EDE0"/>
+      {/* Pocket detail for men */}
+      {person.style === 'man' && (
+        <rect x={cx + w * .04} y={bodyY + bodyH * .15} width={w * .1} height={w * .1}
+          rx="2" stroke="#7A5C38" strokeWidth="1.2" fill="none"/>
+      )}
+      {/* Arms */}
+      <line x1={cx - w * .21} y1={bodyY + bodyH * .18}
+            x2={cx - w * .43} y2={bodyY + bodyH * .58}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1={cx + w * .21} y1={bodyY + bodyH * .18}
+            x2={cx + w * .43} y2={bodyY + bodyH * .58}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      {/* Hands */}
+      <circle cx={cx - w * .43} cy={bodyY + bodyH * .6} r={w * .045}
+        stroke="#7A5C38" strokeWidth="1.6" fill="#F5EDE0"/>
+      <circle cx={cx + w * .43} cy={bodyY + bodyH * .6} r={w * .045}
+        stroke="#7A5C38" strokeWidth="1.6" fill="#F5EDE0"/>
+      {/* Legs */}
+      <line x1={cx - w * .1} y1={bodyY + bodyH}
+            x2={cx - w * .14} y2={bodyY + bodyH + legH}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1={cx + w * .1} y1={bodyY + bodyH}
+            x2={cx + w * .14} y2={bodyY + bodyH + legH}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      {/* Feet */}
+      <line x1={cx - w * .14} y1={bodyY + bodyH + legH}
+            x2={cx - w * .3}  y2={bodyY + bodyH + legH}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1={cx + w * .14} y1={bodyY + bodyH + legH}
+            x2={cx + w * .3}  y2={bodyY + bodyH + legH}
+        stroke="#7A5C38" strokeWidth="2.2" strokeLinecap="round"/>
+      {/* Base */}
+      <rect x={cx - w * .44} y={h - 9} width={w * .88} height={7}
+        rx="3" fill="#C4A882" stroke="#7A5C38" strokeWidth="1.5"/>
+    </svg>
+  );
+}
+
+/* ─── TOGGLE ──────────────────────────────────────────────────── */
+function Toggle({ on, setOn }) {
+  return (
+    <div className="tgl-track" style={{ background: on ? 'var(--clay)' : '#D4C9BC' }}
+      onClick={() => setOn(!on)}>
+      <div className="tgl-thumb" style={{ left: on ? 28 : 4 }}/>
+    </div>
+  );
+}
+
+/* ─── BEFORE / AFTER SLIDER ───────────────────────────────────── */
+function BeforeAfter() {
+  const [pos, setPos] = useState(50);
+  const dragging = useRef(false);
+  const ref = useRef(null);
+
+  const move = useCallback((cx) => {
+    if (!dragging.current || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPos(Math.max(4, Math.min(96, ((cx - r.left) / r.width) * 100)));
+  }, []);
+
+  useEffect(() => {
+    const mm = e => move(e.clientX);
+    const tm = e => move(e.touches[0].clientX);
+    const up = () => { dragging.current = false; };
+    window.addEventListener('mousemove', mm);
+    window.addEventListener('touchmove', tm, { passive: true });
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+    return () => {
+      window.removeEventListener('mousemove', mm);
+      window.removeEventListener('touchmove', tm);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchend', up);
+    };
+  }, [move]);
+
+  return (
+    <div ref={ref} className="ba-wrap" style={{ aspectRatio:'4/3', maxHeight:460, maxWidth:720, margin:'0 auto' }}
+      onMouseDown={() => { dragging.current = true; }}
+      onTouchStart={() => { dragging.current = true; }}
+      onDragStart={e => e.preventDefault()}>
+      {/* Before */}
+      <img src={IMG.before} alt="Photo originale" draggable="false"
+        style={{ width:'100%', height:'100%', objectFit:'cover', pointerEvents:'none' }}/>
+      {/* After */}
+      <div className="ba-after" style={{ clipPath:`inset(0 0 0 ${pos}%)` }}>
+        <img src={IMG.after} alt="Résultat" draggable="false"
+          style={{ width:'100%', height:'100%', objectFit:'cover', background:'#F5EDE0', pointerEvents:'none' }}/>
+      </div>
+      {/* Labels */}
+      <div style={{ position:'absolute', bottom:14, left:14,
+        background:'rgba(44,31,20,.75)', color:'#fff', padding:'4px 12px',
+        borderRadius:100, fontSize:'.72rem', fontWeight:700, backdropFilter:'blur(8px)' }}>
+        📷 Photo originale
+      </div>
+      <div style={{ position:'absolute', bottom:14, right:14,
+        background:'var(--clay)', color:'#fff', padding:'4px 12px',
+        borderRadius:100, fontSize:'.72rem', fontWeight:700 }}>
+        🪵 Tracé laser
+      </div>
+      {/* Handle */}
+      <div className="ba-handle" style={{ left:`${pos}%` }}>
+        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
+          width:44, height:44, borderRadius:'50%', background:'#fff',
+          boxShadow:'0 4px 20px rgba(0,0,0,.28)', display:'flex', alignItems:'center',
+          justifyContent:'center' }}>
+          <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+            <path d="M1 7h18M7 1L1 7l6 6M13 1l6 6-6 6"
+              stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── STATE 1 · LANDING ───────────────────────────────────────── */
+function Landing({ go }) {
+  const [drag, setDrag] = useState(false);
+  const fileRef = useRef(null);
+
+  return (
+    <div className="screen" style={{ background:'var(--cream)' }}>
+      {/* Nav */}
+      <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
+        padding:'16px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.35rem', color:'var(--dark)' }}>
+          <span style={{ color:'var(--clay)' }}>Mini</span>Nous
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <span className="tag hide-mobile"
+            style={{ background:'var(--bark-pale)', color:'var(--bark)' }}>
+            🪵 Atelier Nantes
+          </span>
+          <span className="tag hide-mobile"
+            style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
+            ⭐ 4.9/5
+          </span>
+          <button className="btn-clay" style={{ padding:'10px 22px', fontSize:'.88rem' }}
+            onClick={() => go('processing')}>
+            Créer mes figurines
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section style={{ padding:'72px 28px 64px',
+        background:'linear-gradient(155deg, var(--bark-pale) 0%, var(--cream) 55%)' }}>
+        <div className="hero-grid" style={{ maxWidth:1100, margin:'0 auto',
+          display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
+          {/* Left */}
+          <div>
+            <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20 }}>
+              ✨ Fabriqué à Nantes
+            </div>
+            <h1 style={{ color:'var(--dark)', marginBottom:22,
+              fontSize:'clamp(2.1rem, 4.5vw, 3.8rem)', lineHeight:1.12 }}>
+              Vos personnages,<br/>
+              <span style={{ color:'var(--clay)' }}>taillés dans le bois.</span>
+            </h1>
+            <p style={{ color:'var(--muted)', fontSize:'1.02rem', lineHeight:1.78,
+              marginBottom:32, maxWidth:460 }}>
+              Une photo de groupe suffit. Notre technologie et nos équipes détectent et tracent
+              les personnages pour une découpe précise, fabriquée à Nantes.
+            </p>
+            <div style={{ display:'flex', gap:18, flexWrap:'wrap', marginBottom:38 }}>
+              {['7 jours de délai', 'Satisfait ou remboursé', 'Fabriqué en France'].map(t => (
+                <span key={t} style={{ display:'flex', alignItems:'center', gap:6,
+                  color:'var(--bark)', fontSize:'.83rem', fontWeight:600 }}>
+                  <svg width="17" height="17" viewBox="0 0 17 17"><circle cx="8.5" cy="8.5" r="7.5"
+                    fill="#4A8A52" fillOpacity=".15"/><path d="M5.5 8.5l2.5 2.5 4.5-4.5"
+                    stroke="#4A8A52" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {t}
+                </span>
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+              <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
+                display:'flex', alignItems:'center', gap:10 }}
+                onClick={() => go('processing')}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 16V8m0 0l-4 4m4-4l4 4" stroke="#fff" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+                  <rect x="3" y="18" width="18" height="2" rx="1" fill="rgba(255,255,255,.55)"/>
+                </svg>
+                Envoyer ma photo
+              </button>
+              <span style={{ fontSize:'.78rem', color:'var(--muted)' }}>
+                Gratuit pour prévisualiser
+              </span>
+            </div>
+          </div>
+          {/* Right */}
+          <div style={{ position:'relative' }}>
+            <div style={{ borderRadius:24, overflow:'hidden',
+              boxShadow:'0 36px 80px rgba(44,31,20,.18)' }}>
+              <img src={IMG.hero} alt="MiniNous" style={{ width:'100%' }}/>
+            </div>
+            {/* Badge */}
+            <div style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
+              borderRadius:16, padding:'12px 18px', boxShadow:'0 10px 32px rgba(44,31,20,.12)',
+              display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:40, height:40, borderRadius:'50%',
+                background:'linear-gradient(135deg,var(--clay),var(--bark-light))',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:'1.2rem' }}>🏆</div>
+              <div>
+                <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.92rem',
+                  color:'var(--dark)' }}>
+                  <span className="stars">★★★★★</span> 4.9/5
+                </div>
+                <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>
+                  +1 200 familles conquises
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Before / After */}
+      <section style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:900, margin:'0 auto', textAlign:'center' }}>
+          <div className="tag" style={{ background:'rgba(122,92,56,.12)',
+            color:'var(--bark)', marginBottom:16 }}>
+            🎨 La magie en action
+          </div>
+          <h2 style={{ color:'var(--dark)', marginBottom:12 }}>
+            De la photo au chef-d'œuvre
+          </h2>
+          <p style={{ color:'var(--muted)', maxWidth:460, margin:'0 auto 40px',
+            lineHeight:1.7 }}>
+            Glissez le curseur pour découvrir la transformation. Chaque silhouette
+            est générée et gravée à l'identique.
+          </p>
+          <BeforeAfter/>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section style={{ padding:'80px 28px', background:'var(--cream)' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:48 }}>Comment ça marche ?</h2>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:32 }}>
+            {[
+              { icon:'📸', step:'1', title:'Envoyez votre photo',
+                desc:'Une photo de groupe avec 2 à 8 personnes — floue ou parfaite, on s\'adapte.' },
+              { icon:'🪚', step:'2', title:'On fabrique votre groupe',
+                desc:'Nos équipes découpent et assemblent chaque personnage en bois, d\'après votre photo.' },
+              { icon:'📦', step:'3', title:'On livre chez vous',
+                desc:'Emballé avec soin dans notre boîte kraft, livré en 5 jours partout en France.' },
+            ].map(s => (
+              <div key={s.step} style={{ background:'var(--bark-pale)', borderRadius:20,
+                padding:'36px 28px', textAlign:'center' }}>
+                <div style={{ fontSize:'2.4rem', marginBottom:12 }}>{s.icon}</div>
+                <div className="tag" style={{ background:'var(--clay-pale)',
+                  color:'var(--clay)', marginBottom:12 }}>
+                  Étape {s.step}
+                </div>
+                <h3 style={{ color:'var(--dark)', marginBottom:10, fontSize:'1.05rem' }}>
+                  {s.title}
+                </h3>
+                <p style={{ color:'var(--muted)', fontSize:'.85rem', lineHeight:1.7 }}>
+                  {s.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Dropzone */}
+      <section style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:680, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:12 }}>Prêt à créer le vôtre ?</h2>
+          <p style={{ color:'var(--muted)', marginBottom:36, lineHeight:1.7 }}>
+            Partagez votre photo — la prévisualisation est gratuite et sans engagement.
+          </p>
+          <div className={`dropzone${drag ? ' drag-over' : ''}`}
+            style={{ padding:'56px 32px', cursor:'pointer' }}
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={e => { e.preventDefault(); setDrag(false); go('processing'); }}>
+            <input ref={fileRef} type="file" accept="image/*"
+              style={{ display:'none' }} onChange={() => go('processing')}/>
+            <div style={{ fontSize:'3.5rem', marginBottom:14 }}>📸</div>
+            <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.2rem' }}>
+              Glissez votre photo de groupe ici
+            </h3>
+            <p style={{ color:'var(--muted)', marginBottom:24, fontSize:'.88rem' }}>
+              Jusqu'à 8 personnes · JPG, PNG, HEIC · Max 20 Mo
+            </p>
+            <button className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem' }}
+              onClick={e => { e.stopPropagation(); go('processing'); }}>
+              Choisir une photo
+            </button>
+          </div>
+
+          {/* Lifestyle grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginTop:40 }}>
+            {[IMG.lifestyle, IMG.atelier].map((src, i) => (
+              <div key={i} style={{ borderRadius:16, overflow:'hidden',
+                boxShadow:'0 8px 24px rgba(44,31,20,.1)' }}>
+                <img src={src} alt="" style={{ width:'100%', height:200, objectFit:'cover' }}/>
+              </div>
+            ))}
+          </div>
+
+          {/* Testimonial */}
+          <div style={{ marginTop:40, background:'#fff', borderRadius:20,
+            padding:'28px 32px', boxShadow:'0 8px 28px rgba(44,31,20,.08)',
+            textAlign:'left', display:'flex', gap:18, alignItems:'flex-start' }}>
+            <div style={{ fontSize:'2.2rem', flexShrink:0 }}>💬</div>
+            <div>
+              <p style={{ fontSize:'.92rem', color:'var(--text)', fontStyle:'italic',
+                lineHeight:1.7, marginBottom:10 }}>
+                "Le rendu est bluffant — ma mère a pleuré quand elle a ouvert le paquet.
+                Les proportions sont parfaites, on reconnaît vraiment chaque membre de la famille.
+                Livré en 5 jours, emballage magnifique."
+              </p>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%',
+                  background:'linear-gradient(135deg,var(--clay-light),var(--bark-light))',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  color:'#fff', fontWeight:700, fontSize:'.9rem' }}>C</div>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:'.85rem', color:'var(--dark)' }}>
+                    Cléa T. <span className="stars" style={{ fontSize:'.75rem' }}>★★★★★</span>
+                  </div>
+                  <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>
+                    Famille de 7 • Nantes
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ background:'var(--dark)', padding:'36px 28px',
+        textAlign:'center', color:'rgba(255,255,255,.35)', fontSize:'.78rem' }}>
+        <div style={{ fontFamily:'Quicksand', color:'rgba(255,255,255,.7)',
+          fontWeight:700, fontSize:'1.1rem', marginBottom:8 }}>
+          <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
+        </div>
+        Partie de l'écosystème <strong style={{ color:'rgba(255,255,255,.5)' }}>MiniToit</strong> ·
+        Fabrication locale · Nantes, France
+      </footer>
+    </div>
+  );
+}
+
+/* ─── STATE 2 · PROCESSING ────────────────────────────────────── */
+function Processing({ go }) {
+  const [progress, setProgress] = useState(0);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [boxes, setBoxes] = useState([]);
+
+  useEffect(() => {
+    // Reveal bboxes
+    FACES.forEach((f, i) => {
+      setTimeout(() => setBoxes(b => [...b, i]), f.delay * 1000 + 350);
+    });
+
+    // Progress
+    const prog = setInterval(() => {
+      setProgress(p => { if (p >= 100) { clearInterval(prog); return 100; } return p + 1.35; });
+    }, 75);
+
+    // Steps
+    const stps = setInterval(() => {
+      setStepIdx(i => { if (i >= PROC_STEPS.length - 1) { clearInterval(stps); return i; } return i + 1; });
+    }, 1050);
+
+    // Auto-advance
+    const adv = setTimeout(() => go('pricing'), 7400);
+
+    return () => { clearInterval(prog); clearInterval(stps); clearTimeout(adv); };
+  }, [go]);
+
+  return (
+    <div className="screen" style={{ background:'var(--dark)', display:'flex',
+      alignItems:'center', justifyContent:'center', padding:28 }}>
+      <div style={{ maxWidth:680, width:'100%', textAlign:'center' }}>
+        <div className="tag" style={{ background:'rgba(0,255,136,.12)',
+          color:'#00FF88', marginBottom:24 }}>
+          <span className="pulse" style={{ width:8, height:8, borderRadius:'50%',
+            background:'#00FF88', display:'inline-block' }}/>
+          &nbsp;Préparation en cours
+        </div>
+        <h2 style={{ color:'#fff', marginBottom:32, fontFamily:'Quicksand',
+          fontSize:'clamp(1.5rem,3vw,2.2rem)' }}>
+          On regarde votre photo de près…
+        </h2>
+
+        {/* Photo + bboxes */}
+        <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
+          marginBottom:28, boxShadow:'0 24px 60px rgba(0,0,0,.5)' }}>
+          <img src={IMG.before} alt="Analyse" style={{ width:'100%', display:'block',
+            filter:'brightness(.82) contrast(1.08) saturate(.9)' }}/>
+          <div className="scan-line"/>
+          {FACES.map((f, i) => boxes.includes(i) && (
+            <div key={i} className="bbox" style={{ top:f.top, left:f.left,
+              width:f.w, height:f.h }}>
+              <div className="bbox-label">{f.name}</div>
+            </div>
+          ))}
+          {/* Dark gradient bottom */}
+          <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+            background:'linear-gradient(180deg,transparent 55%,rgba(44,31,20,.65) 100%)' }}/>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ background:'rgba(255,255,255,.08)', borderRadius:100, height:8,
+          marginBottom:14, overflow:'hidden' }}>
+          <div className="prog-fill" style={{ width:`${Math.min(progress, 100)}%` }}/>
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:28 }}>
+          <span style={{ color:'#00FF88', fontSize:'.8rem', fontWeight:600,
+            fontFamily:'monospace' }}>
+            {PROC_STEPS[stepIdx]}
+          </span>
+          <span style={{ color:'rgba(255,255,255,.4)', fontSize:'.8rem' }}>
+            {Math.min(Math.round(progress), 100)}%
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+          {[
+            { l:'Personnages repérés', v:`${boxes.length}/7` },
+            { l:'Fidélité',           v:'97.4%' },
+            { l:'Détails dessinés',   v: boxes.length > 4 ? `${boxes.length * 412}` : '—' },
+          ].map(s => (
+            <div key={s.l} style={{ background:'rgba(255,255,255,.05)',
+              border:'1px solid rgba(255,255,255,.08)', borderRadius:14, padding:'18px 14px' }}>
+              <div style={{ color:'#fff', fontFamily:'Quicksand', fontWeight:700,
+                fontSize:'1.5rem', marginBottom:4 }}>{s.v}</div>
+              <div style={{ color:'rgba(255,255,255,.4)', fontSize:'.72rem' }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Skip */}
+        <button style={{ marginTop:28, color:'rgba(255,255,255,.3)', fontSize:'.75rem',
+          background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}
+          onClick={() => go('pricing')}>
+          Passer →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── STRIPE MODAL ─────────────────────────────────────────────── */
+function StripeModal({ total, onPay, onClose }) {
+  const [phase, setPhase] = useState('form'); // form | paying | done
+
+  const pay = () => {
+    setPhase('paying');
+    setTimeout(() => { setPhase('done'); setTimeout(onPay, 1100); }, 2000);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background:'#fff', borderRadius:24, padding:40,
+        maxWidth:440, width:'100%', margin:16,
+        boxShadow:'0 48px 120px rgba(0,0,0,.35)',
+      }}>
+        {phase === 'form' && <>
+          <div style={{ display:'flex', justifyContent:'space-between',
+            alignItems:'center', marginBottom:28 }}>
+            <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.18rem',
+              color:'var(--dark)' }}>Paiement sécurisé</span>
+            <div style={{ display:'flex', gap:6 }}>
+              {['VISA','MC','AMEX'].map(c => (
+                <div key={c} style={{ background:'#F2F2F2', borderRadius:6,
+                  padding:'4px 8px', fontSize:'.62rem', fontWeight:700, color:'#555',
+                  letterSpacing:'.06em' }}>{c}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stripe bar */}
+          <div style={{ background:'linear-gradient(135deg,#635BFF,#4F46E5)',
+            borderRadius:14, padding:'14px 20px', marginBottom:24, color:'#fff' }}>
+            <div style={{ fontSize:'.7rem', opacity:.7, marginBottom:2 }}>Propulsé par</div>
+            <div style={{ fontWeight:700, fontSize:'1.05rem', letterSpacing:'.06em' }}>stripe</div>
+          </div>
+
+          {[
+            { l:'Numéro de carte', ph:'4242 4242 4242 4242' },
+            { l:'Titulaire',       ph:'Marie Dupont' },
+          ].map(f => (
+            <div key={f.l} style={{ marginBottom:14 }}>
+              <label style={{ display:'block', fontSize:'.78rem', fontWeight:600,
+                color:'var(--text)', marginBottom:6 }}>{f.l}</label>
+              <input type="text" placeholder={f.ph} style={{
+                width:'100%', border:'1.5px solid #E5E0DA', borderRadius:10,
+                padding:'12px 14px', fontSize:'.88rem', outline:'none', fontFamily:'Montserrat',
+              }}/>
+            </div>
+          ))}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:26 }}>
+            {[['Expiration','MM / AA'],['CVC','123']].map(([l,ph]) => (
+              <div key={l}>
+                <label style={{ display:'block', fontSize:'.78rem', fontWeight:600,
+                  color:'var(--text)', marginBottom:6 }}>{l}</label>
+                <input type="text" placeholder={ph} style={{
+                  width:'100%', border:'1.5px solid #E5E0DA', borderRadius:10,
+                  padding:'12px 14px', fontSize:'.88rem', outline:'none', fontFamily:'Montserrat',
+                }}/>
+              </div>
+            ))}
+          </div>
+          <button className="btn-clay" style={{ width:'100%', padding:'15px', fontSize:'.95rem' }}
+            onClick={pay}>
+            Payer {total} € — Accéder à l'éditeur
+          </button>
+          <p style={{ textAlign:'center', fontSize:'.72rem', color:'var(--muted)', marginTop:12 }}>
+            🔒 Chiffrement SSL 256 bits · Remboursé si insatisfait
+          </p>
+        </>}
+
+        {phase === 'paying' && (
+          <div style={{ textAlign:'center', padding:'20px 0' }}>
+            <div className="spin" style={{ width:56, height:56, border:'4px solid #EEE',
+              borderTop:'4px solid var(--clay)', borderRadius:'50%', margin:'0 auto 20px' }}/>
+            <p style={{ fontFamily:'Quicksand', fontWeight:600, color:'var(--dark)',
+              fontSize:'1rem' }}>Validation en cours…</p>
+          </div>
+        )}
+
+        {phase === 'done' && (
+          <div style={{ textAlign:'center', padding:'20px 0' }}>
+            <div style={{ width:60, height:60, background:'var(--forest)', borderRadius:'50%',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              margin:'0 auto 18px' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12l5 5L19 7" stroke="#fff" strokeWidth="2.8"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.1rem',
+              color:'var(--dark)', marginBottom:6 }}>Paiement validé !</p>
+            <p style={{ color:'var(--muted)', fontSize:'.85rem' }}>Ouverture de l'éditeur…</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── STATE 3 · PRICING ───────────────────────────────────────── */
+function Pricing({ go }) {
+  const N = 7;
+  const [socle, setSocle] = useState(false);
+  const [taille, setTaille] = useState(false);
+  const [showStripe, setShowStripe] = useState(false);
+
+  const base = 49, extra = (N - 2) * 12;
+  const total = base + extra + (socle ? 15 : 0) + (taille ? 20 : 0);
+
+  return (
+    <div className="screen" style={{ background:'var(--cream)' }}>
+      <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
+        padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.25rem',
+          color:'var(--dark)' }}>
+          <span style={{ color:'var(--clay)' }}>Mini</span>Nous
+        </div>
+        <div className="tag" style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
+          ✓ 7 personnages reconnus
+        </div>
+      </nav>
+
+      <div className="two-col" style={{ maxWidth:1100, margin:'0 auto', padding:'44px 28px',
+        display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
+
+        {/* LEFT — Preview */}
+        <div>
+          <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)',
+            marginBottom:18 }}>
+            🎨 Premier aperçu
+          </div>
+          <h2 style={{ color:'var(--dark)', marginBottom:14 }}>Votre groupe en bois</h2>
+          <p style={{ color:'var(--muted)', marginBottom:22, lineHeight:1.7 }}>
+            Un avant-goût de ce que nos équipes vont fabriquer pour vous.
+            Les détails sont finalisés après votre commande.
+          </p>
+
+          {/* Composite preview */}
+          <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
+            boxShadow:'0 16px 48px rgba(44,31,20,.13)', marginBottom:20 }}>
+            <img src={IMG.after} alt="Résultat" style={{ width:'100%', display:'block' }}/>
+            <div style={{ position:'absolute', bottom:16, left:'50%',
+              transform:'translateX(-50%)', whiteSpace:'nowrap',
+              background:'rgba(44,31,20,.78)', color:'#fff', borderRadius:100,
+              padding:'8px 20px', fontSize:'.78rem', fontWeight:600,
+              backdropFilter:'blur(8px)', display:'flex', alignItems:'center', gap:7 }}>
+              <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"
+                fill="none" stroke="#fff" strokeWidth="1.5"/><path d="M7 4v3l2 2"
+                stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Commandez pour voir tous les détails
+            </div>
+          </div>
+
+          {/* Figurine strip preview */}
+          <div style={{ background:'var(--bark-pale)', borderRadius:18, padding:'22px 16px',
+            display:'flex', gap:10, justifyContent:'center', alignItems:'flex-end',
+            overflowX:'auto' }}>
+            {PEOPLE.map(p => (
+              <div key={p.id} style={{ textAlign:'center', flexShrink:0 }}>
+                <Figurine person={p} scale={.58}/>
+                <div style={{ fontSize:'.62rem', color:'var(--muted)', marginTop:4 }}>
+                  {p.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT — Pricing panel */}
+        <div style={{ position:'sticky', top:80 }}>
+          <div style={{ background:'#fff', borderRadius:24, padding:34,
+            boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
+            <h3 style={{ color:'var(--dark)', marginBottom:22, fontSize:'1.35rem' }}>
+              Votre commande
+            </h3>
+
+            {/* Line items */}
+            <div style={{ display:'flex', flexDirection:'column', gap:13,
+              paddingBottom:22, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:22 }}>
+              {[
+                { l:'Base — 2 personnes incluses', v:`${base} €` },
+                { l:`+${N - 2} personnes supplémentaires (×12 €)`, v:`+${extra} €`, hot:true },
+              ].map(r => (
+                <div key={r.l} style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:'.86rem',
+                    color: r.hot ? 'var(--clay)' : 'var(--muted)' }}>{r.l}</span>
+                  <span style={{ fontWeight:700, fontSize:'.88rem',
+                    color: r.hot ? 'var(--clay)' : 'var(--dark)' }}>{r.v}</span>
+                </div>
+              ))}
+
+              {/* Options */}
+              {[
+                { l:'Socle gravé avec prénoms', sub:'Option gravure · recommandé', price:15,
+                  val:socle, set:setSocle },
+                { l:'Taille M — 20 cm', sub:'Standard : 15 cm de hauteur', price:20,
+                  val:taille, set:setTaille },
+              ].map(o => (
+                <div key={o.l} style={{ background:'var(--bark-pale)', borderRadius:14,
+                  padding:'14px 16px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between',
+                    alignItems:'center', gap:12 }}>
+                    <div>
+                      <div style={{ fontWeight:600, fontSize:'.86rem',
+                        color:'var(--dark)' }}>{o.l}</div>
+                      <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>{o.sub}</div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
+                      {o.val && (
+                        <span style={{ fontWeight:700, color:'var(--clay)',
+                          fontSize:'.88rem' }}>+{o.price} €</span>
+                      )}
+                      <Toggle on={o.val} setOn={o.set}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total */}
+            <div style={{ display:'flex', justifyContent:'space-between',
+              alignItems:'center', marginBottom:26 }}>
+              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem',
+                color:'var(--dark)' }}>Total TTC</span>
+              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2.1rem',
+                color:'var(--clay)', transition:'all .3s ease' }}>{total} €</span>
+            </div>
+
+            <button className="btn-clay" style={{ width:'100%', padding:'16px',
+              fontSize:'.95rem', display:'flex', alignItems:'center',
+              justifyContent:'center', gap:10 }}
+              onClick={() => setShowStripe(true)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
+                  stroke="#fff" strokeWidth="2"/><path d="M9 12l2 2 4-4"
+                  stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Valider & Payer · Accéder à l'éditeur
+            </button>
+
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8,
+              marginTop:14 }}>
+              {['🔒 SSL 256', '↩️ 30 jours', '🪵 Nantes'].map(t => (
+                <div key={t} style={{ background:'var(--bark-pale)', borderRadius:10,
+                  padding:'8px 4px', textAlign:'center', fontSize:'.68rem',
+                  color:'var(--bark)', fontWeight:600 }}>{t}</div>
+              ))}
+            </div>
+
+            {/* Testimonial */}
+            <div style={{ marginTop:18, padding:'14px 16px', background:'var(--forest-pale)',
+              borderRadius:12, display:'flex', gap:10 }}>
+              <span style={{ fontSize:'1.1rem', flexShrink:0 }}>💬</span>
+              <p style={{ fontSize:'.76rem', color:'var(--forest)', fontStyle:'italic',
+                lineHeight:1.6 }}>
+                "Le rendu est bluffant, ma mère a pleuré ! Livré en 5 jours." —
+                <strong> Cléa T.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showStripe && (
+        <StripeModal total={total} onPay={() => go('editor')}
+          onClose={() => setShowStripe(false)}/>
+      )}
+    </div>
+  );
+}
+
+/* ─── STATE 4 · EDITOR ────────────────────────────────────────── */
+function Editor({ go }) {
+  const [sel, setSel] = useState(null);
+  const [regens, setRegens] = useState(3);
+  const [regen, setRegen] = useState(false);
+  const [names, setNames] = useState(
+    () => Object.fromEntries(PEOPLE.map(p => [p.id, p.name]))
+  );
+  const ADJS = [
+    '😊 Rendre plus souriant',
+    '✏️ Simplifier les traits',
+    '👓 Ajouter des lunettes',
+    '💇 Changer la coiffure',
+    '🎩 Ajouter un chapeau',
+  ];
+
+  const doRegen = () => {
+    if (regens <= 0 || regen) return;
+    setRegen(true);
+    setTimeout(() => { setRegen(false); setRegens(r => r - 1); }, 1200);
+  };
+
+  return (
+    <div className="screen" style={{ background:'var(--dark)', minHeight:'100vh' }}>
+      {/* Top bar */}
+      <div style={{ background:'rgba(255,255,255,.04)',
+        borderBottom:'1px solid rgba(255,255,255,.08)',
+        padding:'14px 24px', display:'flex', justifyContent:'space-between',
+        alignItems:'center', gap:12 }}>
+        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.15rem',
+          color:'#fff' }}>
+          <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
+          <span style={{ color:'rgba(255,255,255,.3)', fontWeight:400,
+            fontSize:'.82rem', marginLeft:10 }}>Studio · Édition</span>
+        </div>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          <div style={{ background:'rgba(255,255,255,.07)', borderRadius:100,
+            padding:'7px 16px', color:'rgba(255,255,255,.5)', fontSize:'.78rem' }}>
+            {PEOPLE.length} figurines · Fabriquées en bois
+          </div>
+          <button className="btn-clay" style={{ padding:'10px 22px', fontSize:'.85rem' }}
+            onClick={() => go('success')}>
+            Envoyer à l'atelier →
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display:'grid',
+        gridTemplateColumns: sel !== null ? '1fr 360px' : '1fr',
+        minHeight:'calc(100vh - 68px)',
+        transition:'grid-template-columns .4s ease' }}>
+
+        {/* Canvas */}
+        <div style={{ padding:'44px 32px', display:'flex', flexDirection:'column',
+          alignItems:'center' }}>
+          <p style={{ color:'rgba(255,255,255,.3)', fontSize:'.8rem', marginBottom:36 }}>
+            Cliquez sur une figurine pour la personnaliser
+          </p>
+
+          <div style={{ width:'100%', maxWidth:720 }}>
+            {/* Workshop stage */}
+            <div style={{ background:'linear-gradient(180deg,#3D2B18 0%,#261A0F 100%)',
+              borderRadius:24, padding:'48px 28px 36px', position:'relative',
+              overflow:'hidden',
+              boxShadow:'0 40px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(196,168,130,.12)' }}>
+              {/* Wood grain overlay */}
+              <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+                backgroundImage:'repeating-linear-gradient(92deg,transparent,transparent 44px,rgba(196,168,130,.035) 44px,rgba(196,168,130,.035) 45px)' }}/>
+              {/* Laser grid */}
+              <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+                backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(0,255,136,.03) 59px,rgba(0,255,136,.03) 60px)' }}/>
+
+              {/* Ref photo */}
+              <div style={{ position:'absolute', top:16, right:16 }}>
+                <img src={IMG.upload} alt="ref" style={{ width:72, height:54,
+                  objectFit:'cover', borderRadius:8, opacity:.55,
+                  border:'2px solid rgba(196,168,130,.25)' }}/>
+                <div style={{ fontSize:'.58rem', color:'rgba(255,255,255,.25)',
+                  textAlign:'center', marginTop:3 }}>Photo ref.</div>
+              </div>
+
+              {/* Figurines */}
+              <div style={{ display:'flex', gap:16, justifyContent:'center',
+                alignItems:'flex-end', flexWrap:'wrap', position:'relative', zIndex:1 }}>
+                {PEOPLE.map(p => (
+                  <div key={p.id} className={`fig-card${sel === p.id ? ' active' : ''}`}
+                    onClick={() => setSel(sel === p.id ? null : p.id)}>
+                    {sel === p.id && <div className="fig-ring"/>}
+                    <Figurine person={p} scale={.88}
+                      selected={sel === p.id}
+                      regen={regen && sel === p.id}/>
+                    <div style={{ marginTop:8, fontSize:'.7rem',
+                      color: sel === p.id ? 'var(--clay-light)' : 'rgba(255,255,255,.6)',
+                      fontWeight: sel === p.id ? 700 : 400, transition:'color .3s' }}>
+                      {names[p.id]}
+                    </div>
+                    {sel === p.id && (
+                      <div className="pulse" style={{ width:6, height:6, borderRadius:'50%',
+                        background:'var(--clay)', margin:'4px auto 0' }}/>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Base line */}
+              <div style={{ marginTop:28, height:4,
+                background:'linear-gradient(90deg,transparent,rgba(196,168,130,.22),transparent)',
+                borderRadius:2 }}/>
+            </div>
+
+            {/* Caption */}
+            <p style={{ textAlign:'center', color:'rgba(255,255,255,.2)',
+              fontSize:'.72rem', marginTop:16 }}>
+              Aperçu simulé · Chaque personnage sera fabriqué en bois dans notre atelier
+            </p>
+          </div>
+        </div>
+
+        {/* Side panel */}
+        {sel !== null && (
+          <div className="side-panel" style={{ background:'rgba(255,255,255,.035)',
+            padding:26, overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between',
+              alignItems:'center', marginBottom:22 }}>
+              <h3 style={{ color:'#fff', fontFamily:'Quicksand', margin:0,
+                fontSize:'1.15rem' }}>{PEOPLE[sel].name}</h3>
+              <button onClick={() => setSel(null)} style={{ color:'rgba(255,255,255,.35)',
+                fontSize:'1.5rem', lineHeight:1, background:'none', border:'none',
+                cursor:'pointer', padding:'0 4px' }}>×</button>
+            </div>
+
+            {/* Regen */}
+            <div style={{ background:'rgba(192,104,74,.1)',
+              border:'1px solid rgba(192,104,74,.25)', borderRadius:14,
+              padding:'16px 18px', marginBottom:18 }}>
+              <div style={{ display:'flex', justifyContent:'space-between',
+                alignItems:'center', marginBottom:12 }}>
+                <span style={{ color:'#fff', fontWeight:600, fontSize:'.85rem' }}>
+                  Générer une variante
+                </span>
+                <span style={{ background:'rgba(192,104,74,.25)',
+                  color:'var(--clay-light)', borderRadius:100,
+                  padding:'3px 10px', fontSize:'.7rem', fontWeight:700 }}>
+                  {regens} restant{regens !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <button className="btn-clay" style={{ width:'100%', padding:'12px',
+                fontSize:'.85rem', opacity: regens === 0 ? .4 : 1 }}
+                onClick={doRegen} disabled={regens === 0 || regen}>
+                {regen ? '⚙️ Génération…' : '🔄 Nouvelle variante'}
+              </button>
+              {regens === 0 && (
+                <p style={{ fontSize:'.72rem', color:'rgba(255,255,255,.3)',
+                  textAlign:'center', marginTop:8 }}>
+                  Régénérations épuisées pour cette figurine
+                </p>
+              )}
+            </div>
+
+            {/* Adjustments */}
+            <div style={{ marginBottom:18 }}>
+              <label style={{ display:'block', color:'rgba(255,255,255,.4)',
+                fontSize:'.68rem', fontWeight:700, letterSpacing:'.1em',
+                textTransform:'uppercase', marginBottom:10 }}>
+                Ajustements fins
+              </label>
+              <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                {ADJS.map(a => (
+                  <button key={a} style={{ background:'rgba(255,255,255,.055)',
+                    border:'1px solid rgba(255,255,255,.09)', borderRadius:10,
+                    padding:'10px 14px', color:'rgba(255,255,255,.78)',
+                    fontSize:'.8rem', textAlign:'left', cursor:'pointer',
+                    transition:'all .2s', fontFamily:'Montserrat' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(192,104,74,.14)';
+                      e.currentTarget.style.borderColor = 'rgba(192,104,74,.35)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,.055)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,.09)';
+                    }}>
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Name input */}
+            <div style={{ marginBottom:22 }}>
+              <label style={{ display:'block', color:'rgba(255,255,255,.4)',
+                fontSize:'.68rem', fontWeight:700, letterSpacing:'.1em',
+                textTransform:'uppercase', marginBottom:10 }}>
+                Nom gravé sur le socle
+              </label>
+              <input type="text"
+                value={names[sel]}
+                onChange={e => setNames(n => ({ ...n, [sel]: e.target.value }))}
+                maxLength={14}
+                style={{ width:'100%', background:'rgba(255,255,255,.07)',
+                  border:'1.5px solid rgba(255,255,255,.14)', borderRadius:10,
+                  padding:'12px 14px', color:'#fff', fontSize:'.88rem',
+                  fontFamily:'Montserrat', outline:'none' }}
+                placeholder="Prénom ou surnom…"/>
+              <div style={{ textAlign:'right', fontSize:'.68rem',
+                color:'rgba(255,255,255,.22)', marginTop:4 }}>
+                {names[sel].length}/14
+              </div>
+            </div>
+
+            <div style={{ borderTop:'1px solid rgba(255,255,255,.08)',
+              paddingTop:18, display:'flex', flexDirection:'column', gap:10 }}>
+              <button className="btn-bark" style={{ width:'100%', padding:'12px',
+                fontSize:'.85rem' }}
+                onClick={() => setSel(null)}>
+                ✓ Valider cette figurine
+              </button>
+              <button className="btn-clay" style={{ width:'100%', padding:'12px',
+                fontSize:'.85rem' }}
+                onClick={() => go('success')}>
+                Envoyer à l'atelier →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── STATE 5 · SUCCESS ───────────────────────────────────────── */
+function Success() {
+  const today = new Date();
+  const fmt = d => d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+  const add = n => { const d = new Date(today); d.setDate(d.getDate() + n); return fmt(d); };
+
+  const steps = [
+    { icon:'✅', title:'Aujourd\'hui — Validation',
+      sub: add(0),
+      desc:'Votre commande est confirmée. On prépare votre groupe avec amour.', done:true },
+    { icon:'⚡', title:'Demain — Découpe laser à Nantes',
+      sub: add(1),
+      desc:'Nos équipes découpent et fabriquent chaque personnage en bois.' },
+    { icon:'📦', title:'J+3 — Expédition suivi',
+      sub: add(3),
+      desc:'Emballage soigné dans notre boîte kraft signature, envoi en Colissimo suivi.' },
+    { icon:'🏡', title:'J+5 — Livraison chez vous',
+      sub: add(5),
+      desc:'Vos MiniNous arrivent ! Prêts à être offerts ou posés dans votre intérieur.' },
+  ];
+
+  return (
+    <div className="screen" style={{ background:'var(--bark-pale)',
+      minHeight:'100vh', padding:'72px 28px' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', textAlign:'center' }}>
+
+        {/* Success icon */}
+        <div style={{ width:72, height:72, background:'var(--forest)', borderRadius:'50%',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          margin:'0 auto 24px', boxShadow:'0 12px 36px rgba(74,138,82,.38)' }}>
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l5 5L19 7" stroke="#fff" strokeWidth="2.8"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        <div className="tag" style={{ background:'var(--forest-pale)',
+          color:'var(--forest)', marginBottom:16 }}>
+          Commande #MN-{Math.floor(Math.random() * 9000) + 1000} confirmée
+        </div>
+
+        <h1 style={{ color:'var(--dark)', marginBottom:14,
+          fontSize:'clamp(1.7rem, 4vw, 2.6rem)' }}>
+          Vos MiniNous partent à l'atelier !
+        </h1>
+        <p style={{ color:'var(--muted)', maxWidth:460, margin:'0 auto 48px',
+          lineHeight:1.75 }}>
+          Un email de confirmation a été envoyé. Vous recevrez une photo de vos
+          figurines terminées avant expédition — promis.
+        </p>
+
+        {/* Timeline */}
+        <div style={{ background:'#fff', borderRadius:24, padding:'32px 36px',
+          textAlign:'left', boxShadow:'0 16px 48px rgba(44,31,20,.09)', marginBottom:28 }}>
+          <h3 style={{ color:'var(--dark)', marginBottom:28, fontFamily:'Quicksand',
+            fontSize:'1.15rem' }}>
+            Suivi de votre commande
+          </h3>
+          <div style={{ position:'relative' }}>
+            {/* Vertical line */}
+            <div style={{ position:'absolute', left:19, top:30, bottom:30, width:2,
+              background:'var(--bark-pale)' }}/>
+            {steps.map((s, i) => (
+              <div key={i} className="tl-item"
+                style={{ display:'flex', gap:20,
+                  marginBottom: i < steps.length - 1 ? 26 : 0,
+                  animationDelay:`${i * .14}s` }}>
+                <div style={{ width:40, height:40, borderRadius:'50%', flexShrink:0,
+                  background: s.done ? 'var(--forest)' : '#fff',
+                  border: s.done ? 'none' : '2px solid var(--bark-light)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'1rem', zIndex:1,
+                  boxShadow: s.done ? '0 4px 14px rgba(74,138,82,.3)' : 'none' }}>
+                  {s.icon}
+                </div>
+                <div style={{ paddingTop:4 }}>
+                  <div style={{ fontFamily:'Quicksand', fontWeight:700,
+                    color:'var(--dark)', fontSize:'.92rem', marginBottom:2 }}>
+                    {s.title}
+                  </div>
+                  <div style={{ fontSize:'.73rem', color:'var(--clay)',
+                    fontWeight:600, marginBottom:5 }}>{s.sub}</div>
+                  <div style={{ fontSize:'.8rem', color:'var(--muted)',
+                    lineHeight:1.6 }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Atelier photo */}
+        <div style={{ borderRadius:20, overflow:'hidden',
+          boxShadow:'0 16px 48px rgba(44,31,20,.13)', marginBottom:28 }}>
+          <img src={IMG.atelier} alt="Atelier" style={{ width:'100%',
+            maxHeight:260, objectFit:'cover' }}/>
+          <div style={{ background:'var(--dark)', padding:'16px 24px',
+            display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
+            <div>
+              <div style={{ fontFamily:'Quicksand', fontWeight:700, color:'#fff',
+                fontSize:'.92rem' }}>Notre atelier · Nantes, Loire-Atlantique</div>
+              <div style={{ fontSize:'.73rem', color:'rgba(255,255,255,.38)' }}>
+                Fabrication locale · Bois de qualité · Atelier Nantes
+              </div>
+            </div>
+            <div style={{ background:'var(--clay)', borderRadius:10,
+              padding:'7px 14px', fontSize:'.72rem', color:'#fff',
+              fontWeight:700, flexShrink:0 }}>
+              🇫🇷 Made in France
+            </div>
+          </div>
+        </div>
+
+        {/* Share CTA */}
+        <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
+          <button className="btn-clay" style={{ padding:'14px 30px', fontSize:'.9rem' }}>
+            🎁 Partager ma création
+          </button>
+          <button className="btn-ghost" style={{ padding:'14px 30px', fontSize:'.9rem' }}>
+            ← Créer un autre set
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── APP SHELL ───────────────────────────────────────────────── */
+const NAV_STEPS = [
+  { id:'landing',    label:'Photo' },
+  { id:'processing', label:'Préparation' },
+  { id:'pricing',    label:'Commande' },
+  { id:'editor',     label:'Studio' },
+  { id:'success',    label:'Atelier' },
+];
+
+function App() {
+  const [state, setState] = useState('landing');
+  const [tick, setTick] = useState(0);
+
+  const go = useCallback(next => {
+    setTick(t => t + 1);
+    setState(next);
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }, []);
+
+  const idx = NAV_STEPS.findIndex(s => s.id === state);
+  const dark = ['processing','editor'].includes(state);
+
+  const screens = {
+    landing:    <Landing    go={go}/>,
+    processing: <Processing go={go}/>,
+    pricing:    <Pricing    go={go}/>,
+    editor:     <Editor     go={go}/>,
+    success:    <Success/>,
+  };
+
+  return (
+    <>
+      {/* Top progress bar */}
+      <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999,
+        background:'rgba(196,168,130,.25)' }}>
+        <div style={{ height:'100%',
+          background:'linear-gradient(90deg,var(--clay),var(--bark-light))',
+          width:`${((idx + 1) / NAV_STEPS.length) * 100}%`,
+          transition:'width .65s cubic-bezier(.4,0,.2,1)' }}/>
+      </div>
+
+      {/* Step pills */}
+      {!dark && (
+        <div style={{ position:'fixed', bottom:20, left:'50%',
+          transform:'translateX(-50%)', zIndex:50,
+          background:'rgba(44,31,20,.82)', borderRadius:100,
+          padding:'10px 18px', backdropFilter:'blur(20px)',
+          display:'flex', gap:4, alignItems:'center' }}>
+          {NAV_STEPS.map((s, i) => (
+            <React.Fragment key={s.id}>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:26, height:26, borderRadius:'50%',
+                  background: i <= idx ? 'var(--clay)' : 'rgba(255,255,255,.12)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'.65rem', fontWeight:700, color:'#fff',
+                  transition:'background .4s ease',
+                  boxShadow: i === idx ? '0 0 0 2px rgba(192,104,74,.5)' : 'none' }}>
+                  {i < idx ? '✓' : i + 1}
+                </div>
+                {i === idx && (
+                  <span style={{ fontSize:'.72rem', color:'rgba(255,255,255,.9)',
+                    fontWeight:700, letterSpacing:'.02em' }}>{s.label}</span>
+                )}
+              </div>
+              {i < NAV_STEPS.length - 1 && (
+                <div style={{ width:14, height:1.5,
+                  background: i < idx ? 'var(--clay)' : 'rgba(255,255,255,.15)',
+                  transition:'background .4s' }}/>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+
+      <div key={tick}>
+        {screens[state]}
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
