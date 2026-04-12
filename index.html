@@ -103,7 +103,9 @@ input{font-family:inherit}
 /* Responsive */
 @media(max-width:768px){
   .two-col{grid-template-columns:1fr !important}
-  .hero-grid{grid-template-columns:1fr !important}
+  .hero-grid{grid-template-columns:1fr !important; gap:24px !important; padding:28px 20px 40px !important}
+  .hero-img{order:-1}
+  .hero-text{order:1}
   .hide-mobile{display:none !important}
 }
 </style>
@@ -343,7 +345,7 @@ function Landing({ go }) {
         <div className="hero-grid" style={{ maxWidth:1100, margin:'0 auto',
           display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
           {/* Left */}
-          <div>
+          <div className="hero-text">
             <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20 }}>
               ✨ Fabriqué à Nantes
             </div>
@@ -386,13 +388,13 @@ function Landing({ go }) {
             </div>
           </div>
           {/* Right */}
-          <div style={{ position:'relative' }}>
+          <div className="hero-img" style={{ position:'relative' }}>
             <div style={{ borderRadius:24, overflow:'hidden',
               boxShadow:'0 36px 80px rgba(44,31,20,.18)' }}>
               <img src={IMG.hero} alt="MiniNous" style={{ width:'100%' }}/>
             </div>
             {/* Badge */}
-            <div style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
+            <div className="hide-mobile" style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
               borderRadius:16, padding:'12px 18px', boxShadow:'0 10px 32px rgba(44,31,20,.12)',
               display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ width:40, height:40, borderRadius:'50%',
