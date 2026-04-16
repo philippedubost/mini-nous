@@ -29,8 +29,8 @@ export default function Admin({ prompts, onChange, onClose }) {
 
         {[
           { key: 'prompt1', label: 'Étape 1 — Mise en scène' },
-          { key: 'prompt2', label: 'Étape 2 — Affinage' },
-          { key: 'prompt3', label: 'Étape 3 — Finalisation' },
+          { key: 'prompt2', label: 'Étape 2 — Line Art' },
+          { key: 'prompt3', label: 'Étape 3 — Contour final' },
         ].map(({ key, label }) => (
           <div key={key} className="space-y-1">
             <label className="text-sm font-medium text-stone-300">{label}</label>

@@ -9,26 +9,34 @@ export default function Upload({ onReady }) {
   const imgRef = useRef(null)
   const canvasRef = useRef(null)
   const inputRef = useRef(null)
+  const boxesRef = useRef([])
+
+  const redrawBoxes = useCallback(() => {
+    if (!canvasRef.current || !imgRef.current || !boxesRef.current.length) return
+    const r = imgRef.current.getBoundingClientRect()
+    drawBoxes(canvasRef.current, boxesRef.current, r.width, r.height)
+  }, [])
 
   const handleFile = useCallback(async (f) => {
     if (!f || !f.type.startsWith('image/')) return
     setFile(f)
     setFaceCount(null)
+    boxesRef.current = []
     const url = URL.createObjectURL(f)
     setPreview(url)
     setDetecting(true)
     try {
       const { count, boxes } = await detectFaces(f)
+      boxesRef.current = boxes
       setFaceCount(count)
-      if (imgRef.current && canvasRef.current) {
-        drawBoxes(canvasRef.current, boxes, imgRef.current.naturalWidth, imgRef.current.naturalHeight)
-      }
+      // draw after state update so image is rendered
+      requestAnimationFrame(() => redrawBoxes())
     } catch {
       setFaceCount(0)
     } finally {
       setDetecting(false)
     }
-  }, [])
+  }, [redrawBoxes])
 
   const onDrop = useCallback((e) => {
     e.preventDefault()
@@ -51,13 +59,7 @@ export default function Upload({ onReady }) {
               src={preview}
               alt="preview"
               className="rounded-lg w-full object-contain max-h-64"
-              onLoad={() => {
-                if (canvasRef.current && imgRef.current) {
-                  const r = imgRef.current.getBoundingClientRect()
-                  canvasRef.current.style.width = r.width + 'px'
-                  canvasRef.current.style.height = r.height + 'px'
-                }
-              }}
+              onLoad={redrawBoxes}
             />
             <canvas
               ref={canvasRef}
@@ -87,12 +89,12 @@ export default function Upload({ onReady }) {
             {detecting
               ? '🔍 Détection des visages…'
               : faceCount === 0
-              ? '⚠️ Aucun visage détecté'
+              ? '⚠️ Aucun visage détecté — prompt générique'
               : `✅ ${faceCount} personne${faceCount > 1 ? 's' : ''} détectée${faceCount > 1 ? 's' : ''}`}
           </span>
           <button
             className="text-stone-500 hover:text-stone-300 underline"
-            onClick={() => inputRef.current?.click()}
+            onClick={e => { e.stopPropagation(); inputRef.current?.click() }}
           >
             Changer
           </button>

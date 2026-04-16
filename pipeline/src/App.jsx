@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react'
-import * as fal from '@fal-ai/client'
+import { fal } from '@fal-ai/client'
 import Upload from './components/Upload'
 import Step from './components/Step'
 import Admin from './components/Admin'
-import { loadPrompts, buildPrompt1 } from './lib/prompts'
+import { loadPrompts, buildPrompt1, STEP_LABELS } from './lib/prompts'
 
 fal.config({ proxyUrl: '/api/fal' })
 
@@ -21,7 +21,6 @@ async function uploadToFal(file) {
 }
 
 async function runStep(prompt, imageUrls, onLog) {
-  let lastLog = null
   const result = await fal.subscribe(MODEL, {
     input: {
       prompt,
@@ -29,14 +28,17 @@ async function runStep(prompt, imageUrls, onLog) {
       aspect_ratio: '16:9',
       resolution: '2K',
     },
+    pollInterval: 2500,
     onQueueUpdate(update) {
-      if (update.status === 'IN_PROGRESS' && update.logs?.length) {
-        lastLog = update.logs[update.logs.length - 1]?.message ?? lastLog
-        onLog(lastLog)
+      if (update.status === 'IN_QUEUE') {
+        onLog(`File d'attente — position ${update.queue_position ?? '?'}`)
+      } else if (update.status === 'IN_PROGRESS') {
+        const msg = update.logs?.at(-1)?.message
+        if (msg) onLog(msg)
       }
     },
   })
-  const url = result?.data?.images?.[0]?.url ?? result?.data?.image?.url
+  const url = result?.data?.images?.[0]?.url ?? result?.data?.image?.url ?? result?.images?.[0]?.url
   if (!url) throw new Error('Aucune image retournée')
   return url
 }
@@ -67,21 +69,20 @@ export default function App() {
       const refFile = new File([refBlob], 'referenceLine.jpg', { type: 'image/jpeg' })
       const refUrl = await uploadToFal(refFile)
 
-      const imageUrls = [userUrl, refUrl]
       let lastUrl = null
 
-      // Step 1
+      // Step 1 — source only
       patchStep(0, { status: 'running' })
       try {
         const p1 = buildPrompt1(faceCount, prompts.prompt1)
-        lastUrl = await runStep(p1, imageUrls, log => patchStep(0, { log }))
+        lastUrl = await runStep(p1, [userUrl], log => patchStep(0, { log }))
         patchStep(0, { status: 'done', image: lastUrl, log: null })
       } catch (err) {
         patchStep(0, { status: 'error', error: err.message })
         throw err
       }
 
-      // Step 2
+      // Step 2 — step1 result + reference
       patchStep(1, { status: 'running' })
       try {
         lastUrl = await runStep(prompts.prompt2, [lastUrl, refUrl], log => patchStep(1, { log }))
@@ -91,10 +92,10 @@ export default function App() {
         throw err
       }
 
-      // Step 3
+      // Step 3 — step2 result only
       patchStep(2, { status: 'running' })
       try {
-        lastUrl = await runStep(prompts.prompt3, [lastUrl, refUrl], log => patchStep(2, { log }))
+        lastUrl = await runStep(prompts.prompt3, [lastUrl], log => patchStep(2, { log }))
         patchStep(2, { status: 'done', image: lastUrl, log: null })
       } catch (err) {
         patchStep(2, { status: 'error', error: err.message })
@@ -140,9 +141,9 @@ export default function App() {
         {/* Running / done / error */}
         {phase !== 'upload' && (
           <div className="space-y-4">
-            <Step number={1} label="Mise en scène" {...steps[0]} />
-            <Step number={2} label="Affinage" {...steps[1]} />
-            <Step number={3} label="Finalisation" {...steps[2]} />
+            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} />
+            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} />
+            <Step number={3} label={STEP_LABELS[3]} {...steps[2]} />
 
             {globalError && (
               <div className="rounded-xl border border-red-700 bg-stone-900 p-4 text-red-400 text-sm">
