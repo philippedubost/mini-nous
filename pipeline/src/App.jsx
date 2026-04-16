@@ -3,12 +3,13 @@ import { fal } from '@fal-ai/client'
 import Upload from './components/Upload'
 import Step from './components/Step'
 import Admin from './components/Admin'
-import { loadPrompts, buildPrompt1, STEP_LABELS } from './lib/prompts'
+import Preview from './components/Preview'
+import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from './lib/settings'
 
 fal.config({ proxyUrl: '/api/fal' })
 
 const MODEL = 'fal-ai/nano-banana-pro/edit'
-const REFERENCE_LINE_URL = '/referenceLine.jpg'
+const REFERENCE_LINE_URL = '/referenceLine2.png'
 
 const INITIAL_STEPS = [
   { status: 'idle', image: null, log: null, error: null },
@@ -20,13 +21,13 @@ async function uploadToFal(file) {
   return fal.storage.upload(file)
 }
 
-async function runStep(prompt, imageUrls, onLog) {
+async function runStep(stepConfig, imageUrls, onLog) {
   const result = await fal.subscribe(MODEL, {
     input: {
-      prompt,
+      prompt: stepConfig.prompt,
       image_urls: imageUrls,
-      aspect_ratio: '16:9',
-      resolution: '2K',
+      aspect_ratio: stepConfig.aspectRatio,
+      resolution: stepConfig.resolution,
     },
     pollInterval: 2500,
     onQueueUpdate(update) {
@@ -44,11 +45,12 @@ async function runStep(prompt, imageUrls, onLog) {
 }
 
 export default function App() {
-  const [prompts, setPrompts] = useState(loadPrompts)
+  const [settings, setSettings] = useState(loadSettings)
   const [showAdmin, setShowAdmin] = useState(false)
-  const [phase, setPhase] = useState('upload') // upload | running | done | error
+  const [phase, setPhase] = useState('upload')
   const [steps, setSteps] = useState(INITIAL_STEPS)
   const [globalError, setGlobalError] = useState(null)
+  const [resultUrls, setResultUrls] = useState({ url2: null, url3: null })
 
   const patchStep = useCallback((i, patch) => {
     setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
@@ -58,68 +60,76 @@ export default function App() {
     setPhase('running')
     setGlobalError(null)
     setSteps(INITIAL_STEPS)
+    setResultUrls({ url2: null, url3: null })
 
     try {
-      // Upload user photo
+      // Show init indicator while uploading
+      patchStep(0, { status: 'init' })
+
       const userUrl = await uploadToFal(file)
 
-      // Fetch reference line image as blob then upload
       const refResp = await fetch(REFERENCE_LINE_URL)
       const refBlob = await refResp.blob()
-      const refFile = new File([refBlob], 'referenceLine.jpg', { type: 'image/jpeg' })
-      const refUrl = await uploadToFal(refFile)
+      const refUrl = await uploadToFal(new File([refBlob], 'referenceLine2.png', { type: 'image/png' }))
 
-      let lastUrl = null
+      // URL map for resolving imageInputs
+      const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
 
-      // Step 1 — source only
+      let url1, url2, url3
+      const [cfg1, cfg2, cfg3] = settings.steps
+
+      // Step 1
       patchStep(0, { status: 'running' })
       try {
-        const p1 = buildPrompt1(faceCount, prompts.prompt1)
-        lastUrl = await runStep(p1, [userUrl], log => patchStep(0, { log }))
-        patchStep(0, { status: 'done', image: lastUrl, log: null })
+        const prompt = buildPrompt1(faceCount, cfg1.prompt)
+        const imgs = resolveImageUrls(cfg1.imageInputs, urlMap)
+        url1 = await runStep({ ...cfg1, prompt }, imgs, log => patchStep(0, { log }))
+        urlMap.step1 = url1
+        patchStep(0, { status: 'done', image: url1, log: null })
       } catch (err) {
-        patchStep(0, { status: 'error', error: err.message })
-        throw err
+        patchStep(0, { status: 'error', error: err.message }); throw err
       }
 
-      // Step 2 — step1 result + reference
+      // Step 2
       patchStep(1, { status: 'running' })
       try {
-        lastUrl = await runStep(prompts.prompt2, [lastUrl, refUrl], log => patchStep(1, { log }))
-        patchStep(1, { status: 'done', image: lastUrl, log: null })
+        const imgs = resolveImageUrls(cfg2.imageInputs, urlMap)
+        url2 = await runStep(cfg2, imgs, log => patchStep(1, { log }))
+        urlMap.step2 = url2
+        patchStep(1, { status: 'done', image: url2, log: null })
       } catch (err) {
-        patchStep(1, { status: 'error', error: err.message })
-        throw err
+        patchStep(1, { status: 'error', error: err.message }); throw err
       }
 
-      // Step 3 — step2 result only
+      // Step 3
       patchStep(2, { status: 'running' })
       try {
-        lastUrl = await runStep(prompts.prompt3, [lastUrl], log => patchStep(2, { log }))
-        patchStep(2, { status: 'done', image: lastUrl, log: null })
+        const imgs = resolveImageUrls(cfg3.imageInputs, urlMap)
+        url3 = await runStep(cfg3, imgs, log => patchStep(2, { log }))
+        patchStep(2, { status: 'done', image: url3, log: null })
       } catch (err) {
-        patchStep(2, { status: 'error', error: err.message })
-        throw err
+        patchStep(2, { status: 'error', error: err.message }); throw err
       }
 
+      setResultUrls({ url2, url3 })
       setPhase('done')
     } catch (err) {
       setGlobalError(err.message)
       setPhase('error')
     }
-  }, [prompts, patchStep])
+  }, [settings, patchStep])
 
   const reset = () => {
     setPhase('upload')
     setSteps(INITIAL_STEPS)
     setGlobalError(null)
+    setResultUrls({ url2: null, url3: null })
   }
 
   return (
     <div className="min-h-screen bg-stone-950 px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-stone-100">Mini-Nous Pipeline</h1>
@@ -133,22 +143,22 @@ export default function App() {
           </button>
         </div>
 
-        {/* Upload phase */}
-        {phase === 'upload' && (
-          <Upload onReady={handleStart} />
-        )}
+        {phase === 'upload' && <Upload onReady={handleStart} />}
 
-        {/* Running / done / error */}
         {phase !== 'upload' && (
           <div className="space-y-4">
-            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} />
-            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} />
-            <Step number={3} label={STEP_LABELS[3]} {...steps[2]} />
+            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} config={settings.steps[0]} />
+            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} config={settings.steps[1]} />
+            <Step number={3} label={STEP_LABELS[3]} {...steps[2]} config={settings.steps[2]} />
 
             {globalError && (
               <div className="rounded-xl border border-red-700 bg-stone-900 p-4 text-red-400 text-sm">
                 {globalError}
               </div>
+            )}
+
+            {phase === 'done' && resultUrls.url2 && resultUrls.url3 && (
+              <Preview url2={resultUrls.url2} url3={resultUrls.url3} />
             )}
 
             {(phase === 'done' || phase === 'error') && (
@@ -165,8 +175,8 @@ export default function App() {
 
       {showAdmin && (
         <Admin
-          prompts={prompts}
-          onChange={setPrompts}
+          settings={settings}
+          onChange={setSettings}
           onClose={() => setShowAdmin(false)}
         />
       )}

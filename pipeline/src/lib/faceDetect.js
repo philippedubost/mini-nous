@@ -1,49 +1,64 @@
-const SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js'
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights'
+// Person detection via COCO-SSD (TensorFlow.js)
+// Much more robust than face detection: works with hats, profiles, children, any angle.
 
-let ready = false
+const TF_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js'
+const COCO_URL = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js'
 
-async function load() {
-  if (ready) return
-  if (!window.faceapi) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement('script')
-      s.src = SCRIPT_URL
-      s.onload = resolve
-      s.onerror = reject
-      document.head.appendChild(s)
+let model = null
+
+async function loadScript(src) {
+  if (document.querySelector(`script[src="${src}"]`)) {
+    // already loading or loaded — wait for it
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`)
+      if (existing.dataset.loaded) return resolve()
+      existing.addEventListener('load', () => { existing.dataset.loaded = '1'; resolve() })
+      existing.addEventListener('error', reject)
     })
   }
-  await window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL)
-  ready = true
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script')
+    s.src = src
+    s.onload = () => { s.dataset.loaded = '1'; resolve() }
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
+async function loadModel() {
+  if (model) return model
+  await loadScript(TF_URL)
+  await loadScript(COCO_URL)
+  model = await window.cocoSsd.load()
+  return model
 }
 
 /**
- * Detect faces in an image File.
- * Returns { count, boxes } where boxes is array of { x, y, w, h } in 0..1 fractions of natural image dims.
+ * Detect persons in an image File using COCO-SSD.
+ * Returns { count, boxes } where boxes is array of { x, y, w, h } as 0..1 fractions of natural image dims.
  */
 export async function detectFaces(imageFile) {
-  await load()
+  const net = await loadModel()
+
   const url = URL.createObjectURL(imageFile)
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = async () => {
       try {
-        // inputSize 608 catches smaller/tilted faces better; low threshold for children
-        const options = new window.faceapi.TinyFaceDetectorOptions({
-          inputSize: 608,
-          scoreThreshold: 0.28,
-        })
-        const detections = await window.faceapi.detectAllFaces(img, options)
+        const predictions = await net.detect(img)
         URL.revokeObjectURL(url)
         const { naturalWidth: nw, naturalHeight: nh } = img
-        const boxes = detections.map(d => ({
-          x: d.box.x / nw,
-          y: d.box.y / nh,
-          w: d.box.width / nw,
-          h: d.box.height / nh,
+
+        const persons = predictions.filter(p => p.class === 'person' && p.score > 0.4)
+
+        const boxes = persons.map(p => ({
+          x: p.bbox[0] / nw,
+          y: p.bbox[1] / nh,
+          w: p.bbox[2] / nw,
+          h: p.bbox[3] / nh,
         }))
-        resolve({ count: detections.length, boxes, naturalWidth: nw, naturalHeight: nh })
+
+        resolve({ count: persons.length, boxes, naturalWidth: nw, naturalHeight: nh })
       } catch (err) {
         URL.revokeObjectURL(url)
         reject(err)
@@ -55,27 +70,23 @@ export async function detectFaces(imageFile) {
 }
 
 /**
- * Draw bounding boxes on a canvas element, correctly handling object-contain letterboxing.
- * boxes: array of { x, y, w, h } as 0..1 fractions of the natural image dims.
- * naturalWidth/Height: original image dimensions (to compute letterbox offset).
- * containerWidth/Height: the rendered element's bounding rect dimensions.
+ * Draw bounding boxes on a canvas, accounting for object-contain letterboxing.
+ * boxes: { x, y, w, h } as 0..1 fractions of natural image dims.
  */
 export function drawBoxes(canvas, boxes, naturalWidth, naturalHeight, containerWidth, containerHeight) {
   canvas.width = containerWidth
   canvas.height = containerHeight
 
-  // Compute actual rendered image area inside the container (object-contain)
+  // Compute actual rendered image bounds (object-contain)
   const imgAspect = naturalWidth / naturalHeight
   const boxAspect = containerWidth / containerHeight
   let renderedW, renderedH, offsetX, offsetY
   if (imgAspect > boxAspect) {
-    // wider image — letterbox top & bottom
     renderedW = containerWidth
     renderedH = containerWidth / imgAspect
     offsetX = 0
     offsetY = (containerHeight - renderedH) / 2
   } else {
-    // taller image — letterbox left & right
     renderedH = containerHeight
     renderedW = containerHeight * imgAspect
     offsetX = (containerWidth - renderedW) / 2

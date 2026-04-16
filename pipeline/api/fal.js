@@ -1,33 +1,45 @@
-export const config = { runtime: 'edge' }
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', '*')
 
-export default async function handler(req) {
-  const falKey = process.env.FAL_KEY
-  if (!falKey) {
-    return new Response(JSON.stringify({ error: 'FAL_KEY not configured' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end()
   }
 
-  const url = new URL(req.url)
-  const targetPath = url.searchParams.get('path') || ''
-  const targetUrl = `https://queue.fal.run/${targetPath}`
+  const falKey = process.env.FAL_KEY
+  if (!falKey) {
+    return res.status(500).json({ error: 'FAL_KEY not configured' })
+  }
 
-  const headers = new Headers(req.headers)
-  headers.set('Authorization', `Key ${falKey}`)
-  headers.delete('host')
+  // @fal-ai/client sends the target fal URL in this header
+  const targetUrl = req.headers['x-fal-target-url']
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'Missing x-fal-target-url header' })
+  }
+
+  const headers = {
+    Authorization: `Key ${falKey}`,
+    'Content-Type': req.headers['content-type'] || 'application/json',
+    Accept: req.headers['accept'] || 'application/json',
+  }
 
   const response = await fetch(targetUrl, {
     method: req.method,
     headers,
-    body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+    body: req.method !== 'GET' && req.method !== 'HEAD'
+      ? JSON.stringify(req.body)
+      : undefined,
   })
 
-  return new Response(response.body, {
-    status: response.status,
-    headers: {
-      'Content-Type': response.headers.get('Content-Type') || 'application/json',
-      'Access-Control-Allow-Origin': '*',
-    },
-  })
+  const contentType = response.headers.get('content-type') || 'application/json'
+  res.setHeader('Content-Type', contentType)
+
+  if (contentType.includes('application/json')) {
+    const data = await response.json()
+    return res.status(response.status).json(data)
+  }
+
+  const text = await response.text()
+  return res.status(response.status).send(text)
 }

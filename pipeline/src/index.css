@@ -6,3 +6,11 @@ body {
   @apply bg-stone-950 text-stone-100 min-h-screen;
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+@keyframes shimmer {
+  from { transform: translateX(-100%) }
+  to   { transform: translateX(200%) }
+}
+.animate-shimmer {
+  animation: shimmer 1.6s linear infinite;
+}
