@@ -9,27 +9,28 @@ export default function Upload({ onReady }) {
   const imgRef = useRef(null)
   const canvasRef = useRef(null)
   const inputRef = useRef(null)
-  const boxesRef = useRef([])
+  const detectionRef = useRef(null) // { boxes, naturalWidth, naturalHeight }
 
   const redrawBoxes = useCallback(() => {
-    if (!canvasRef.current || !imgRef.current || !boxesRef.current.length) return
+    if (!canvasRef.current || !imgRef.current || !detectionRef.current) return
+    const { boxes, naturalWidth, naturalHeight } = detectionRef.current
+    if (!boxes.length) return
     const r = imgRef.current.getBoundingClientRect()
-    drawBoxes(canvasRef.current, boxesRef.current, r.width, r.height)
+    drawBoxes(canvasRef.current, boxes, naturalWidth, naturalHeight, r.width, r.height)
   }, [])
 
   const handleFile = useCallback(async (f) => {
     if (!f || !f.type.startsWith('image/')) return
     setFile(f)
     setFaceCount(null)
-    boxesRef.current = []
+    detectionRef.current = null
     const url = URL.createObjectURL(f)
     setPreview(url)
     setDetecting(true)
     try {
-      const { count, boxes } = await detectFaces(f)
-      boxesRef.current = boxes
+      const { count, boxes, naturalWidth, naturalHeight } = await detectFaces(f)
+      detectionRef.current = { boxes, naturalWidth, naturalHeight }
       setFaceCount(count)
-      // draw after state update so image is rendered
       requestAnimationFrame(() => redrawBoxes())
     } catch {
       setFaceCount(0)

@@ -1,4 +1,3 @@
-// Loads face-api.js from CDN (same version as fal-pipeline.html)
 const SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js'
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights'
 
@@ -21,7 +20,7 @@ async function load() {
 
 /**
  * Detect faces in an image File.
- * Returns { count, boxes } where boxes is array of { x, y, width, height } in 0..1 fractions.
+ * Returns { count, boxes } where boxes is array of { x, y, w, h } in 0..1 fractions of natural image dims.
  */
 export async function detectFaces(imageFile) {
   await load()
@@ -30,16 +29,21 @@ export async function detectFaces(imageFile) {
     const img = new Image()
     img.onload = async () => {
       try {
-        const options = new window.faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35 })
+        // inputSize 608 catches smaller/tilted faces better; low threshold for children
+        const options = new window.faceapi.TinyFaceDetectorOptions({
+          inputSize: 608,
+          scoreThreshold: 0.28,
+        })
         const detections = await window.faceapi.detectAllFaces(img, options)
         URL.revokeObjectURL(url)
+        const { naturalWidth: nw, naturalHeight: nh } = img
         const boxes = detections.map(d => ({
-          x: d.box.x / img.naturalWidth,
-          y: d.box.y / img.naturalHeight,
-          width: d.box.width / img.naturalWidth,
-          height: d.box.height / img.naturalHeight,
+          x: d.box.x / nw,
+          y: d.box.y / nh,
+          w: d.box.width / nw,
+          h: d.box.height / nh,
         }))
-        resolve({ count: detections.length, boxes })
+        resolve({ count: detections.length, boxes, naturalWidth: nw, naturalHeight: nh })
       } catch (err) {
         URL.revokeObjectURL(url)
         reject(err)
@@ -51,22 +55,44 @@ export async function detectFaces(imageFile) {
 }
 
 /**
- * Draw bounding boxes on a canvas element.
- * The canvas is sized to match the displayed image dimensions.
+ * Draw bounding boxes on a canvas element, correctly handling object-contain letterboxing.
+ * boxes: array of { x, y, w, h } as 0..1 fractions of the natural image dims.
+ * naturalWidth/Height: original image dimensions (to compute letterbox offset).
+ * containerWidth/Height: the rendered element's bounding rect dimensions.
  */
-export function drawBoxes(canvas, boxes, displayWidth, displayHeight) {
-  canvas.width = displayWidth
-  canvas.height = displayHeight
+export function drawBoxes(canvas, boxes, naturalWidth, naturalHeight, containerWidth, containerHeight) {
+  canvas.width = containerWidth
+  canvas.height = containerHeight
+
+  // Compute actual rendered image area inside the container (object-contain)
+  const imgAspect = naturalWidth / naturalHeight
+  const boxAspect = containerWidth / containerHeight
+  let renderedW, renderedH, offsetX, offsetY
+  if (imgAspect > boxAspect) {
+    // wider image — letterbox top & bottom
+    renderedW = containerWidth
+    renderedH = containerWidth / imgAspect
+    offsetX = 0
+    offsetY = (containerHeight - renderedH) / 2
+  } else {
+    // taller image — letterbox left & right
+    renderedH = containerHeight
+    renderedW = containerHeight * imgAspect
+    offsetX = (containerWidth - renderedW) / 2
+    offsetY = 0
+  }
+
   const ctx = canvas.getContext('2d')
-  ctx.clearRect(0, 0, displayWidth, displayHeight)
+  ctx.clearRect(0, 0, containerWidth, containerHeight)
   ctx.strokeStyle = '#22c55e'
-  ctx.lineWidth = Math.max(2, displayWidth * 0.003)
+  ctx.lineWidth = Math.max(2, renderedW * 0.004)
+
   for (const b of boxes) {
     ctx.strokeRect(
-      b.x * displayWidth,
-      b.y * displayHeight,
-      b.width * displayWidth,
-      b.height * displayHeight,
+      offsetX + b.x * renderedW,
+      offsetY + b.y * renderedH,
+      b.w * renderedW,
+      b.h * renderedH,
     )
   }
 }
