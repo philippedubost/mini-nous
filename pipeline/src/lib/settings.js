@@ -12,6 +12,8 @@ export const IMAGE_INPUT_OPTIONS = [
 ]
 
 export const DEFAULT_SETTINGS = {
+  resolution: '2K',
+  aspectRatio: '16:9',
   steps: [
     {
       prompt: `Mettre ces personnes debout de gauche à droite séparées de 50cm en vue orthogonale sur fond blanc
@@ -20,9 +22,9 @@ Gap entre chaque personne ne doivent passe toucher
 
 Séparer en 3 individus, Maman Papa sans l'enfant dans les bras et l'enfant seul
 
-legerement souriant , heureux sans etre trop cartoon`,
-      resolution: '2K',
-      aspectRatio: '16:9',
+legerement souriant , heureux sans etre trop cartoon
+
+Aucun texte, aucun label, aucune annotation sur l'image`,
       imageInputs: ['user'],
     },
     {
@@ -39,8 +41,6 @@ RÈGLES ABSOLUES — à respecter impérativement :
 - Uniquement des lignes et contours fins — tout doit être blanc à l'intérieur des formes
 - Fond blanc pur, aucune ombre portée, aucun dégradé
 - Les personnages ne doivent pas être coupés en bas, laisser une marge blanche en bas`,
-      resolution: '2K',
-      aspectRatio: '16:9',
       imageInputs: ['step1', 'ref'],
     },
     {
@@ -52,14 +52,12 @@ RÈGLES ABSOLUES :
 - Aucune forme remplie, aucun aplat noir, fond blanc pur partout
 - Un seul tracé fermé par personnage : la silhouette externe uniquement
 - Garder exactement la même disposition, taille et espacement que l'image source pour pouvoir superposer`,
-      resolution: '2K',
-      aspectRatio: '16:9',
       imageInputs: ['step2'],
     },
   ],
 }
 
-const STORAGE_KEY = 'mn_pipeline_settings_v4'
+const STORAGE_KEY = 'mn_pipeline_settings_v6'
 
 export function loadSettings() {
   try {
@@ -68,6 +66,8 @@ export function loadSettings() {
       const parsed = JSON.parse(stored)
       // Merge with defaults to handle new fields gracefully
       return {
+        resolution: parsed.resolution ?? DEFAULT_SETTINGS.resolution,
+        aspectRatio: parsed.aspectRatio ?? DEFAULT_SETTINGS.aspectRatio,
         steps: DEFAULT_SETTINGS.steps.map((def, i) => ({
           ...def,
           ...(parsed.steps?.[i] ?? {}),

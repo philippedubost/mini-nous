@@ -5,6 +5,7 @@ import Step from './components/Step'
 import Admin from './components/Admin'
 import Preview from './components/Preview'
 import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from './lib/settings'
+import { processLineArt } from './lib/outline'
 
 fal.config({ proxyUrl: '/api/fal' })
 
@@ -50,7 +51,7 @@ export default function App() {
   const [phase, setPhase] = useState('upload')
   const [steps, setSteps] = useState(INITIAL_STEPS)
   const [globalError, setGlobalError] = useState(null)
-  const [resultUrls, setResultUrls] = useState({ url2: null, url3: null })
+  const [resultUrls, setResultUrls] = useState({ url2: null, outline: null, gravure: null, overlay: null })
 
   const patchStep = useCallback((i, patch) => {
     setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
@@ -60,7 +61,7 @@ export default function App() {
     setPhase('running')
     setGlobalError(null)
     setSteps(INITIAL_STEPS)
-    setResultUrls({ url2: null, url3: null })
+    setResultUrls({ url2: null, outline: null, gravure: null, overlay: null })
 
     try {
       // Show init indicator while uploading
@@ -77,13 +78,14 @@ export default function App() {
 
       let url1, url2, url3
       const [cfg1, cfg2, cfg3] = settings.steps
+      const globalFmt = { resolution: settings.resolution, aspectRatio: settings.aspectRatio }
 
       // Step 1
       patchStep(0, { status: 'running' })
       try {
         const prompt = buildPrompt1(faceCount, cfg1.prompt)
         const imgs = resolveImageUrls(cfg1.imageInputs, urlMap)
-        url1 = await runStep({ ...cfg1, prompt }, imgs, log => patchStep(0, { log }))
+        url1 = await runStep({ ...cfg1, ...globalFmt, prompt }, imgs, log => patchStep(0, { log }))
         urlMap.step1 = url1
         patchStep(0, { status: 'done', image: url1, log: null })
       } catch (err) {
@@ -94,25 +96,27 @@ export default function App() {
       patchStep(1, { status: 'running' })
       try {
         const imgs = resolveImageUrls(cfg2.imageInputs, urlMap)
-        url2 = await runStep(cfg2, imgs, log => patchStep(1, { log }))
+        url2 = await runStep({ ...cfg2, ...globalFmt }, imgs, log => patchStep(1, { log }))
         urlMap.step2 = url2
         patchStep(1, { status: 'done', image: url2, log: null })
       } catch (err) {
         patchStep(1, { status: 'error', error: err.message }); throw err
       }
 
-      // Step 3
-      patchStep(2, { status: 'running' })
+      // Step 3 — canvas extraction (no API call)
+      patchStep(2, { status: 'running', log: 'Extraction silhouette…' })
       try {
-        const imgs = resolveImageUrls(cfg3.imageInputs, urlMap)
-        url3 = await runStep(cfg3, imgs, log => patchStep(2, { log }))
-        patchStep(2, { status: 'done', image: url3, log: null })
+        const layers = await processLineArt(url2)
+        const outlineUrl  = layers.outline.toDataURL('image/png')
+        const gravureUrl  = layers.gravure.toDataURL('image/png')
+        const overlayUrl  = layers.overlay.toDataURL('image/png')
+        patchStep(2, { status: 'done', image: outlineUrl, log: null })
+        setResultUrls({ url2, outline: outlineUrl, gravure: gravureUrl, overlay: overlayUrl })
       } catch (err) {
         patchStep(2, { status: 'error', error: err.message }); throw err
       }
-
-      setResultUrls({ url2, url3 })
       setPhase('done')
+
     } catch (err) {
       setGlobalError(err.message)
       setPhase('error')
@@ -123,7 +127,7 @@ export default function App() {
     setPhase('upload')
     setSteps(INITIAL_STEPS)
     setGlobalError(null)
-    setResultUrls({ url2: null, url3: null })
+    setResultUrls({ url2: null, outline: null, gravure: null, overlay: null })
   }
 
   return (
@@ -147,9 +151,9 @@ export default function App() {
 
         {phase !== 'upload' && (
           <div className="space-y-4">
-            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} config={settings.steps[0]} />
-            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} config={settings.steps[1]} />
-            <Step number={3} label={STEP_LABELS[3]} {...steps[2]} config={settings.steps[2]} />
+            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} config={{ ...settings.steps[0], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
+            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} config={{ ...settings.steps[1], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
+            <Step number={3} label={STEP_LABELS[3]} {...steps[2]} config={{ ...settings.steps[2], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
 
             {globalError && (
               <div className="rounded-xl border border-red-700 bg-stone-900 p-4 text-red-400 text-sm">
@@ -157,8 +161,8 @@ export default function App() {
               </div>
             )}
 
-            {phase === 'done' && resultUrls.url2 && resultUrls.url3 && (
-              <Preview url2={resultUrls.url2} url3={resultUrls.url3} />
+            {phase === 'done' && resultUrls.outline && (
+              <Preview outline={resultUrls.outline} gravure={resultUrls.gravure} overlay={resultUrls.overlay} />
             )}
 
             {(phase === 'done' || phase === 'error') && (

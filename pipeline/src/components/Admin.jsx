@@ -44,34 +44,6 @@ function StepSection({ index, step, onChange }) {
             />
           </div>
 
-          {/* Resolution + Aspect ratio */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Résolution</label>
-              <select
-                className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
-                value={step.resolution}
-                onChange={e => set('resolution', e.target.value)}
-              >
-                {RESOLUTIONS.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Format</label>
-              <select
-                className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
-                value={step.aspectRatio}
-                onChange={e => set('aspectRatio', e.target.value)}
-              >
-                {ASPECT_RATIOS.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           {/* Image inputs */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Images en entrée</label>
@@ -98,8 +70,10 @@ function StepSection({ index, step, onChange }) {
 export default function Admin({ settings, onChange, onClose }) {
   const [local, setLocal] = useState(() => structuredClone(settings))
 
+  const updateGlobal = (key, val) => setLocal(s => ({ ...s, [key]: val }))
+
   const updateStep = (i, step) => {
-    setLocal(s => ({ steps: s.steps.map((st, idx) => idx === i ? step : st) }))
+    setLocal(s => ({ ...s, steps: s.steps.map((st, idx) => idx === i ? step : st) }))
   }
 
   const handleSave = () => {
@@ -121,6 +95,33 @@ export default function Admin({ settings, onChange, onClose }) {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Admin — paramètres pipeline</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200 text-2xl leading-none">×</button>
+        </div>
+
+        {/* Global resolution + aspect ratio */}
+        <div className="border border-amber-700/40 rounded-xl p-4 bg-stone-800/50 space-y-3">
+          <p className="text-xs font-semibold text-amber-500/80 uppercase tracking-wide">Format — toutes les étapes</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Résolution</label>
+              <select
+                className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
+                value={local.resolution}
+                onChange={e => updateGlobal('resolution', e.target.value)}
+              >
+                {RESOLUTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Format</label>
+              <select
+                className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
+                value={local.aspectRatio}
+                onChange={e => updateGlobal('aspectRatio', e.target.value)}
+              >
+                {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
 
         {local.steps.map((step, i) => (

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Outline Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1c1917; color: #d6d3d1; font-family: monospace; font-size: 13px; padding: 16px; }
+  h1 { color: #fbbf24; margin-bottom: 16px; font-size: 16px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .step { background: #292524; border: 1px solid #44403c; border-radius: 8px; overflow: hidden; }
+  .step-head { padding: 8px 12px; background: #3c3330; font-size: 11px; color: #a8a29e;
+               display: flex; align-items: center; gap-6px; }
+  .step-head strong { color: #fbbf24; margin-right: 6px; }
+  canvas, img { width: 100%; display: block; }
+
+  .step-ctrl { padding: 10px 12px; border-top: 1px solid #3c3330; display: flex; flex-direction: column; gap: 4px; }
+  .step-ctrl label { color: #a8a29e; font-size: 11px; display: flex; justify-content: space-between; }
+  .step-ctrl input[type=range] { width: 100%; accent-color: #f59e0b; margin-top: 2px; }
+
+  .top-ctrl { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+              background: #292524; border: 1px solid #44403c; border-radius: 8px; padding: 12px; }
+  .top-ctrl .c { display: flex; flex-direction: column; gap: 4px; }
+  .top-ctrl label { color: #a8a29e; font-size: 11px; display: flex; justify-content: space-between; width: 180px; }
+  .top-ctrl input[type=range] { width: 180px; accent-color: #f59e0b; }
+  .top-ctrl select { background:#3c3330; color:#d6d3d1; border:1px solid #57534e; border-radius:4px; padding:4px 8px; }
+  input[type=file] { color: #d6d3d1; font-size: 11px; }
+  .val { color: #fbbf24; }
+</style>
+</head>
+<body>
+<h1>Outline — Test Lab</h1>
+
+<div class="top-ctrl">
+  <div class="c">
+    <label>Image</label>
+    <select id="imgSel" onchange="loadSelected()">
+      <option value="images/linearts/ewh6bsmEuGzm1X23iA-0m_UDmLmAgY.png">lineart 1</option>
+      <option value="images/linearts/IPHTw5jqYm1j9jJ8CFcqQ_agwzKODM.png">lineart 2</option>
+    </select>
+  </div>
+  <div class="c">
+    <label>Charger fichier</label>
+    <input type="file" accept="image/*" onchange="loadFile(this)">
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- 0 source -->
+  <div class="step">
+    <div class="step-head"><strong>0</strong> Source</div>
+    <img id="srcImg" crossorigin="anonymous">
+  </div>
+
+  <!-- 1 mask -->
+  <div class="step">
+    <div class="step-head"><strong>1</strong> Masque silhouette (BFS)</div>
+    <canvas id="cMask"></canvas>
+    <div class="step-ctrl">
+      <label>Seuil blanc <span class="val" id="tVal">240</span></label>
+      <input type="range" id="thresh" min="100" max="254" value="240"
+             oninput="document.getElementById('tVal').textContent=this.value; run()">
+    </div>
+  </div>
+
+  <!-- 2 dilated mask -->
+  <div class="step">
+    <div class="step-head"><strong>2</strong> Masque dilaté (lissage)</div>
+    <canvas id="cDilated"></canvas>
+    <div class="step-ctrl">
+      <label>Dilation masque <span class="val" id="dmVal">4</span></label>
+      <input type="range" id="dm" min="0" max="30" value="4"
+             oninput="document.getElementById('dmVal').textContent=this.value; run()">
+    </div>
+  </div>
+
+  <!-- 3 thin contour -->
+  <div class="step">
+    <div class="step-head"><strong>3</strong> Contour mince (bord du masque dilaté)</div>
+    <canvas id="cThin"></canvas>
+  </div>
+
+  <!-- 4 thick contour -->
+  <div class="step">
+    <div class="step-head"><strong>4</strong> Contour épaissi — trait de découpe</div>
+    <canvas id="cFinal"></canvas>
+    <div class="step-ctrl">
+      <label>Épaisseur trait découpe <span class="val" id="swVal">6</span></label>
+      <input type="range" id="sw" min="1" max="40" value="6"
+             oninput="document.getElementById('swVal').textContent=this.value; run()">
+    </div>
+  </div>
+
+  <!-- 5 gravure -->
+  <div class="step">
+    <div class="step-head"><strong>5</strong> Gravure (intérieur, hors contour découpe)</div>
+    <canvas id="cGravure"></canvas>
+  </div>
+
+  <!-- 6 overlay -->
+  <div class="step" style="border-color:#78350f; grid-column: 1 / -1;">
+    <div class="step-head" style="background:#292108">
+      <strong style="color:#fb923c">6</strong> Overlay — <span style="color:#f87171">rouge = découpe</span> &nbsp;·&nbsp; <span style="color:#93c5fd">bleu = gravure</span>
+    </div>
+    <canvas id="cOverlay"></canvas>
+    <div class="step-ctrl">
+      <label>Épaisseur contour rouge (overlay) <span class="val" id="swrVal">12</span></label>
+      <input type="range" id="swr" min="1" max="60" value="12"
+             oninput="document.getElementById('swrVal').textContent=this.value; run()">
+    </div>
+  </div>
+
+</div>
+
+<script>
+let srcImg = null
+
+function loadSelected() {
+  const url = document.getElementById('imgSel').value
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => { srcImg = img; document.getElementById('srcImg').src = url; run() }
+  img.onerror = () => alert('CORS — servir via serveur local')
+  img.src = url + '?t=' + Date.now()
+}
+function loadFile(input) {
+  const f = input.files[0]; if (!f) return
+  const url = URL.createObjectURL(f)
+  const img = new Image()
+  img.onload = () => { srcImg = img; document.getElementById('srcImg').src = url; run() }
+  img.src = url
+}
+
+function getPixels(img) {
+  const W = img.naturalWidth || img.width
+  const H = img.naturalHeight || img.height
+  const c = document.createElement('canvas')
+  c.width = W; c.height = H
+  c.getContext('2d').drawImage(img, 0, 0)
+  return { data: c.getContext('2d').getImageData(0,0,W,H).data, W, H }
+}
+
+function showMask(mask, W, H, id, opts = {}) {
+  const { fg=[0,0,0], bg=[255,255,255] } = opts
+  const dst = document.getElementById(id)
+  dst.width = W; dst.height = H
+  const ctx = dst.getContext('2d')
+  const id2 = ctx.createImageData(W, H)
+  for (let i = 0; i < W*H; i++) {
+    const on = mask[i]
+    id2.data[i*4]   = on ? fg[0] : bg[0]
+    id2.data[i*4+1] = on ? fg[1] : bg[1]
+    id2.data[i*4+2] = on ? fg[2] : bg[2]
+    id2.data[i*4+3] = 255
+  }
+  ctx.putImageData(id2, 0, 0)
+}
+
+// BFS flood fill from edges — exterior white pixels marked, rest = subject
+function buildMask(data, W, H, thresh) {
+  const exterior = new Uint8Array(W * H)
+  const queue = new Int32Array(W * H)
+  let qHead = 0, qTail = 0
+  const luma = (i) => 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2]
+  const seed = (i) => {
+    if (luma(i) >= thresh && !exterior[i]) { exterior[i] = 1; queue[qTail++] = i }
+  }
+  for (let x = 0; x < W; x++) { seed(x); seed((H-1)*W+x) }
+  for (let y = 1; y < H-1; y++) { seed(y*W); seed(y*W+W-1) }
+  while (qHead < qTail) {
+    const idx = queue[qHead++]
+    const x = idx%W, y = (idx/W)|0
+    if (x > 0)   seed(idx-1)
+    if (x < W-1) seed(idx+1)
+    if (y > 0)   seed(idx-W)
+    if (y < H-1) seed(idx+W)
+  }
+  const mask = new Uint8Array(W * H)
+  for (let i = 0; i < W*H; i++) mask[i] = exterior[i] ? 0 : 1
+  return mask
+}
+
+// 1px border: mask pixels touching exterior
+function thinContour(mask, W, H) {
+  const c = new Uint8Array(W * H)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y*W+x
+      if (!mask[i]) continue
+      c[i] = (!mask[i-1] || !mask[i+1] || !mask[i-W] || !mask[i+W] ||
+               x===0 || x===W-1 || y===0 || y===H-1) ? 1 : 0
+    }
+  }
+  return c
+}
+
+// Separable box dilation
+function dilate(mask, W, H, r) {
+  if (r <= 0) return mask
+  const tmp = new Uint8Array(W * H)
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let v = 0
+      for (let dx = -r; dx <= r && !v; dx++) {
+        const nx = x+dx
+        if (nx >= 0 && nx < W) v = mask[y*W+nx]
+      }
+      tmp[y*W+x] = v
+    }
+  }
+  const out = new Uint8Array(W * H)
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) {
+      let v = 0
+      for (let dy = -r; dy <= r && !v; dy++) {
+        const ny = y+dy
+        if (ny >= 0 && ny < H) v = tmp[ny*W+x]
+      }
+      out[y*W+x] = v
+    }
+  }
+  return out
+}
+
+function run() {
+  if (!srcImg) return
+  const thresh = parseInt(document.getElementById('thresh').value)
+  const dm     = parseInt(document.getElementById('dm').value)
+  const sw     = parseInt(document.getElementById('sw').value)
+  const swr    = parseInt(document.getElementById('swr').value)
+  const { data, W, H } = getPixels(srcImg)
+
+  // 1 — mask
+  const mask = buildMask(data, W, H, thresh)
+  showMask(mask, W, H, 'cMask', { fg:[255,255,255], bg:[0,0,0] })
+
+  // 2 — dilated mask
+  const maskDil = dilate(mask, W, H, dm)
+  showMask(maskDil, W, H, 'cDilated', { fg:[255,255,255], bg:[0,0,0] })
+
+  // 3 — thin contour of dilated mask
+  const thin = thinContour(maskDil, W, H)
+  showMask(thin, W, H, 'cThin')
+
+  // 4 — thick contour (découpe)
+  const thick = dilate(thin, W, H, sw)
+  showMask(thick, W, H, 'cFinal')
+
+  // 5 — gravure: line art inside dilated mask, outside thick contour
+  const gCanvas = document.getElementById('cGravure')
+  gCanvas.width = W; gCanvas.height = H
+  const gCtx = gCanvas.getContext('2d')
+  const gId = gCtx.createImageData(W, H)
+  for (let i = 0; i < W*H; i++) {
+    const laL = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2]
+    const v = (maskDil[i] && !thick[i]) ? Math.round(laL) : 255
+    gId.data[i*4] = gId.data[i*4+1] = gId.data[i*4+2] = v
+    gId.data[i*4+3] = 255
+  }
+  gCtx.putImageData(gId, 0, 0)
+
+  // 6 — overlay: red contour (own thickness swr) + blue gravure
+  const thickRed = dilate(thin, W, H, swr)
+  const oCanvas = document.getElementById('cOverlay')
+  oCanvas.width = W; oCanvas.height = H
+  const oCtx = oCanvas.getContext('2d')
+  const oId = oCtx.createImageData(W, H)
+  for (let i = 0; i < W*H; i++) {
+    const laL = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2]
+    const isRed  = thickRed[i]
+    const isBlue = maskDil[i] && !thick[i] && laL < 200
+    let r = 255, g = 255, b = 255
+    if (isRed && isBlue) {
+      r = 180; g = 0; b = 180  // overlap → magenta
+    } else if (isRed) {
+      r = 210; g = 20; b = 20
+    } else if (isBlue) {
+      const d = 1 - laL/255
+      r = Math.round(255 - d*225)
+      g = Math.round(255 - d*155)
+      b = Math.round(255 - d*35)
+    }
+    oId.data[i*4]   = r
+    oId.data[i*4+1] = g
+    oId.data[i*4+2] = b
+    oId.data[i*4+3] = 255
+  }
+  oCtx.putImageData(oId, 0, 0)
+}
+
+loadSelected()
+</script>
+</body>
+</html>
