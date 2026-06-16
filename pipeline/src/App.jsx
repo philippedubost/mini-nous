@@ -6,11 +6,14 @@ import Admin from './components/Admin'
 import Preview from './components/Preview'
 import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from './lib/settings'
 import { processLineArt } from './lib/outline'
+import {
+  createGeneration, updateGeneration, persistAsset, markStepRunning,
+} from './lib/storage'
 
 fal.config({ proxyUrl: '/api/fal' })
 
 const MODEL = 'fal-ai/nano-banana-pro/edit'
-const REFERENCE_LINE_URL = '/referenceLine2.png'
+const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
 const INITIAL_STEPS = [
   { status: 'idle', image: null, log: null, error: null },
@@ -63,61 +66,94 @@ export default function App() {
     setSteps(INITIAL_STEPS)
     setResultUrls({ url2: null, outline: null, gravure: null, overlay: null })
 
+    let generationId = null
+
     try {
-      // Show init indicator while uploading
+      const globalFmt = { resolution: settings.resolution, aspectRatio: settings.aspectRatio }
+
+      try {
+        const generation = await createGeneration({
+          faceCount,
+          resolution: settings.resolution,
+          aspectRatio: settings.aspectRatio,
+          settings,
+          falModel: MODEL,
+        })
+        generationId = generation.id
+      } catch (storageErr) {
+        console.warn('[storage] création génération:', storageErr.message)
+      }
+
       patchStep(0, { status: 'init' })
 
       const userUrl = await uploadToFal(file)
+      await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
 
       const refResp = await fetch(REFERENCE_LINE_URL)
       const refBlob = await refResp.blob()
       const refUrl = await uploadToFal(new File([refBlob], 'referenceLine2.png', { type: 'image/png' }))
+      await persistAsset(generationId, 'ref', { falUrl: refUrl, url: refUrl, status: 'done' })
 
-      // URL map for resolving imageInputs
       const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
 
-      let url1, url2, url3
-      const [cfg1, cfg2, cfg3] = settings.steps
-      const globalFmt = { resolution: settings.resolution, aspectRatio: settings.aspectRatio }
+      let url1, url2
+      const [cfg1, cfg2] = settings.steps
 
-      // Step 1
       patchStep(0, { status: 'running' })
+      await markStepRunning(generationId, 'step1')
       try {
         const prompt = buildPrompt1(faceCount, cfg1.prompt)
         const imgs = resolveImageUrls(cfg1.imageInputs, urlMap)
         url1 = await runStep({ ...cfg1, ...globalFmt, prompt }, imgs, log => patchStep(0, { log }))
         urlMap.step1 = url1
         patchStep(0, { status: 'done', image: url1, log: null })
+        await persistAsset(generationId, 'step1', { falUrl: url1, url: url1, prompt, status: 'done' })
       } catch (err) {
-        patchStep(0, { status: 'error', error: err.message }); throw err
+        patchStep(0, { status: 'error', error: err.message })
+        await updateGeneration(generationId, { status: 'error', errorMessage: err.message })
+        throw err
       }
 
-      // Step 2
       patchStep(1, { status: 'running' })
+      await markStepRunning(generationId, 'step2')
       try {
         const imgs = resolveImageUrls(cfg2.imageInputs, urlMap)
         url2 = await runStep({ ...cfg2, ...globalFmt }, imgs, log => patchStep(1, { log }))
         urlMap.step2 = url2
         patchStep(1, { status: 'done', image: url2, log: null })
+        await persistAsset(generationId, 'step2', { falUrl: url2, url: url2, prompt: cfg2.prompt, status: 'done' })
       } catch (err) {
-        patchStep(1, { status: 'error', error: err.message }); throw err
+        patchStep(1, { status: 'error', error: err.message })
+        await updateGeneration(generationId, { status: 'error', errorMessage: err.message })
+        throw err
       }
 
-      // Step 3 — canvas extraction (no API call)
       patchStep(2, { status: 'running', log: 'Extraction silhouette…' })
+      await markStepRunning(generationId, 'outline', 'Extraction silhouette…')
       try {
         const layers = await processLineArt(url2)
-        const outlineUrl  = layers.outline.toDataURL('image/png')
-        const gravureUrl  = layers.gravure.toDataURL('image/png')
-        const overlayUrl  = layers.overlay.toDataURL('image/png')
+        const outlineUrl = layers.outline.toDataURL('image/png')
+        const gravureUrl = layers.gravure.toDataURL('image/png')
+        const overlayUrl = layers.overlay.toDataURL('image/png')
         patchStep(2, { status: 'done', image: outlineUrl, log: null })
         setResultUrls({ url2, outline: outlineUrl, gravure: gravureUrl, overlay: overlayUrl })
+        await Promise.all([
+          persistAsset(generationId, 'outline', { base64: outlineUrl, status: 'done' }),
+          persistAsset(generationId, 'gravure', { base64: gravureUrl, status: 'done' }),
+          persistAsset(generationId, 'overlay', { base64: overlayUrl, status: 'done' }),
+        ])
+        await updateGeneration(generationId, { status: 'done' })
       } catch (err) {
-        patchStep(2, { status: 'error', error: err.message }); throw err
+        patchStep(2, { status: 'error', error: err.message })
+        await updateGeneration(generationId, { status: 'error', errorMessage: err.message })
+        throw err
       }
       setPhase('done')
 
     } catch (err) {
+      if (generationId) {
+        await updateGeneration(generationId, { status: 'error', errorMessage: err.message }).catch(() => {})
+      }
       setGlobalError(err.message)
       setPhase('error')
     }
@@ -136,6 +172,7 @@ export default function App() {
 
         <div className="flex items-center justify-between">
           <div>
+            <a href="/" className="text-xs text-stone-600 hover:text-stone-400 block mb-1">← Accueil</a>
             <h1 className="text-xl font-bold text-stone-100">Mini-Nous Pipeline</h1>
             <p className="text-sm text-stone-500 mt-0.5">Génération figurines bois</p>
           </div>

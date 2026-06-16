@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS, saveSettings, resetSettings,
   RESOLUTIONS, ASPECT_RATIOS, IMAGE_INPUT_OPTIONS, STEP_LABELS,
 } from '../lib/settings'
+import GenerationsDashboard from './GenerationsDashboard'
 
 function StepSection({ index, step, onChange }) {
   const [open, setOpen] = useState(index === 0)
@@ -68,6 +69,7 @@ function StepSection({ index, step, onChange }) {
 }
 
 export default function Admin({ settings, onChange, onClose }) {
+  const [tab, setTab] = useState('generations')
   const [local, setLocal] = useState(() => structuredClone(settings))
 
   const updateGlobal = (key, val) => setLocal(s => ({ ...s, [key]: val }))
@@ -91,12 +93,35 @@ export default function Admin({ settings, onChange, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-xl bg-stone-900 rounded-2xl border border-stone-700 p-5 space-y-4 mt-8 mb-8">
+      <div className={`w-full ${tab === 'generations' ? 'max-w-2xl' : 'max-w-xl'} bg-stone-900 rounded-2xl border border-stone-700 p-5 space-y-4 mt-8 mb-8`}>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Admin — paramètres pipeline</h2>
+          <h2 className="text-lg font-semibold">Admin</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200 text-2xl leading-none">×</button>
         </div>
 
+        <div className="flex gap-1 p-1 bg-stone-800 rounded-xl">
+          {[
+            { id: 'generations', label: 'Générations' },
+            { id: 'settings', label: 'Paramètres' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === t.id
+                  ? 'bg-stone-700 text-stone-100'
+                  : 'text-stone-500 hover:text-stone-300'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'generations' && <GenerationsDashboard />}
+
+        {tab === 'settings' && (
+          <>
         {/* Global resolution + aspect ratio */}
         <div className="border border-amber-700/40 rounded-xl p-4 bg-stone-800/50 space-y-3">
           <p className="text-xs font-semibold text-amber-500/80 uppercase tracking-wide">Format — toutes les étapes</p>
@@ -142,6 +167,8 @@ export default function Admin({ settings, onChange, onClose }) {
             Reset
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   )

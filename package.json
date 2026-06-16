@@ -1,0 +1,14 @@
+{
+  "name": "mini-nous",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "vercel dev",
+    "dev:pipeline": "cd pipeline && npm run dev"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@supabase/supabase-js": "^2.97.0"
+  }
+}

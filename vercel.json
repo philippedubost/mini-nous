@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install && cd pipeline && npm install",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/pipeline", "destination": "/pipeline/index.html" },
+    { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" }
+  ]
+}

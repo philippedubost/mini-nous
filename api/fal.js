@@ -12,7 +12,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'FAL_KEY not configured' })
   }
 
-  // @fal-ai/client sends the target fal URL in this header
   const targetUrl = req.headers['x-fal-target-url']
   if (!targetUrl) {
     return res.status(400).json({ error: 'Missing x-fal-target-url header' })

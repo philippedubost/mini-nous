@@ -14,6 +14,13 @@ images/people2.svg
 images/3de6f44e-d476-43fa-84d1-be3e7a9be260.jpg
 
 .vercel
+.env
+.env.local
+dist/
+node_modules/
+pipeline/node_modules/
+pipeline/dist/
+
 research/
 fal-test.html
 fal-pipeline.html
