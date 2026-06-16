@@ -1,9 +1,10 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 const EXT_BY_TYPE = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'image/svg+xml': 'svg',
 }
 
 function getR2Config(env) {
@@ -49,7 +50,7 @@ async function fetchBuffer(url) {
 
 /** Upload pipeline asset to R2; returns { url, key } */
 export async function uploadPipelineAssetToR2(body, env) {
-  const { generationId, assetType, url, base64 } = body ?? {}
+  const { generationId, assetType, url, base64, version } = body ?? {}
   if (!generationId || !assetType) {
     throw new Error('generationId et assetType requis')
   }
@@ -68,7 +69,8 @@ export async function uploadPipelineAssetToR2(body, env) {
   }
 
   const ext = EXT_BY_TYPE[contentType] ?? 'png'
-  const key = `mini-nous/${generationId}/${assetType}.${ext}`
+  const versionSuffix = body.version ? `/v${body.version}` : ''
+  const key = `mini-nous/${generationId}/${assetType}${versionSuffix}.${ext}`
 
   await getClient(env).send(
     new PutObjectCommand({
@@ -81,4 +83,32 @@ export async function uploadPipelineAssetToR2(body, env) {
   )
 
   return { url: `https://${domain}/${key}`, key }
+}
+
+/** Delete a single object from R2 by key */
+export async function deleteR2Object(key, env) {
+  if (!key) return
+  const { bucket } = getR2Config(env)
+  await getClient(env).send(
+    new DeleteObjectCommand({ Bucket: bucket, Key: key })
+  )
+}
+
+/** Resolve R2 key from stored r2_key or public image URL */
+export function resolveR2Key({ r2Key, imageUrl }, env) {
+  if (r2Key) return r2Key
+  if (!imageUrl) return null
+  try {
+    const domain = env.R2_PUBLIC_DOMAIN?.replace(/^https?:\/\//, '').split('/')[0]
+    const { hostname, pathname } = new URL(imageUrl)
+    if (domain && hostname === domain && pathname.length > 1) {
+      return pathname.slice(1)
+    }
+    if (pathname.includes('/mini-nous/')) {
+      return pathname.replace(/^\//, '')
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
 }

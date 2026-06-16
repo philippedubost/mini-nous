@@ -1,4 +1,4 @@
-export const STEP_LABELS = ['Détection', 'Mise en scène', 'Line Art', 'Contour final']
+export const STEP_LABELS = ['Détection', 'Mise en scène', 'Line Art', 'SVG laser']
 
 export const RESOLUTIONS = ['1K', '2K', '4K']
 

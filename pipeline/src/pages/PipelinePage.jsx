@@ -1,18 +1,16 @@
 import { useState, useCallback } from 'react'
-import { fal } from '@fal-ai/client'
-import Upload from './components/Upload'
-import Step from './components/Step'
-import Admin from './components/Admin'
-import Preview from './components/Preview'
-import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from './lib/settings'
-import { processLineArt } from './lib/outline'
+import { Link } from 'react-router-dom'
+import Upload from '../components/Upload'
+import Step from '../components/Step'
+import Preview from '../components/Preview'
+import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from '../lib/settings'
+import { loadTraceSettings } from '../lib/traceSettings'
+import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
+import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
 import {
   createGeneration, updateGeneration, persistAsset, markStepRunning,
-} from './lib/storage'
+} from '../lib/storage'
 
-fal.config({ proxyUrl: '/api/fal' })
-
-const MODEL = 'fal-ai/nano-banana-pro/edit'
 const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
 const INITIAL_STEPS = [
@@ -21,40 +19,12 @@ const INITIAL_STEPS = [
   { status: 'idle', image: null, log: null, error: null },
 ]
 
-async function uploadToFal(file) {
-  return fal.storage.upload(file)
-}
-
-async function runStep(stepConfig, imageUrls, onLog) {
-  const result = await fal.subscribe(MODEL, {
-    input: {
-      prompt: stepConfig.prompt,
-      image_urls: imageUrls,
-      aspect_ratio: stepConfig.aspectRatio,
-      resolution: stepConfig.resolution,
-    },
-    pollInterval: 2500,
-    onQueueUpdate(update) {
-      if (update.status === 'IN_QUEUE') {
-        onLog(`File d'attente — position ${update.queue_position ?? '?'}`)
-      } else if (update.status === 'IN_PROGRESS') {
-        const msg = update.logs?.at(-1)?.message
-        if (msg) onLog(msg)
-      }
-    },
-  })
-  const url = result?.data?.images?.[0]?.url ?? result?.data?.image?.url ?? result?.images?.[0]?.url
-  if (!url) throw new Error('Aucune image retournée')
-  return url
-}
-
-export default function App() {
-  const [settings, setSettings] = useState(loadSettings)
-  const [showAdmin, setShowAdmin] = useState(false)
+export default function PipelinePage() {
+  const [settings] = useState(loadSettings)
   const [phase, setPhase] = useState('upload')
   const [steps, setSteps] = useState(INITIAL_STEPS)
   const [globalError, setGlobalError] = useState(null)
-  const [resultUrls, setResultUrls] = useState({ url2: null, outline: null, gravure: null, overlay: null })
+  const [resultUrls, setResultUrls] = useState({ laserMerged: null })
 
   const patchStep = useCallback((i, patch) => {
     setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
@@ -64,9 +34,10 @@ export default function App() {
     setPhase('running')
     setGlobalError(null)
     setSteps(INITIAL_STEPS)
-    setResultUrls({ url2: null, outline: null, gravure: null, overlay: null })
+    setResultUrls({ laserMerged: null })
 
     let generationId = null
+    const traceSettings = loadTraceSettings()
 
     try {
       const globalFmt = { resolution: settings.resolution, aspectRatio: settings.aspectRatio }
@@ -76,8 +47,8 @@ export default function App() {
           faceCount,
           resolution: settings.resolution,
           aspectRatio: settings.aspectRatio,
-          settings,
-          falModel: MODEL,
+          settings: { ...settings, traceSettings },
+          falModel: FAL_MODEL,
         })
         generationId = generation.id
       } catch (storageErr) {
@@ -95,7 +66,6 @@ export default function App() {
       await persistAsset(generationId, 'ref', { falUrl: refUrl, url: refUrl, status: 'done' })
 
       const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
-
       let url1, url2
       const [cfg1, cfg2] = settings.steps
 
@@ -104,7 +74,7 @@ export default function App() {
       try {
         const prompt = buildPrompt1(faceCount, cfg1.prompt)
         const imgs = resolveImageUrls(cfg1.imageInputs, urlMap)
-        url1 = await runStep({ ...cfg1, ...globalFmt, prompt }, imgs, log => patchStep(0, { log }))
+        url1 = await runFalStep({ ...cfg1, ...globalFmt, prompt }, imgs, log => patchStep(0, { log }))
         urlMap.step1 = url1
         patchStep(0, { status: 'done', image: url1, log: null })
         await persistAsset(generationId, 'step1', { falUrl: url1, url: url1, prompt, status: 'done' })
@@ -118,7 +88,7 @@ export default function App() {
       await markStepRunning(generationId, 'step2')
       try {
         const imgs = resolveImageUrls(cfg2.imageInputs, urlMap)
-        url2 = await runStep({ ...cfg2, ...globalFmt }, imgs, log => patchStep(1, { log }))
+        url2 = await runFalStep({ ...cfg2, ...globalFmt }, imgs, log => patchStep(1, { log }))
         urlMap.step2 = url2
         patchStep(1, { status: 'done', image: url2, log: null })
         await persistAsset(generationId, 'step2', { falUrl: url2, url: url2, prompt: cfg2.prompt, status: 'done' })
@@ -131,14 +101,29 @@ export default function App() {
       patchStep(2, { status: 'running', log: 'Extraction silhouette…' })
       await markStepRunning(generationId, 'outline', 'Extraction silhouette…')
       try {
-        const layers = await processLineArt(url2)
+        const { layers, merged } = await extractAndBuildLaserSvg({
+          step2Url: url2,
+          photoUrl: url1,
+          faceCount,
+          traceSettings: loadTraceSettings(),
+          onProgress: log => patchStep(2, { log }),
+        })
         const outlineUrl = layers.outline.toDataURL('image/png')
+        const outlineBulkyUrl = layers.outlineBulky.toDataURL('image/png')
         const gravureUrl = layers.gravure.toDataURL('image/png')
         const overlayUrl = layers.overlay.toDataURL('image/png')
-        patchStep(2, { status: 'done', image: outlineUrl, log: null })
-        setResultUrls({ url2, outline: outlineUrl, gravure: gravureUrl, overlay: overlayUrl })
+        const laserMergedUrl = svgToDataUrl(merged)
+        const traceSettingsSnapshot = loadTraceSettings()
+        const laserPersisted = await persistAsset(generationId, 'laser_merged', {
+          base64: laserMergedUrl,
+          status: 'done',
+          metadata: { traceSettings: traceSettingsSnapshot },
+        })
+        patchStep(2, { status: 'done', image: laserPersisted?.imageUrl ?? laserMergedUrl, log: null })
+        setResultUrls({ laserMerged: laserPersisted?.imageUrl ?? laserMergedUrl })
         await Promise.all([
           persistAsset(generationId, 'outline', { base64: outlineUrl, status: 'done' }),
+          persistAsset(generationId, 'outline_bulk', { base64: outlineBulkyUrl, status: 'done' }),
           persistAsset(generationId, 'gravure', { base64: gravureUrl, status: 'done' }),
           persistAsset(generationId, 'overlay', { base64: overlayUrl, status: 'done' }),
         ])
@@ -149,7 +134,6 @@ export default function App() {
         throw err
       }
       setPhase('done')
-
     } catch (err) {
       if (generationId) {
         await updateGeneration(generationId, { status: 'error', errorMessage: err.message }).catch(() => {})
@@ -163,25 +147,30 @@ export default function App() {
     setPhase('upload')
     setSteps(INITIAL_STEPS)
     setGlobalError(null)
-    setResultUrls({ url2: null, outline: null, gravure: null, overlay: null })
+    setResultUrls({ laserMerged: null })
   }
 
   return (
     <div className="min-h-screen bg-stone-950 px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
-
         <div className="flex items-center justify-between">
           <div>
             <a href="/" className="text-xs text-stone-600 hover:text-stone-400 block mb-1">← Accueil</a>
             <h1 className="text-xl font-bold text-stone-100">Mini-Nous Pipeline</h1>
             <p className="text-sm text-stone-500 mt-0.5">Génération figurines bois</p>
           </div>
-          <button
-            onClick={() => setShowAdmin(true)}
+          <Link
+            to="/lab"
+            className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 rounded-lg px-3 py-1.5"
+          >
+            Labo trace
+          </Link>
+          <Link
+            to="/admin"
             className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 rounded-lg px-3 py-1.5"
           >
             Admin
-          </button>
+          </Link>
         </div>
 
         {phase === 'upload' && <Upload onReady={handleStart} />}
@@ -198,8 +187,8 @@ export default function App() {
               </div>
             )}
 
-            {phase === 'done' && resultUrls.outline && (
-              <Preview outline={resultUrls.outline} gravure={resultUrls.gravure} overlay={resultUrls.overlay} />
+            {phase === 'done' && resultUrls.laserMerged && (
+              <Preview laserSvg={resultUrls.laserMerged} />
             )}
 
             {(phase === 'done' || phase === 'error') && (
@@ -213,14 +202,6 @@ export default function App() {
           </div>
         )}
       </div>
-
-      {showAdmin && (
-        <Admin
-          settings={settings}
-          onChange={setSettings}
-          onClose={() => setShowAdmin(false)}
-        />
-      )}
     </div>
   )
 }

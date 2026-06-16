@@ -1,17 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Sous-app React servie sous /pipeline — config et .env à la racine du monorepo.
-// En dev complet : npm run dev (racine, vercel dev). Ce script seul = front + proxy /api → :3000.
+const API_PORT = Number(process.env.MINI_NOUS_API_PORT) || 3335
+
 export default defineConfig({
   base: '/pipeline/',
   plugins: [react()],
   server: {
+    port: Number(process.env.VITE_PORT) || 3400,
+    strictPort: false,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
+      '/api': { target: `http://127.0.0.1:${API_PORT}`, changeOrigin: true },
     },
   },
 })

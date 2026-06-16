@@ -1,4 +1,5 @@
 import { getSupabase, ASSET_META } from './lib/supabase.js'
+import { selectAssetVersion, deleteAssetVersion, groupVersions } from './lib/assets.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -28,7 +29,21 @@ export default async function handler(req, res) {
           .order('asset_type')
         if (stepsErr) throw new Error(stepsErr.message)
 
-        return res.status(200).json({ generation, steps })
+        const { data: versions, error: verErr } = await supabase
+          .from('mini_nous_asset_versions')
+          .select('*')
+          .eq('generation_id', id)
+          .is('deleted_at', null)
+          .order('asset_type')
+          .order('version', { ascending: false })
+        if (verErr) throw new Error(verErr.message)
+
+        return res.status(200).json({
+          generation,
+          steps,
+          versions,
+          versionsByType: groupVersions(versions),
+        })
       }
 
       const { data: generations, error: listErr } = await supabase
@@ -82,8 +97,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH') {
-      const { id, status, errorMessage, step } = req.body ?? {}
+      const { id, status, errorMessage, step, selectVersionId, deleteVersionId } = req.body ?? {}
       if (!id) return res.status(400).json({ error: 'id requis' })
+
+      if (deleteVersionId) {
+        const result = await deleteAssetVersion(supabase, id, deleteVersionId, process.env)
+        return res.status(200).json(result)
+      }
+
+      if (selectVersionId) {
+        const result = await selectAssetVersion(supabase, id, selectVersionId)
+        return res.status(200).json(result)
+      }
 
       if (step) {
         const meta = ASSET_META[step.asset_type] ?? { step_index: step.step_index ?? 0, label: step.asset_type }
