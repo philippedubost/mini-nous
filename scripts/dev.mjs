@@ -7,6 +7,7 @@ import { startGateway } from './gateway.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(scriptsDir, '..')
+const pipelineDir = join(rootDir, 'pipeline')
 const PORT = Number(process.env.PORT) || 3333
 const VITE_PORT = Number(process.env.VITE_PORT) || 3400
 
@@ -30,6 +31,24 @@ function loadEnv() {
     const val = trimmed.slice(i + 1).trim()
     if (!process.env[key]) process.env[key] = val
   }
+}
+
+function runCommand(cmd, args, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { cwd, stdio: 'inherit', shell: true })
+    child.on('error', reject)
+    child.on('exit', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`${cmd} ${args.join(' ')} failed (exit ${code})`))
+    })
+  })
+}
+
+async function ensurePipelineDeps() {
+  const vitePkg = join(pipelineDir, 'node_modules', 'vite', 'package.json')
+  if (existsSync(vitePkg)) return
+  console.log('  Dépendances pipeline manquantes — npm install dans pipeline/…')
+  await runCommand('npm', ['install'], pipelineDir)
 }
 
 async function waitForVite(port, timeoutMs = 20000) {
@@ -56,6 +75,7 @@ async function loadApiRoutes() {
 
 async function main() {
   loadEnv()
+  await ensurePipelineDeps()
 
   try {
     const ws = (await import('ws')).default
@@ -68,8 +88,8 @@ async function main() {
   const apiRoutes = await loadApiRoutes()
   console.log(`  API routes: ${Object.keys(apiRoutes).sort().join(', ')}`)
 
-  const vite = spawn('npx', ['vite', '--logLevel', 'error'], {
-    cwd: join(rootDir, 'pipeline'),
+  const vite = spawn('npm', ['run', 'dev'], {
+    cwd: pipelineDir,
     stdio: 'inherit',
     shell: true,
     env: {

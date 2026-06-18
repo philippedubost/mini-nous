@@ -6,6 +6,7 @@
 <title>Les MiniNous — Vos personnages, taillés dans le bois.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="icon" href="/images/v1.svg" type="image/svg+xml">
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.25.9/babel.min.js"></script>
@@ -308,9 +309,9 @@ function PackCards({ onPackExample }) {
 /* ─── ASSETS ──────────────────────────────────────────────────── */
 const IMG = {
   hero:      'images/hero.webp',
-  before:    'images/avant.jpg',
+  before:    'images/avant.webp',
   after:     'images/apres-ref.png',
-  upload:    'images/527aeebb-1231-4d0c-beb3-04f39541f80c.jpg',
+  upload:    'images/famille7.jpg',
   lifestyle: 'images/af5dfcad-37bc-4917-99fd-c47c7d53d8a2.jpg',
   atelier:   'images/apres-ref.png',
   refFal:    'images/apres-ref.png',
@@ -569,8 +570,8 @@ function PhotoUploadZone({ onFile, compact, label, hint }) {
       alert('Choisissez une image (JPG, PNG, HEIC…).');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image trop lourde — maximum 5 Mo.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Image trop lourde — maximum 3 Mo.');
       return;
     }
     onFile(file);
@@ -592,7 +593,7 @@ function PhotoUploadZone({ onFile, compact, label, hint }) {
         {label || 'Glissez votre photo de groupe ici'}
       </h3>
       <p style={{ color:'var(--muted)', marginBottom: compact ? 16 : 24, fontSize:'.88rem' }}>
-        {hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 5 Mo'}
+        {hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 3 Mo'}
       </p>
       <button type="button" className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem' }}
         onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
@@ -1077,6 +1078,8 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
     previewGenKey.current = token;
 
     let cancelled = false;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
     (async () => {
       try {
         const res = await fetch('/api/landing-preview', {
@@ -1089,9 +1092,29 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
-        if (!cancelled) onPreviewReady?.(data.previewUrl);
-      } catch {
-        if (!cancelled) onPreviewError?.();
+
+        const { requestId, model } = data;
+        if (!requestId) throw new Error('Réponse API incomplète');
+
+        const deadline = Date.now() + 180000;
+        while (!cancelled && Date.now() < deadline) {
+          await sleep(2000);
+          const pollUrl = `/api/landing-preview?requestId=${encodeURIComponent(requestId)}&model=${encodeURIComponent(model || '')}`;
+          const pollRes = await fetch(pollUrl);
+          const poll = await pollRes.json().catch(() => ({}));
+          if (!pollRes.ok) throw new Error(poll.error || `Erreur ${pollRes.status}`);
+
+          if (poll.previewUrl) {
+            if (!cancelled) onPreviewReady?.(poll.previewUrl);
+            return;
+          }
+          if (poll.status === 'FAILED') {
+            throw new Error(poll.error || 'Génération échouée');
+          }
+        }
+        throw new Error('Délai dépassé — réessayez dans un instant');
+      } catch (err) {
+        if (!cancelled) onPreviewError?.(err?.message);
       }
     })();
 
@@ -1762,8 +1785,8 @@ function App() {
     setSession(s => ({ ...s, previewUrl, previewLoading: false, error: null }));
   }, []);
 
-  const onPreviewError = useCallback(() => {
-    setSession(s => ({ ...s, error: 'Aperçu indisponible pour le moment', previewLoading: false }));
+  const onPreviewError = useCallback((message) => {
+    setSession(s => ({ ...s, error: message || 'Aperçu indisponible pour le moment', previewLoading: false }));
   }, []);
 
   const onFaceCountChange = useCallback((count) => {
@@ -1780,7 +1803,6 @@ function App() {
   }, []);
 
   const idx = NAV_STEPS.findIndex(s => s.id === state);
-  const dark = state === 'editor';
 
   const screens = {
     landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload} />,
@@ -1802,39 +1824,6 @@ function App() {
           width:`${((idx + 1) / NAV_STEPS.length) * 100}%`,
           transition:'width .65s cubic-bezier(.4,0,.2,1)' }}/>
       </div>
-
-      {/* Step pills */}
-      {!dark && (
-        <div style={{ position:'fixed', bottom:20, left:'50%',
-          transform:'translateX(-50%)', zIndex:50,
-          background:'rgba(44,31,20,.82)', borderRadius:100,
-          padding:'10px 18px', backdropFilter:'blur(20px)',
-          display:'flex', gap:4, alignItems:'center' }}>
-          {NAV_STEPS.map((s, i) => (
-            <React.Fragment key={s.id}>
-              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                <div style={{ width:26, height:26, borderRadius:'50%',
-                  background: i <= idx ? 'var(--clay)' : 'rgba(255,255,255,.12)',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'.65rem', fontWeight:700, color:'#fff',
-                  transition:'background .4s ease',
-                  boxShadow: i === idx ? '0 0 0 2px rgba(192,104,74,.5)' : 'none' }}>
-                  {i < idx ? '✓' : i + 1}
-                </div>
-                {i === idx && (
-                  <span style={{ fontSize:'.72rem', color:'rgba(255,255,255,.9)',
-                    fontWeight:700, letterSpacing:'.02em' }}>{s.label}</span>
-                )}
-              </div>
-              {i < NAV_STEPS.length - 1 && (
-                <div style={{ width:14, height:1.5,
-                  background: i < idx ? 'var(--clay)' : 'rgba(255,255,255,.15)',
-                  transition:'background .4s' }}/>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
 
       <div key={tick}>
         {screens[state]}
