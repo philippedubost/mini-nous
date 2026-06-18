@@ -1,1 +1,1 @@
-export { fetchWeekOrders } from '../../../api/lib/batch.js'
+export { fetchWeekOrders } from '../../../lib/server/batch.js'

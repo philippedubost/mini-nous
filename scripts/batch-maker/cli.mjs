@@ -6,7 +6,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildWeekBatch } from '../../api/lib/batch.js'
+import { buildWeekBatch } from '../../lib/server/batch.js'
 import { loadEnv, parseArgs } from './lib/env.mjs'
 
 const outDir = join(dirname(fileURLToPath(import.meta.url)), '../../output')

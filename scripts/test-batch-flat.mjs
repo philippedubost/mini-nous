@@ -1,5 +1,5 @@
-import { buildBatchSvg, layoutOrdersOnSheet } from '../api/lib/batch.js'
-import { flattenLayerToPaths, simplifyGravurePathD } from '../api/lib/batchPaths.js'
+import { buildBatchSvg, layoutOrdersOnSheet } from '../lib/server/batch.js'
+import { flattenLayerToPaths, simplifyGravurePathD } from '../lib/server/batchPaths.js'
 import { DOMParser } from '@xmldom/xmldom'
 
 const eyeGroup = (cx, cy, rx, ry) =>

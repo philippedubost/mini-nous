@@ -1,1 +1,1 @@
-export { uploadBatchSvg } from '../../../api/lib/batch.js'
+export { uploadBatchSvg } from '../../../lib/server/batch.js'
