@@ -94,13 +94,13 @@ function StageModal({ title, onClose, children }) {
           <button type="button" onClick={onClose} className="w-8 h-8 rounded-lg bg-stone-800 text-stone-200 text-xl">×</button>
         </div>
       </div>
-      <div className="flex-1 p-4 min-h-0" onClick={e => e.stopPropagation()}>
+      <div className="flex-1 p-4 min-h-0 bg-stone-300" onClick={e => e.stopPropagation()}>
         <ZoomViewport
           scale={scale}
           pan={pan}
           onScaleChange={setScale}
           onPanChange={setPan}
-          className="w-full h-full min-h-[60vh]"
+          className="w-full h-full min-h-[60vh] shadow-2xl"
         >
           {children}
         </ZoomViewport>

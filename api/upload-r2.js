@@ -1,6 +1,6 @@
 import { uploadPipelineAssetToR2 } from './lib/r2.js'
 import { getSupabase } from './lib/supabase.js'
-import { getNextVersion, saveAssetVersion } from './lib/assets.js'
+import { getNextVersion, saveAssetVersion, isDuplicateVersionError } from './lib/assets.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -18,27 +18,41 @@ export default async function handler(req, res) {
     } = body
 
     const supabase = getSupabase()
-    const version = await getNextVersion(supabase, generationId, assetType)
-    const { url: imageUrl, key } = await uploadPipelineAssetToR2(
-      { generationId, assetType, url: url || falUrl, base64, version },
-      process.env
-    )
+    const uploadPayload = {
+      generationId, assetType, url: url || falUrl, base64,
+    }
 
-    const result = await saveAssetVersion(supabase, {
-      generationId,
-      assetType,
-      imageUrl,
-      r2Key: key,
-      falUrl: falUrl ?? (url?.includes('fal.') ? url : null),
-      prompt,
-      status: status ?? 'done',
-      log,
-      errorMessage: stepError,
-      source: source ?? 'pipeline',
-      select: select !== false,
-      version,
-      metadata,
-    })
+    let result
+    let imageUrl
+    let key
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const version = await getNextVersion(supabase, generationId, assetType)
+      ;({ url: imageUrl, key } = await uploadPipelineAssetToR2(
+        { ...uploadPayload, version },
+        process.env,
+      ))
+      try {
+        result = await saveAssetVersion(supabase, {
+          generationId,
+          assetType,
+          imageUrl,
+          r2Key: key,
+          falUrl: falUrl ?? (url?.includes('fal.') ? url : null),
+          prompt,
+          status: status ?? 'done',
+          log,
+          errorMessage: stepError,
+          source: source ?? 'pipeline',
+          select: select !== false,
+          version,
+          metadata,
+        })
+        break
+      } catch (e) {
+        if (!isDuplicateVersionError(e) || attempt === 4) throw e
+        console.warn(`[upload-r2] version collision ${assetType} v${version}, retry…`)
+      }
+    }
 
     return res.status(200).json({ url: imageUrl, key, version: result.version.version, ...result })
   } catch (e) {

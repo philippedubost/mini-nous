@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom'
 const NAV = [
   { to: '/admin', label: 'Générations', end: true },
   { to: '/admin/settings', label: 'Paramètres' },
-  { to: '/lab', label: 'Labo trace' },
+  { to: '/lab/trace', label: 'Labo trace' },
 ]
 
 export default function AdminLayout() {

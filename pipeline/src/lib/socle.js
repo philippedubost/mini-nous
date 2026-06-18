@@ -3,22 +3,27 @@
  */
 
 const SOCLE_WIDTH_RATIO = 0.055 * 2.4
+const BEZIER_K = 0.5522847498
 
-/** Path SVG d'un rectangle aux coins arrondis (fermé). */
+/**
+ * Rectangle arrondi en cubiques uniquement (pas de commande A).
+ */
 export function roundedRectPath(x, y, w, h, r) {
   const rad = Math.min(r, w / 2, h / 2)
   const x2 = x + w
   const y2 = y + h
+  const k = rad * BEZIER_K
+
   return [
-    `M ${x + rad} ${y}`,
-    `H ${x2 - rad}`,
-    `A ${rad} ${rad} 0 0 1 ${x2} ${y + rad}`,
-    `V ${y2 - rad}`,
-    `A ${rad} ${rad} 0 0 1 ${x2 - rad} ${y2}`,
-    `H ${x + rad}`,
-    `A ${rad} ${rad} 0 0 1 ${x} ${y2 - rad}`,
-    `V ${y + rad}`,
-    `A ${rad} ${rad} 0 0 1 ${x + rad} ${y}`,
+    `M ${(x + rad).toFixed(2)} ${y.toFixed(2)}`,
+    `L ${(x2 - rad).toFixed(2)} ${y.toFixed(2)}`,
+    `C ${(x2 - rad + k).toFixed(2)} ${y.toFixed(2)} ${x2.toFixed(2)} ${(y + rad - k).toFixed(2)} ${x2.toFixed(2)} ${(y + rad).toFixed(2)}`,
+    `L ${x2.toFixed(2)} ${(y2 - rad).toFixed(2)}`,
+    `C ${x2.toFixed(2)} ${(y2 - rad + k).toFixed(2)} ${(x2 - rad + k).toFixed(2)} ${y2.toFixed(2)} ${(x2 - rad).toFixed(2)} ${y2.toFixed(2)}`,
+    `L ${(x + rad).toFixed(2)} ${y2.toFixed(2)}`,
+    `C ${(x + rad - k).toFixed(2)} ${y2.toFixed(2)} ${x.toFixed(2)} ${(y2 - rad + k).toFixed(2)} ${x.toFixed(2)} ${(y2 - rad).toFixed(2)}`,
+    `L ${x.toFixed(2)} ${(y + rad).toFixed(2)}`,
+    `C ${x.toFixed(2)} ${(y + rad - k).toFixed(2)} ${(x + rad - k).toFixed(2)} ${y.toFixed(2)} ${(x + rad).toFixed(2)} ${y.toFixed(2)}`,
     'Z',
   ].join(' ')
 }
@@ -47,14 +52,15 @@ export function roundedRectPolygon(x, y, w, h, r, arcSteps = 8) {
 /**
  * Socle standardisé par personnage : pieds au sol, hauteur ≈ bas de mollet.
  */
-export function computeSocleRects(bodies, W, H) {
+export function computeSocleRects(bodies, W, H, { kerfMm = 0, pxPerMm = 1 } = {}) {
   if (!bodies?.length) return []
 
+  const kerfPx = kerfMm * pxPerMm
   const heights = bodies.map(b => b.h * H).sort((a, b) => a - b)
   const medianBodyH = heights[Math.floor(heights.length / 2)] ?? H * 0.4
 
   const socleH = medianBodyH * 0.16 * 0.7
-  const socleW = W * SOCLE_WIDTH_RATIO
+  const socleW = Math.max(W * SOCLE_WIDTH_RATIO - kerfPx * 2, W * SOCLE_WIDTH_RATIO * 0.85)
   const cornerR = Math.min(socleW, socleH) * 0.22
 
   return bodies.map(body => {
@@ -64,7 +70,7 @@ export function computeSocleRects(bodies, W, H) {
       x: cx - socleW / 2,
       y: footBottom - socleH,
       w: socleW,
-      h: socleH,
+      h: Math.max(socleH - kerfPx, socleH * 0.9),
       r: cornerR,
       cx,
     }

@@ -1,13 +1,14 @@
 import { createServer } from 'node:net'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
-import { startApiServer } from './lib/vercel-req.mjs'
 import { startGateway } from './gateway.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(scriptsDir, '..')
+const PORT = Number(process.env.PORT) || 3333
+const VITE_PORT = Number(process.env.VITE_PORT) || 3400
 
 function isFree(port) {
   return new Promise(resolve => {
@@ -15,13 +16,6 @@ function isFree(port) {
     s.once('error', () => resolve(false))
     s.listen(port, '127.0.0.1', () => s.close(() => resolve(true)))
   })
-}
-
-async function getFreePort(preferred) {
-  for (let p = preferred; p < preferred + 30; p++) {
-    if (await isFree(p)) return p
-  }
-  throw new Error(`Aucun port libre à partir de ${preferred}`)
 }
 
 function loadEnv() {
@@ -38,57 +32,73 @@ function loadEnv() {
   }
 }
 
+async function waitForVite(port, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/pipeline/`)
+      if (res.ok) return
+    } catch { /* retry */ }
+    await new Promise(r => setTimeout(r, 250))
+  }
+  throw new Error(`Vite interne : pas de réponse sur 127.0.0.1:${port}`)
+}
+
 async function loadHandler(relPath) {
   return (await import(pathToFileURL(join(rootDir, relPath)).href)).default
+}
+
+async function requirePort(port, label) {
+  if (await isFree(port)) return
+  throw new Error(`${label} : le port ${port} est déjà utilisé. Arrêtez l'autre serveur (Ctrl+C) puis relancez.`)
+}
+
+async function loadApiRoutes() {
+  const apiDir = join(rootDir, 'api')
+  const routes = {}
+  for (const file of readdirSync(apiDir).sort()) {
+    if (!file.endsWith('.js')) continue
+    const name = file.slice(0, -3)
+    routes[name] = await loadHandler(`api/${file}`)
+  }
+  return routes
 }
 
 async function main() {
   loadEnv()
 
-  // WebSocket pour Supabase en Node < 22
   try {
     const ws = (await import('ws')).default
     if (typeof globalThis.WebSocket === 'undefined') globalThis.WebSocket = ws
-  } catch { /* ws optionnel si déjà polyfillé */ }
+  } catch { /* ws optionnel */ }
 
-  const PORT = await getFreePort(Number(process.env.PORT) || 3333)
-  const VITE_PORT = await getFreePort(3400)
-  const API_PORT = await getFreePort(3500)
+  await requirePort(PORT, 'Gateway')
+  await requirePort(VITE_PORT, 'Vite (interne)')
 
-  const [fal, generations, uploadR2, proxyImage, traceAutotrace] = await Promise.all([
-    loadHandler('api/fal.js'),
-    loadHandler('api/generations.js'),
-    loadHandler('api/upload-r2.js'),
-    loadHandler('api/proxy-image.js'),
-    loadHandler('api/trace-autotrace.js'),
-  ])
+  const apiRoutes = await loadApiRoutes()
+  console.log(`  API routes: ${Object.keys(apiRoutes).sort().join(', ')}`)
 
-  await startApiServer({
-    port: API_PORT,
-    routes: {
-      fal, generations, 'upload-r2': uploadR2, 'proxy-image': proxyImage, 'trace-autotrace': traceAutotrace,
-    },
-  })
-  console.log(`[api]   http://127.0.0.1:${API_PORT}/api/`)
-
-  const vite = spawn('npx', ['vite'], {
+  const vite = spawn('npx', ['vite', '--logLevel', 'error'], {
     cwd: join(rootDir, 'pipeline'),
     stdio: 'inherit',
     shell: true,
-    env: { ...process.env, MINI_NOUS_API_PORT: String(API_PORT), VITE_PORT: String(VITE_PORT) },
+    env: {
+      ...process.env,
+      VITE_PORT: String(VITE_PORT),
+      MINI_NOUS_API_PORT: String(PORT),
+    },
   })
 
   vite.on('exit', code => process.exit(code ?? 0))
 
-  await new Promise(r => setTimeout(r, 1500))
+  await waitForVite(VITE_PORT)
 
-  await startGateway({ port: PORT, apiPort: API_PORT, vitePort: VITE_PORT })
+  await startGateway({ port: PORT, vitePort: VITE_PORT, apiRoutes })
 
   console.log('')
   console.log(`  Mini-Nous → http://localhost:${PORT}`)
   console.log(`    /              landing`)
-  console.log(`    /pipeline/     générateur`)
-  console.log(`    /pipeline/admin admin`)
+  console.log(`    /pipeline/     générateur + labo + admin`)
   console.log('')
 
   const shutdown = () => { vite.kill(); process.exit(0) }
@@ -97,6 +107,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(err)
+  console.error(err.message || err)
   process.exit(1)
 })

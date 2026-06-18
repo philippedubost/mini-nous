@@ -1,21 +1,91 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import VersionGallery from '../components/VersionGallery'
-import { buildPrompt1, resolveImageUrls, STEP_LABELS } from '../lib/settings'
+import { ImageWithZoom } from '../components/ImageLightbox'
+import LaserStudioPanel from '../components/LaserStudioPanel'
+import { buildPrompt1, resolveImageUrls, STEP_LABELS, FAL_STEP_RESOLUTIONS, DEFAULT_FAL_STEP_RESOLUTION, falStepFormat, loadSettings } from '../lib/settings'
+import Spinner, { SpinnerBlock } from '../components/Spinner'
 import { loadTraceSettings } from '../lib/traceSettings'
-import { extractAndBuildLaserSvg, buildLaserSvgFromStoredLayers, svgToDataUrl } from '../lib/laserPipeline'
+import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
+import { regenerateLaserSvg } from '../lib/regenerateLaser'
 import { runFalStep } from '../lib/fal'
 import {
-  fetchGeneration, selectVersion, deleteVersion, uploadAsset, urlMapFromSteps,
+  fetchGeneration, selectVersion, deleteVersion, uploadAsset, urlMapFromSteps, updateGeneration,
 } from '../lib/storage'
 
+const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
+
+const STATUS_STYLES = {
+  running: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  done: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  error: 'bg-red-500/20 text-red-300 border-red-500/30',
+}
+
+const STATUS_LABELS = {
+  running: 'En cours — modifiable, prêt pour une nouvelle impression',
+  done: 'Terminé — pipeline complet',
+  error: 'Erreur',
+}
+
 const ASSET_SECTIONS = [
-  { types: ['source', 'ref'], label: 'Entrées', rerunnable: null },
   { types: ['step1'], label: 'Étape 1 — Mise en scène', rerunnable: 'fal', settingsIndex: 0 },
   { types: ['step2'], label: 'Étape 2 — Line art', rerunnable: 'fal', settingsIndex: 1 },
   { types: ['outline', 'outline_bulk', 'gravure', 'overlay'], label: 'Étape 3 — Extraction PNG', rerunnable: 'extraction' },
   { types: ['laser_merged'], label: 'SVG laser fusionné', rerunnable: 'laser_svg' },
 ]
+
+function sectionBusyKey(section) {
+  if (section.rerunnable === 'fal') return section.types[0]
+  return section.rerunnable
+}
+
+function busyLabel(busy) {
+  if (busy === 'step1' || busy === 'step2') return 'Génération fal.ai…'
+  if (busy === 'extraction') return 'Extraction des contours…'
+  if (busy === 'laser_svg') return 'Génération SVG laser…'
+  if (busy === 'select') return 'Changement de version…'
+  if (busy === 'delete') return 'Suppression…'
+  return 'Traitement…'
+}
+
+const HERO_PANELS = [
+  { type: 'source', label: 'Photo source' },
+  { type: 'step1', label: 'Mise en scène' },
+  { type: 'step2', label: 'Line art' },
+]
+
+function GenerationHero({ steps }) {
+  const activeStep = Object.fromEntries((steps ?? []).map(s => [s.asset_type, s]))
+
+  return (
+    <div className="rounded-2xl border border-stone-800 bg-stone-900/40 overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-stone-800">
+        {HERO_PANELS.map(({ type, label }) => {
+          const url = activeStep[type]?.image_url
+          return (
+            <div key={type} className="flex flex-col min-h-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-400 px-4 py-2.5 border-b border-stone-800 bg-stone-950/60">
+                {label}
+              </p>
+              <div className="aspect-[4/3] bg-white flex items-center justify-center p-3 min-h-[180px]">
+                {url
+                  ? (
+                    <ImageWithZoom
+                      src={url}
+                      label={label}
+                      className="w-full h-full"
+                      imgClassName="w-full h-full object-contain"
+                    />
+                  )
+                  : <span className="text-stone-400 text-sm">Non disponible</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
@@ -31,6 +101,9 @@ export default function AdminGenerationPage() {
   const [busy, setBusy] = useState(null)
   const [log, setLog] = useState(null)
   const [prompts, setPrompts] = useState({ step1: '', step2: '' })
+  const [resolutions, setResolutions] = useState({ step1: DEFAULT_FAL_STEP_RESOLUTION, step2: DEFAULT_FAL_STEP_RESOLUTION })
+  const [statusBusy, setStatusBusy] = useState(false)
+  const [studioExpanded, setStudioExpanded] = useState(false)
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true)
@@ -43,6 +116,10 @@ export default function AdminGenerationPage() {
         setPrompts({
           step1: buildPrompt1(result.generation.face_count, settings.steps[0]?.prompt ?? ''),
           step2: settings.steps[1]?.prompt ?? '',
+        })
+        setResolutions({
+          step1: settings.steps[0]?.resolution ?? result.generation.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
+          step2: settings.steps[1]?.resolution ?? result.generation.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
         })
       }
     } catch (err) {
@@ -67,6 +144,20 @@ export default function AdminGenerationPage() {
     }
   }
 
+  const handleStatusChange = async (status) => {
+    if (statusBusy || !data || data.generation.status === status) return
+    setStatusBusy(true)
+    setError(null)
+    try {
+      const generation = await updateGeneration(id, { status })
+      setData(prev => ({ ...prev, generation }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setStatusBusy(false)
+    }
+  }
+
   const handleDeleteVersion = async (versionId, versionNum) => {
     if (busy) return
     const label = versionNum != null ? `v${versionNum}` : 'cette version'
@@ -85,43 +176,77 @@ export default function AdminGenerationPage() {
     }
   }
 
+  const buildSettingsPayload = useCallback(() => {
+    const defaults = loadSettings()
+    const base = structuredClone(data?.generation?.settings ?? defaults)
+    if (!Array.isArray(base.steps)) base.steps = structuredClone(defaults.steps)
+    while (base.steps.length < 3) base.steps.push(structuredClone(defaults.steps[base.steps.length] ?? {}))
+
+    const step0Prompt = prompts.step1.replace(
+      data.generation.face_count > 0 ? `ces ${data.generation.face_count} personnes` : 'ces personnes',
+      'ces personnes',
+    )
+    base.steps[0] = { ...base.steps[0], prompt: step0Prompt, resolution: resolutions.step1 }
+    base.steps[1] = { ...base.steps[1], prompt: prompts.step2, resolution: resolutions.step2 }
+    return base
+  }, [data, prompts, resolutions])
+
+  const persistGenerationSettings = useCallback(async () => {
+    if (!data?.generation) return null
+    const settings = buildSettingsPayload()
+    const generation = await updateGeneration(id, { settings })
+    setData(prev => (prev ? { ...prev, generation } : prev))
+    return generation
+  }, [buildSettingsPayload, data, id])
+
   const runFalRerun = async (assetType, settingsIndex) => {
     if (!data) return
     const gen = data.generation
-    const settings = gen.settings ?? {}
-    const stepCfg = settings.steps?.[settingsIndex]
+    const defaults = loadSettings()
+    const settings = gen.settings ?? defaults
+    const stepCfg = settings.steps?.[settingsIndex] ?? defaults.steps?.[settingsIndex]
     if (!stepCfg) return
 
     setBusy(assetType)
-    setLog(null)
+    setLog('Préparation…')
     setError(null)
 
     try {
+      try {
+        await persistGenerationSettings()
+      } catch (saveErr) {
+        console.warn('[admin] settings save:', saveErr.message)
+      }
+
       const urlMap = urlMapFromSteps(data.steps)
       const prompt = assetType === 'step1' ? prompts.step1 : prompts.step2
-      const globalFmt = { resolution: gen.resolution, aspectRatio: gen.aspect_ratio }
+      const resolution = resolutions[assetType] ?? DEFAULT_FAL_STEP_RESOLUTION
+      const fmt = { ...falStepFormat({ resolution }, gen), resolution }
       const imgs = resolveImageUrls(stepCfg.imageInputs, urlMap)
       if (!imgs.length) throw new Error('Images sources manquantes pour cette étape')
 
+      setLog('Envoi fal.ai…')
       const falUrl = await runFalStep(
-        { ...stepCfg, ...globalFmt, prompt },
+        { ...stepCfg, ...fmt, prompt },
         imgs,
         setLog,
       )
 
+      setLog('Enregistrement…')
       await uploadAsset(id, assetType, {
         url: falUrl,
         falUrl,
         prompt,
         status: 'done',
         source: 'admin_rerun',
+        metadata: { resolution },
       })
       await load({ silent: true })
+      setLog(null)
     } catch (err) {
       setError(err.message)
     } finally {
       setBusy(null)
-      setLog(null)
     }
   }
 
@@ -178,55 +303,43 @@ export default function AdminGenerationPage() {
         }),
       ])
       await load({ silent: true })
+      setLog(null)
     } catch (err) {
       setError(err.message || 'Échec de l\'extraction')
     } finally {
       setBusy(null)
-      setLog(null)
     }
   }
 
   const runLaserSvgRegen = async () => {
     if (!data) return
-    const steps = data.steps ?? []
-    const outlineUrl = steps.find(s => s.asset_type === 'outline')?.image_url
-    const outlineBulkyUrl = steps.find(s => s.asset_type === 'outline_bulk')?.image_url
-    const gravureUrl = steps.find(s => s.asset_type === 'gravure')?.image_url
-    const photoUrl = steps.find(s => s.asset_type === 'step1')?.image_url
-
     setBusy('laser_svg')
     setError(null)
     setLog('Génération SVG laser…')
     try {
-      const gen = data.generation
       const traceSettingsSnapshot = loadTraceSettings()
-      const merged = await buildLaserSvgFromStoredLayers({
-        outlineUrl,
-        outlineBulkyUrl,
-        gravureUrl,
-        photoUrl,
-        faceCount: gen.face_count,
+      await regenerateLaserSvg({
+        generationId: id,
+        steps: data.steps ?? [],
+        faceCount: data.generation.face_count,
         traceSettings: traceSettingsSnapshot,
         onProgress: setLog,
       })
-      setLog('Upload nouvelle version SVG…')
-      await uploadAsset(id, 'laser_merged', {
-        base64: svgToDataUrl(merged),
-        status: 'done',
-        source: 'admin_laser_regen',
-        metadata: { traceSettings: traceSettingsSnapshot },
-      })
       await load({ silent: true })
+      setLog(null)
     } catch (err) {
       setError(err.message || 'Échec regénération SVG')
     } finally {
       setBusy(null)
-      setLog(null)
     }
   }
 
   if (loading) {
-    return <p className="text-stone-500 py-12 text-center">Chargement…</p>
+    return (
+      <div className="py-24 flex justify-center">
+        <SpinnerBlock label="Chargement de la génération…" />
+      </div>
+    )
   }
 
   if (error && !data) {
@@ -239,11 +352,18 @@ export default function AdminGenerationPage() {
   }
 
   const gen = data.generation
+  const fabrication = data.fabrication ?? gen.fabrication ?? null
   const versionsByType = data.versionsByType ?? {}
   const activeStep = Object.fromEntries((data.steps ?? []).map(s => [s.asset_type, s]))
+  const refImageUrl = activeStep.ref?.image_url ?? REFERENCE_LINE_URL
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {(busy === 'select' || busy === 'delete') && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 backdrop-blur-[1px]">
+          <SpinnerBlock label={busyLabel(busy)} />
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link to="/admin" className="text-sm text-stone-500 hover:text-stone-300">← Générations</Link>
@@ -253,32 +373,86 @@ export default function AdminGenerationPage() {
             {gen.resolution} · {gen.aspect_ratio}
             <span className="ml-2 text-stone-600 font-mono text-xs">{gen.id}</span>
           </p>
+          {fabrication && (
+            <p className="text-sm text-sky-300 mt-2">
+              {fabrication.label}
+              {fabrication.at && (
+                <span className="text-stone-500 text-xs ml-2">
+                  ({new Date(fabrication.at).toLocaleString('fr-FR')})
+                </span>
+              )}
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={() => load({ silent: true })}
-          disabled={loading}
-          className="text-sm text-amber-500 hover:text-amber-400 disabled:opacity-50"
-        >
-          Actualiser
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="space-y-1">
+            <label htmlFor="gen-status" className="text-[10px] uppercase tracking-wide text-stone-500">
+              Statut
+            </label>
+            <select
+              id="gen-status"
+              value={gen.status}
+              disabled={statusBusy || !!busy}
+              onChange={e => handleStatusChange(e.target.value)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${STATUS_STYLES[gen.status] ?? 'border-stone-700 text-stone-300'}`}
+            >
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value} className="bg-stone-900 text-stone-200">
+                  {label.split(' — ')[0]}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-stone-500 max-w-xs">
+              {STATUS_LABELS[gen.status] ?? gen.status}
+            </p>
+          </div>
+          {gen.status === 'done' && (
+            <button
+              type="button"
+              disabled={statusBusy}
+              onClick={() => handleStatusChange('running')}
+              className="rounded-lg border border-amber-600/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-300 hover:border-amber-500 disabled:opacity-50"
+            >
+              Réouvrir pour impression
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => load({ silent: true })}
+            disabled={loading}
+            className="text-sm text-amber-500 hover:text-amber-400 disabled:opacity-50 self-end"
+          >
+            Actualiser
+          </button>
+        </div>
       </div>
+
+      <GenerationHero steps={data.steps} />
 
       {error && (
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>
       )}
 
       {log && (
-        <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3 text-sm text-amber-200 font-mono">
-          {log}
+        <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-3 text-sm text-amber-200 font-mono flex items-start gap-3">
+          {busy && <Spinner className="mt-0.5" />}
+          <span className="flex-1 whitespace-pre-wrap">{log}</span>
         </div>
       )}
 
-      {ASSET_SECTIONS.map(section => (
+      {ASSET_SECTIONS.map(section => {
+        const sectionKey = sectionBusyKey(section)
+        const sectionBusy = busy === sectionKey
+        return (
         <section
           key={section.label}
-          className="rounded-2xl border border-stone-800 bg-stone-900/40 p-5 space-y-4"
+          className="relative rounded-2xl border border-stone-800 bg-stone-900/40 p-5 space-y-4"
         >
+          {sectionBusy && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-stone-950/75 backdrop-blur-[2px]">
+              <SpinnerBlock label={busyLabel(busy)} />
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-semibold text-stone-200">{section.label}</h3>
             {section.rerunnable === 'fal' && (
@@ -286,9 +460,10 @@ export default function AdminGenerationPage() {
                 type="button"
                 disabled={!!busy}
                 onClick={() => runFalRerun(section.types[0], section.settingsIndex)}
-                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
               >
-                {busy === section.types[0] ? 'Génération…' : 'Relancer fal.ai'}
+                {sectionBusy && <Spinner size="sm" className="border-stone-950/30 border-t-stone-950" />}
+                {sectionBusy ? 'Génération…' : 'Relancer fal.ai'}
               </button>
             )}
             {section.rerunnable === 'extraction' && (
@@ -296,41 +471,89 @@ export default function AdminGenerationPage() {
                 type="button"
                 disabled={!!busy}
                 onClick={runExtraction}
-                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
               >
-                {busy === 'extraction' ? 'Extraction…' : 'Ré-extraire les contours'}
+                {sectionBusy && <Spinner size="sm" className="border-stone-950/30 border-t-stone-950" />}
+                {sectionBusy ? 'Extraction…' : 'Ré-extraire les contours'}
               </button>
             )}
-            {section.rerunnable === 'laser_svg' && (
+            {section.rerunnable === 'laser_svg' && !studioExpanded && (
               <button
                 type="button"
                 disabled={!!busy}
                 onClick={runLaserSvgRegen}
-                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-stone-950 text-sm font-semibold"
               >
-                {busy === 'laser_svg' ? 'Génération…' : 'Regénérer SVG laser'}
+                {sectionBusy && <Spinner size="sm" className="border-stone-950/30 border-t-stone-950" />}
+                {sectionBusy ? 'Génération…' : 'Régénérer SVG laser avec paramètres du Labo'}
               </button>
             )}
           </div>
 
           {section.rerunnable === 'laser_svg' && (
-            <p className="text-xs text-stone-500">
-              Stocké en base (Supabase + R2) avec numérotation v1, v2…
-              {' '}
-              « Regénérer » utilise les PNG actifs et les paramètres du labo.
-              {' '}
-              <Link to={`/lab?gen=${id}`} className="text-amber-500/90 hover:text-amber-400">Ouvrir le labo →</Link>
-            </p>
+            <>
+              <LaserStudioPanel
+                embedded
+                expanded={studioExpanded}
+                onExpandedChange={setStudioExpanded}
+                generationId={id}
+                steps={data.steps}
+                faceCount={gen.face_count}
+                generationData={data}
+                disabled={!!busy}
+                onSaved={() => load({ silent: true })}
+              />
+              <p className="text-xs text-stone-500">
+                {studioExpanded
+                  ? 'Le bouton « Générer SVG avec paramètres Studio » enregistre une nouvelle version avec les réglages du panneau ci-dessus.'
+                  : 'Le bouton « Régénérer SVG laser avec paramètres du Labo » applique les paramètres globaux du pipeline sans ouvrir le studio.'}
+                {' '}
+                <Link to={`/lab/trace?gen=${id}`} className="text-amber-500/90 hover:text-amber-400">Labo trace →</Link>
+              </p>
+            </>
           )}
 
           {section.rerunnable === 'fal' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Prompt</label>
-              <textarea
-                className="w-full rounded-lg bg-stone-800 border border-stone-700 text-stone-100 text-sm p-3 font-mono min-h-24 focus:outline-none focus:border-amber-500"
-                value={prompts[section.types[0]]}
-                onChange={e => setPrompts(p => ({ ...p, [section.types[0]]: e.target.value }))}
-              />
+            <div className="space-y-3">
+              {section.types[0] === 'step2' && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
+                    Référence line art (style)
+                  </p>
+                  <div className="max-w-[220px] rounded-lg border border-stone-700 bg-white p-2">
+                    <ImageWithZoom
+                      src={refImageUrl}
+                      label="Référence line art"
+                      className="w-full"
+                      imgClassName="w-full h-auto object-contain"
+                    />
+                  </div>
+                  <p className="text-[10px] text-stone-600 leading-snug">
+                    2e image envoyée à fal.ai avec la mise en scène (étape 1).
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1.5 max-w-xs">
+                <label className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Résolution</label>
+                <select
+                  className="w-full rounded-lg bg-stone-800 border border-stone-700 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
+                  value={resolutions[section.types[0]]}
+                  disabled={!!busy}
+                  onChange={e => setResolutions(r => ({ ...r, [section.types[0]]: e.target.value }))}
+                >
+                  {FAL_STEP_RESOLUTIONS.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Prompt</label>
+                <textarea
+                  className="w-full rounded-lg bg-stone-800 border border-stone-700 text-stone-100 text-sm p-3 font-mono min-h-24 focus:outline-none focus:border-amber-500"
+                  value={prompts[section.types[0]]}
+                  onChange={e => setPrompts(p => ({ ...p, [section.types[0]]: e.target.value }))}
+                />
+              </div>
             </div>
           )}
 
@@ -360,7 +583,8 @@ export default function AdminGenerationPage() {
             )
           })}
         </section>
-      ))}
+        )
+      })}
     </div>
   )
 }

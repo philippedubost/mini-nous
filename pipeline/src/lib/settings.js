@@ -2,6 +2,11 @@ export const STEP_LABELS = ['Détection', 'Mise en scène', 'Line Art', 'SVG las
 
 export const RESOLUTIONS = ['1K', '2K', '4K']
 
+/** Résolutions fal.ai pour mise en scène et line art. */
+export const FAL_STEP_RESOLUTIONS = ['1K', '2K']
+
+export const DEFAULT_FAL_STEP_RESOLUTION = '2K'
+
 export const ASPECT_RATIOS = ['16:9', '4:3', '1:1', '3:4', '9:16']
 
 export const IMAGE_INPUT_OPTIONS = [
@@ -16,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   aspectRatio: '16:9',
   steps: [
     {
+      resolution: '2K',
       prompt: `Mettre ces personnes debout de gauche à droite séparées de 50cm en vue orthogonale sur fond blanc
 
 Gap entre chaque personne ne doivent passe toucher
@@ -28,6 +34,7 @@ Aucun texte, aucun label, aucune annotation sur l'image`,
       imageInputs: ['user'],
     },
     {
+      resolution: '2K',
       prompt: `Mettre toutes les personnes de l'image 1 debout de gauche à droite séparées de 1m en vue orthogonale sur fond blanc pur
 Les personnages ne doivent pas se toucher, garder un espace clair entre chacun
 
@@ -102,4 +109,15 @@ export function buildPrompt1(faceCount, basePrompt) {
  */
 export function resolveImageUrls(imageInputs, urlMap) {
   return imageInputs.map(id => urlMap[id]).filter(Boolean)
+}
+
+/** Format fal.ai pour une étape (résolution propre à l'étape ou repli global). */
+export function falStepFormat(step, globalSettings = {}) {
+  return {
+    resolution: step?.resolution ?? globalSettings.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
+    aspectRatio: step?.aspectRatio
+      ?? globalSettings.aspectRatio
+      ?? globalSettings.aspect_ratio
+      ?? DEFAULT_SETTINGS.aspectRatio,
+  }
 }

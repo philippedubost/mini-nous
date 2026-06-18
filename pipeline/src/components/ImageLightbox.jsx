@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 
+function isSvgUrl(url) {
+  return /\.svg(\?|$)/i.test(url ?? '')
+    || (url ?? '').includes('image/svg')
+    || (url ?? '').startsWith('data:image/svg')
+}
+
 function LoupeIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -52,6 +58,7 @@ export default function ImageLightbox({ src, title, onClose, images, initialInde
   const [dragStart, setDragStart] = useState(null)
 
   const current = list[index] ?? list[0]
+  const whiteCanvas = isSvgUrl(current.src)
 
   const resetView = useCallback(() => {
     setScale(1)
@@ -151,7 +158,9 @@ export default function ImageLightbox({ src, title, onClose, images, initialInde
       </div>
 
       <div
-        className="flex-1 flex items-center justify-center overflow-hidden touch-none select-none"
+        className={`flex-1 flex items-center justify-center overflow-hidden touch-none select-none p-6 ${
+          whiteCanvas ? 'bg-stone-300' : ''
+        }`}
         onClick={e => e.stopPropagation()}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
@@ -160,17 +169,23 @@ export default function ImageLightbox({ src, title, onClose, images, initialInde
         onPointerLeave={onPointerUp}
         style={{ cursor: scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in' }}
       >
-        <img
-          src={current.src}
-          alt={current.title ?? ''}
-          draggable={false}
-          className="max-w-[min(96vw,100%)] max-h-[min(82vh,100%)] object-contain transition-transform duration-75"
-          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
-          onClick={e => {
-            e.stopPropagation()
-            if (scale === 1) setScale(2)
-          }}
-        />
+        <div
+          className={whiteCanvas
+            ? 'bg-white rounded-xl shadow-2xl p-6 max-w-[min(96vw,100%)] max-h-[min(82vh,100%)] flex items-center justify-center'
+            : 'max-w-[min(96vw,100%)] max-h-[min(82vh,100%)] flex items-center justify-center'}
+        >
+          <img
+            src={current.src}
+            alt={current.title ?? ''}
+            draggable={false}
+            className="max-w-full max-h-[min(76vh,100%)] object-contain transition-transform duration-75"
+            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
+            onClick={e => {
+              e.stopPropagation()
+              if (scale === 1) setScale(2)
+            }}
+          />
+        </div>
       </div>
 
       {list.length > 1 && (

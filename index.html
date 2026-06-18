@@ -6,10 +6,9 @@
 <title>Les MiniNous — Vos personnages, taillés dans le bois.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.9/babel.min.js"></script>
 <style>
 :root {
   --clay:#C0684A; --clay-light:#E8A088; --clay-pale:#FAF0EB; --clay-deep:#8A4030;
@@ -111,21 +110,210 @@ input{font-family:inherit}
   .how-card{display:flex !important; align-items:center; gap:16px; text-align:left !important; padding:16px 18px !important}
   .how-card p{margin:0}
 }
+
+/* FOMO + packs */
+.fomo-bar{position:sticky;top:0;z-index:60;background:linear-gradient(90deg,var(--dark) 0%,#3d2a1c 100%);color:#fff;padding:10px 20px;text-align:center;font-size:.82rem;font-weight:600;letter-spacing:.02em;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.fomo-bar strong{color:#FCD34D}
+.fomo-countdown{font-variant-numeric:tabular-nums;margin-left:8px;color:var(--clay-light)}
+.pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:28px}
+@media(max-width:768px){.pack-grid{grid-template-columns:1fr}}
+.pack-card{background:#fff;border-radius:20px;padding:28px 24px;border:2px solid var(--bark-pale);transition:all var(--t);text-align:left;display:flex;flex-direction:column;gap:12px}
+.pack-card:hover{border-color:var(--clay);box-shadow:0 12px 40px rgba(192,104,74,.15);transform:translateY(-4px)}
+.pack-card.featured{border-color:var(--clay);box-shadow:0 16px 48px rgba(192,104,74,.2)}
+.pack-price{font-family:Quicksand,sans-serif;font-size:1.75rem;font-weight:700;color:var(--dark);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.pack-price small{font-size:.85rem;font-weight:500;color:var(--muted)}
+.pack-price .pack-shipping{font-size:.72rem;font-weight:500;color:var(--muted)}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
+/** @jsx React.createElement */
 const { useState, useEffect, useRef, useCallback } = React;
+
+async function checkoutPack(packId, faceCount) {
+  const res = await fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pack: packId, faceCount }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Erreur paiement');
+  window.location.href = data.url;
+}
+
+const EXTRA_PERSON_EUR = 4.5;
+const MAX_FACES = 8;
+
+function computeDynamicQuote(faceCount, packs, extraPersonEur = EXTRA_PERSON_EUR) {
+  const n = Number(faceCount);
+  if (!Number.isFinite(n) || n < 1) return { ok: false, reason: 'invalid' };
+  if (n > MAX_FACES) return { ok: false, reason: 'too_many', faceCount: n, maxFaces: MAX_FACES };
+
+  const list = packs?.length ? packs : DEFAULT_PACKS;
+  const sorted = [...list].sort((a, b) => a.faceCount - b.faceCount);
+  let basePack = sorted[0];
+  for (const p of sorted) {
+    if (p.faceCount <= n) basePack = p;
+  }
+  const extraCount = Math.max(0, n - basePack.faceCount);
+  const basePrice = Number(basePack.priceEur);
+  const shipping = Number(basePack.shippingEur) || 0;
+  const extraTotal = extraCount * Number(extraPersonEur);
+  const total = basePrice + extraTotal + shipping;
+
+  return {
+    ok: true,
+    faceCount: n,
+    basePack,
+    extraCount,
+    extraPersonEur: Number(extraPersonEur).toFixed(2),
+    basePriceEur: basePrice.toFixed(2),
+    shippingEur: shipping.toFixed(2),
+    totalEur: total.toFixed(2),
+    label: extraCount > 0 ? `${basePack.label} + ${extraCount} pers.` : basePack.label,
+  };
+}
+
+function useWeekStatus() {
+  const [status, setStatus] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    fetch('/api/week-status')
+      .then(r => r.json())
+      .then(setStatus)
+      .catch(e => setErr(e.message));
+  }, []);
+  return { status, err };
+}
+
+function FomoBar() {
+  const { status } = useWeekStatus();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const cutoff = status?.cutoffAt ? new Date(status.cutoffAt).getTime() : null;
+  const remaining = status?.displayRemaining ?? status?.remaining ?? '…';
+  const capacity = status?.capacity ?? 100;
+
+  let countdown = '—';
+  if (cutoff) {
+    const diff = Math.max(0, cutoff - now);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    countdown = `${h}h${String(m).padStart(2,'0')}m${String(s).padStart(2,'0')}s`;
+  }
+
+  return (
+    <div className="fomo-bar">
+      Fabrication sur-mesure - Production tous les mardis 10H
+      {' - '}
+      <span className="fomo-countdown">{countdown}</span>
+      {' · '}
+      <strong>{remaining} / {capacity}</strong> places restantes
+    </div>
+  );
+}
+
+const DEFAULT_PACKS = [
+  { id:'duo', label:'Pack Duo', faceCount:2, priceEur:'19.90', shippingEur:'7.00', totalEur:'26.90' },
+  { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'29.90', shippingEur:'0.00', totalEur:'29.90' },
+  { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'44.90', shippingEur:'0.00', totalEur:'44.90' },
+];
+
+const PACK_PREVIEWS = {
+  duo: 'images/apres-ref.png',
+  famille: 'images/apres-ref.png',
+  grande_famille: 'images/apres-ref.png',
+};
+
+function getPackDef(packId, packs) {
+  const list = packs?.length ? packs : DEFAULT_PACKS;
+  const base = list.find(p => p.id === packId) || list[0];
+  return { ...base, preview: PACK_PREVIEWS[base.id] || 'images/apres-ref.png' };
+}
+
+/** Pack catalogue le plus adapté au nombre de visages détectés. */
+function packIdForFaceCount(faceCount) {
+  const n = Number(faceCount);
+  if (!n || n < 1) return 'famille';
+  if (n <= 2) return 'duo';
+  if (n <= 4) return 'famille';
+  return 'grande_famille';
+}
+
+const PACK_CTA = {
+  duo: 'Voir l\'exemple Duo →',
+  famille: 'Voir l\'exemple Famille →',
+  grande_famille: 'Voir l\'exemple Grande Famille →',
+};
+
+function PackCards({ onPackExample }) {
+  const { status } = useWeekStatus();
+
+  const packs = status?.packs ?? DEFAULT_PACKS;
+  const soldOut = status && status.remaining <= 0;
+
+  return (
+    <div id="packs">
+      <div style={{ maxWidth:960, margin:'0 auto', textAlign:'center' }}>
+        <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.95rem' }}>
+          Fabrication artisanale sur-mesure · Réception vendredi chez vous · Places limitées
+        </p>
+        <p style={{ color:'var(--clay-deep)', marginBottom:24, lineHeight:1.65, fontSize:'.82rem',
+          maxWidth:560, marginLeft:'auto', marginRight:'auto' }}>
+          Les visuels ci-dessous sont des <strong>exemples du rendu atelier</strong> (figurines bois sur établi) —
+          pas votre photo. Uploadez la vôtre pour voir votre groupe en figurines bois.
+        </p>
+        <div className="pack-grid">
+          {packs.map((p, i) => (
+            <div key={p.id} className={`pack-card${i === 1 ? ' featured' : ''}`}>
+              {i === 1 && (
+                <span className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', alignSelf:'flex-start' }}>
+                  Le plus populaire
+                </span>
+              )}
+              <h3 style={{ fontFamily:'Quicksand', color:'var(--dark)', fontSize:'1.15rem' }}>{p.label}</h3>
+              <p style={{ fontSize:'.85rem', color:'var(--muted)' }}>
+                {p.faceCount} personnage{p.faceCount > 1 ? 's' : ''}
+              </p>
+              <div className="pack-price">
+                {(p.priceEur ?? p.totalEur)} € <small>TTC</small>
+                {Number(p.shippingEur) > 0 ? (
+                  <span className="pack-shipping">+ {Number(p.shippingEur).toFixed(0)} € de port</span>
+                ) : (
+                  <span className="pack-shipping">🎁 port offert</span>
+                )}
+              </div>
+              <button className="btn-clay" style={{ width:'100%', padding:'14px', marginTop:'auto', opacity: soldOut ? .5 : 1 }}
+                disabled={soldOut}
+                onClick={() => onPackExample?.(p.id)}>
+                {soldOut ? 'Complet cette semaine' : (PACK_CTA[p.id] || 'Essayer avec ma photo')}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:16 }}>
+          Aperçu gratuit · Paiement après validation de votre rendu
+        </p>
+      </div>
+    </div>
+  );
+}
 
 /* ─── ASSETS ──────────────────────────────────────────────────── */
 const IMG = {
   hero:      'images/hero.webp',
-  before:    'images/avant.webp',
-  after:     'images/apres.webp',
+  before:    'images/avant.jpg',
+  after:     'images/apres-ref.png',
   upload:    'images/527aeebb-1231-4d0c-beb3-04f39541f80c.jpg',
   lifestyle: 'images/af5dfcad-37bc-4917-99fd-c47c7d53d8a2.jpg',
-  atelier:   'images/apres.webp',
+  atelier:   'images/apres-ref.png',
+  refFal:    'images/apres-ref.png',
 };
 
 /* Face boxes on the "before" photo — 7 people */
@@ -151,7 +339,7 @@ const PEOPLE = [
 
 const PROC_STEPS = [
   'On regarde votre photo de près…',
-  'On reconnaît chaque visage (7 trouvés)…',
+  'On repère chaque personnage (7 trouvés)…',
   'On dessine les contours de chaque personnage…',
   'On prépare les gabarits sur mesure…',
   'On vérifie les proportions de chacun…',
@@ -313,13 +501,187 @@ function BeforeAfter() {
   );
 }
 
-/* ─── STATE 1 · LANDING ───────────────────────────────────────── */
-function Landing({ go }) {
+/* ─── DÉTECTION VISAGES (face-api.js) ─────────────────────────── */
+let faceApiReady = false;
+async function loadFaceApi() {
+  if (faceApiReady) return;
+  await new Promise((resolve, reject) => {
+    if (window.faceapi) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  const tf = window.faceapi.tf;
+  try {
+    await tf.setBackend('cpu');
+    await tf.ready();
+  } catch {
+    /* WebGL indisponible — CPU déjà actif ou fallback silencieux */
+  }
+  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+  await window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+  faceApiReady = true;
+}
+
+async function detectFaceCount(dataUrl) {
+  try {
+    await loadFaceApi();
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    const detections = await window.faceapi.detectAllFaces(
+      img,
+      new window.faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.32 }),
+    );
+    return detections.length;
+  } catch (err) {
+    console.warn('[face-api] détection impossible:', err?.message || err);
+    return 0;
+  }
+}
+
+function isImageFile(file) {
+  return file && (
+    file.type?.startsWith('image/')
+    || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name || '')
+  );
+}
+
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const photoUrl = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.onload = () => resolve({ photoUrl, photoBase64: reader.result });
+    reader.onerror = () => { URL.revokeObjectURL(photoUrl); reject(new Error('Lecture impossible')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ─── ZONE UPLOAD RÉUTILISABLE ────────────────────────────────── */
+function PhotoUploadZone({ onFile, compact, label, hint }) {
   const [drag, setDrag] = useState(false);
   const fileRef = useRef(null);
 
+  const handle = (file) => {
+    if (!isImageFile(file)) {
+      alert('Choisissez une image (JPG, PNG, HEIC…).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image trop lourde — maximum 5 Mo.');
+      return;
+    }
+    onFile(file);
+  };
+
+  return (
+    <div
+      className={`dropzone${drag ? ' drag-over' : ''}`}
+      style={{ padding: compact ? '28px 20px' : '56px 32px', cursor:'pointer' }}
+      onClick={() => fileRef.current?.click()}
+      onDragOver={e => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer?.files?.[0]); }}
+    >
+      <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }}
+        onChange={e => { handle(e.target.files?.[0]); e.target.value = ''; }} />
+      <div style={{ fontSize: compact ? '2rem' : '3.5rem', marginBottom: compact ? 8 : 14 }}>📸</div>
+      <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize: compact ? '1rem' : '1.2rem' }}>
+        {label || 'Glissez votre photo de groupe ici'}
+      </h3>
+      <p style={{ color:'var(--muted)', marginBottom: compact ? 16 : 24, fontSize:'.88rem' }}>
+        {hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 5 Mo'}
+      </p>
+      <button type="button" className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem' }}
+        onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
+        Choisir une photo
+      </button>
+    </div>
+  );
+}
+
+/* ─── APERÇU FILIGRANÉ ────────────────────────────────────────── */
+function WatermarkedPreview({ src, alt, style = {} }) {
+  const [displaySrc, setDisplaySrc] = useState(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!src) { setDisplaySrc(null); return undefined; }
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = '#2C1F14';
+      const fontSize = Math.max(14, Math.round(w / 14));
+      ctx.font = `700 ${fontSize}px Quicksand, Montserrat, sans-serif`;
+      const stepY = fontSize * 2.6;
+      const stepX = fontSize * 6.2;
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(-24 * Math.PI / 180);
+      for (let y = -h; y < h * 2; y += stepY) {
+        for (let x = -w; x < w * 2; x += stepX) {
+          ctx.fillText('MiniNous', x, y);
+        }
+      }
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#2C1F14';
+      const big = Math.max(28, Math.round(w / 5.5));
+      ctx.font = `800 ${big}px Quicksand, Montserrat, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate(-18 * Math.PI / 180);
+      ctx.fillText('APERÇU', 0, 0);
+      ctx.restore();
+      setDisplaySrc(canvas.toDataURL('image/jpeg', 0.58));
+      setFailed(false);
+    };
+    img.onerror = () => {
+      if (!cancelled) { setFailed(true); setDisplaySrc(src); }
+    };
+    const loadUrl = (src.startsWith('http://') || src.startsWith('https://'))
+      ? `/api/proxy-image?url=${encodeURIComponent(src)}`
+      : src;
+    img.src = loadUrl;
+    return () => { cancelled = true; };
+  }, [src]);
+
+  if (!src) return null;
+  if (!displaySrc && !failed) {
+    return (
+      <div style={{ ...style, minHeight: 220, display:'flex', alignItems:'center',
+        justifyContent:'center', background:'var(--bark-pale)', borderRadius:20 }}>
+        <span className="spin" style={{ width:32, height:32, border:'3px solid var(--bark-light)',
+          borderTopColor:'var(--clay)', borderRadius:'50%', display:'inline-block' }}/>
+      </div>
+    );
+  }
+  return (
+    <img src={displaySrc || src} alt={alt} style={style} draggable="false"/>
+  );
+}
+
+/* ─── STATE 1 · LANDING ───────────────────────────────────────── */
+function Landing({ onPackExample, onPhotoUpload }) {
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
+      <FomoBar />
       {/* Nav */}
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'16px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -335,13 +697,9 @@ function Landing({ go }) {
             style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
             ⭐ 4.9/5
           </span>
-          <a href="/pipeline" className="btn-ghost hide-mobile"
-            style={{ padding:'10px 18px', fontSize:'.82rem', textDecoration:'none', display:'inline-flex', alignItems:'center' }}>
-            Pipeline
-          </a>
           <button className="btn-clay" style={{ padding:'10px 22px', fontSize:'.88rem' }}
-            onClick={() => go('processing')}>
-            Créer mes figurines
+            onClick={() => document.getElementById('photo-upload')?.scrollIntoView({ behavior:'smooth' })}>
+            Essayer ma photo
           </button>
         </div>
       </nav>
@@ -363,22 +721,22 @@ function Landing({ go }) {
             </h1>
             <p style={{ color:'var(--muted)', fontSize:'1.02rem', lineHeight:1.78,
               marginBottom:32, maxWidth:460 }}>
-              Une photo de groupe suffit. Notre technologie et nos équipes détectent et tracent
-              les personnages pour une découpe précise, fabriquée à Nantes.
+              Une photo de groupe suffit. Nos artisans repèrent chaque personnage et tracent
+              les contours pour une découpe précise, fabriquée à Nantes.
             </p>
             <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
                 display:'flex', alignItems:'center', gap:10 }}
-                onClick={() => go('processing')}>
+                onClick={() => document.getElementById('photo-upload')?.scrollIntoView({ behavior:'smooth' })}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M12 16V8m0 0l-4 4m4-4l4 4" stroke="#fff" strokeWidth="2.5"
                     strokeLinecap="round" strokeLinejoin="round"/>
                   <rect x="3" y="18" width="18" height="2" rx="1" fill="rgba(255,255,255,.55)"/>
                 </svg>
-                Envoyer ma photo
+                Essayer gratuitement avec ma photo
               </button>
               <span style={{ fontSize:'.78rem', color:'var(--muted)' }}>
-                Gratuit pour prévisualiser
+                Édition limitée · 100 persos / semaine
               </span>
             </div>
           </div>
@@ -448,45 +806,37 @@ function Landing({ go }) {
         </div>
       </section>
 
-      {/* Dropzone */}
-      <section style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
+      {/* Upload photo direct */}
+      <section id="photo-upload" style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
         <div style={{ maxWidth:680, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:12 }}>Prêt à créer le vôtre ?</h2>
-          <p style={{ color:'var(--muted)', marginBottom:36, lineHeight:1.7 }}>
-            Partagez votre photo — la prévisualisation est gratuite et sans engagement.
+          <h2 style={{ color:'var(--dark)', marginBottom:12 }}>Essayez avec votre photo</h2>
+          <p style={{ color:'var(--muted)', marginBottom:20, lineHeight:1.7 }}>
+            On prépare un aperçu de votre groupe en figurines bois sur l&apos;établi d&apos;atelier —
+            comme le rendu final (filigrané, version indicative).
           </p>
-          <div className={`dropzone${drag ? ' drag-over' : ''}`}
-            style={{ padding:'56px 32px', cursor:'pointer' }}
-            onClick={() => fileRef.current?.click()}
-            onDragOver={e => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={e => { e.preventDefault(); setDrag(false); go('processing'); }}>
-            <input ref={fileRef} type="file" accept="image/*"
-              style={{ display:'none' }} onChange={() => go('processing')}/>
-            <div style={{ fontSize:'3.5rem', marginBottom:14 }}>📸</div>
-            <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.2rem' }}>
-              Glissez votre photo de groupe ici
-            </h3>
-            <p style={{ color:'var(--muted)', marginBottom:24, fontSize:'.88rem' }}>
-              Jusqu'à 8 personnes · JPG, PNG, HEIC · Max 20 Mo
-            </p>
-            <button className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem' }}
-              onClick={e => { e.stopPropagation(); go('processing'); }}>
-              Choisir une photo
-            </button>
-          </div>
-
-          {/* Lifestyle grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginTop:40 }}>
-            {[IMG.lifestyle, IMG.atelier].map((src, i) => (
-              <div key={i} style={{ borderRadius:16, overflow:'hidden',
-                boxShadow:'0 8px 24px rgba(44,31,20,.1)' }}>
-                <img src={src} alt="" style={{ width:'100%', height:200, objectFit:'cover' }}/>
-              </div>
-            ))}
-          </div>
-
+          <PhotoUploadZone
+            onFile={onPhotoUpload}
+            label="Glissez votre photo de groupe ici"
+            hint="Jusqu'à 8 personnages · Aperçu gratuit de votre rendu atelier"
+          />
         </div>
+      </section>
+
+      {/* Lifestyle */}
+      <section style={{ padding:'0 28px 60px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:680, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+          {[IMG.lifestyle, IMG.atelier].map((src, i) => (
+            <div key={i} style={{ borderRadius:16, overflow:'hidden',
+              boxShadow:'0 8px 24px rgba(44,31,20,.1)' }}>
+              <img src={src} alt="" style={{ width:'100%', height:200, objectFit:'cover' }}/>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Tarifs / packs — tout en bas */}
+      <section id="upload-zone" style={{ padding:'80px 28px 96px', background:'var(--cream)' }}>
+        <PackCards onPackExample={onPackExample} />
       </section>
 
       {/* Footer */}
@@ -503,91 +853,37 @@ function Landing({ go }) {
   );
 }
 
-/* ─── STATE 2 · PROCESSING ────────────────────────────────────── */
-function Processing({ go }) {
-  const [progress, setProgress] = useState(0);
-  const [stepIdx, setStepIdx] = useState(0);
-
+/* ─── ENCADRÉ PREVIEW + CHARGEMENT ────────────────────────────── */
+function PreviewLoadingEncart({ photoUrl, message }) {
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-
-    // Progress
-    const prog = setInterval(() => {
-      setProgress(p => { if (p >= 100) { clearInterval(prog); return 100; } return p + 1.35; });
-    }, 75);
-
-    // Steps
-    const stps = setInterval(() => {
-      setStepIdx(i => { if (i >= PROC_STEPS.length - 1) { clearInterval(stps); return i; } return i + 1; });
-    }, 1050);
-
-    // Auto-advance
-    const adv = setTimeout(() => go('pricing'), 7400);
-
-    return () => { clearInterval(prog); clearInterval(stps); clearTimeout(adv); };
-  }, [go]);
-
+    const t = setInterval(() => setTick(x => x + 1), 2400);
+    return () => clearInterval(t);
+  }, []);
+  const msgs = [
+    'On isole chaque personnage…',
+    'Pose de face, figurines séparées…',
+    'Alignement côte à côte sur l\'établi…',
+    'Dernières retouches sur l\'établi…',
+  ];
   return (
-    <div className="screen" style={{ background:'var(--dark)', display:'flex',
-      alignItems:'center', justifyContent:'center', padding:28 }}>
-      <div style={{ maxWidth:680, width:'100%', textAlign:'center' }}>
-        <div className="tag" style={{ background:'rgba(0,255,136,.12)',
-          color:'#00FF88', marginBottom:24 }}>
-          <span className="pulse" style={{ width:8, height:8, borderRadius:'50%',
-            background:'#00FF88', display:'inline-block' }}/>
-          &nbsp;Préparation en cours
-        </div>
-        <h2 style={{ color:'#fff', marginBottom:32, fontFamily:'Quicksand',
-          fontSize:'clamp(1.5rem,3vw,2.2rem)' }}>
-          On regarde votre photo de près…
-        </h2>
-
-        {/* Photo */}
-        <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
-          marginBottom:28, boxShadow:'0 24px 60px rgba(0,0,0,.5)' }}>
-          <img src={IMG.before} alt="Analyse" style={{ width:'100%', display:'block',
-            filter:'brightness(.82) contrast(1.08) saturate(.9)' }}/>
-          <div className="scan-line"/>
-          <div style={{ position:'absolute', inset:0, pointerEvents:'none',
-            background:'linear-gradient(180deg,transparent 55%,rgba(44,31,20,.65) 100%)' }}/>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ background:'rgba(255,255,255,.08)', borderRadius:100, height:8,
-          marginBottom:14, overflow:'hidden' }}>
-          <div className="prog-fill" style={{ width:`${Math.min(progress, 100)}%` }}/>
-        </div>
-        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:28 }}>
-          <span style={{ color:'#00FF88', fontSize:'.8rem', fontWeight:600,
-            fontFamily:'monospace' }}>
-            {PROC_STEPS[stepIdx]}
-          </span>
-          <span style={{ color:'rgba(255,255,255,.4)', fontSize:'.8rem' }}>
-            {Math.min(Math.round(progress), 100)}%
-          </span>
-        </div>
-
-        {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
-          {[
-            { l:'Personnages repérés', v:'7/7' },
-            { l:'Fidélité',          v:'97.4%' },
-            { l:'Détails dessinés',  v:'2 884' },
-          ].map(s => (
-            <div key={s.l} style={{ background:'rgba(255,255,255,.05)',
-              border:'1px solid rgba(255,255,255,.08)', borderRadius:14, padding:'18px 14px' }}>
-              <div style={{ color:'#fff', fontFamily:'Quicksand', fontWeight:700,
-                fontSize:'1.5rem', marginBottom:4 }}>{s.v}</div>
-              <div style={{ color:'rgba(255,255,255,.4)', fontSize:'.72rem' }}>{s.l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Skip */}
-        <button style={{ marginTop:28, color:'rgba(255,255,255,.3)', fontSize:'.75rem',
-          background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}
-          onClick={() => go('pricing')}>
-          Passer →
-        </button>
+    <div style={{ position:'relative', minHeight:280, background:'var(--bark-pale)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
+      {photoUrl && (
+        <img src={photoUrl} alt="" style={{
+          position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover',
+          opacity:.25, filter:'blur(2px) grayscale(.2)',
+        }}/>
+      )}
+      <div className="scan-line" style={{ position:'absolute', inset:0, opacity:.6 }}/>
+      <div style={{ position:'relative', zIndex:1, textAlign:'center', padding:'24px' }}>
+        <div style={{ width:44, height:44, border:'3px solid var(--bark-light)',
+          borderTopColor:'var(--clay)', borderRadius:'50%', margin:'0 auto 16px',
+          animation:'spin .9s linear infinite' }}/>
+        <p style={{ color:'var(--dark)', fontWeight:700, fontSize:'.92rem', marginBottom:6 }}>
+          {message || msgs[tick % msgs.length]}
+        </p>
+        <p style={{ color:'var(--muted)', fontSize:'.78rem' }}>Aperçu filigrané · version indicative</p>
       </div>
     </div>
   );
@@ -693,174 +989,332 @@ function StripeModal({ total, onPay, onClose }) {
   );
 }
 
-/* ─── STATE 3 · PRICING ───────────────────────────────────────── */
-function Pricing({ go }) {
-  const N = 7;
-  const [socle, setSocle] = useState(false);
-  const [taille, setTaille] = useState(false);
-  const [showStripe, setShowStripe] = useState(false);
+/* ─── CONFIRMATION NOMBRE DE PERSONNAGES ─────────────────────────── */
+function PersonCountQuestion({ count, detected, max, onChange, photoUrl }) {
+  const n = Number(count) || 2;
+  const set = (next) => onChange(Math.max(1, Math.min(max, next)));
 
-  const base = 49, extra = (N - 2) * 12;
-  const total = base + extra + (socle ? 15 : 0) + (taille ? 20 : 0);
+  return (
+    <div style={{ padding:'14px 16px', background:'#fff', border:'1.5px solid var(--bark-light)',
+      borderRadius:14, textAlign:'left' }}>
+      <div style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+        {photoUrl && (
+          <img src={photoUrl} alt="Votre photo" style={{
+            width:80, height:60, objectFit:'cover', borderRadius:8,
+            border:'2px solid var(--bark-light)', flexShrink:0,
+          }}/>
+        )}
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
+            color:'var(--dark)', lineHeight:1.55, marginBottom:12 }}>
+            Il y a bien{' '}
+            <span style={{ color:'var(--clay)' }}>{n} personne{n > 1 ? 's' : ''}</span>
+            {' '}sur votre photo&nbsp;?
+          </p>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <button type="button" aria-label="Moins une personne"
+              onClick={() => set(n - 1)}
+              disabled={n <= 1}
+              style={{ width:36, height:36, borderRadius:9, border:'1.5px solid var(--bark-light)',
+                background:'var(--bark-pale)', fontSize:'1.15rem', fontWeight:700, color:'var(--dark)',
+                cursor: n <= 1 ? 'not-allowed' : 'pointer', opacity: n <= 1 ? .4 : 1 }}>
+              −
+            </button>
+            <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.35rem',
+              color:'var(--dark)', minWidth:28, textAlign:'center' }}>{n}</span>
+            <button type="button" aria-label="Plus une personne"
+              onClick={() => set(n + 1)}
+              disabled={n >= max}
+              style={{ width:36, height:36, borderRadius:9, border:'1.5px solid var(--bark-light)',
+                background:'var(--bark-pale)', fontSize:'1.15rem', fontWeight:700, color:'var(--dark)',
+                cursor: n >= max ? 'not-allowed' : 'pointer', opacity: n >= max ? .4 : 1 }}>
+              +
+            </button>
+            <span style={{ fontSize:'.75rem', color:'var(--muted)', lineHeight:1.45 }}>
+              Ajustez si ce n&apos;est pas le bon nombre
+            </span>
+          </div>
+          {detected != null && detected !== n && (
+            <p style={{ fontSize:'.75rem', color:'var(--clay)', marginTop:10, lineHeight:1.5 }}>
+              Nous en avions repéré {detected} sur la photo — corrigez si besoin.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── STATE 3 · PAYWALL ───────────────────────────────────────── */
+function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewReady, onPreviewError, onFaceCountChange }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const previewGenKey = useRef(null);
+  const soldOut = status && status.remaining <= 0;
+  const extraEur = Number(status?.extraPersonEur) || EXTRA_PERSON_EUR;
+
+  const faceCountForQuote = session?.enterVia === 'upload'
+    ? (session.faceCount ?? session.detectedFaces ?? 2)
+    : packDef?.faceCount;
+  const quote = computeDynamicQuote(faceCountForQuote, packs, extraEur);
+  const tooManyFaces = !quote?.ok && quote?.reason === 'too_many';
+  const hasQuote = quote?.ok;
+  const showCountAdjuster = session?.enterVia === 'upload' && session?.photoBase64;
+
+  const isExampleOnly = session?.enterVia === 'pack' && !session?.photoBase64;
+  const hasAiPreview = !!session?.previewUrl;
+  const previewFailed = session?.error && !session?.previewUrl;
+  const previewLoading = !!session?.previewLoading && session?.photoBase64 && !hasAiPreview && !previewFailed && !tooManyFaces;
+  const previewSrc = hasAiPreview ? session.previewUrl : packDef?.preview;
+
+  useEffect(() => {
+    const key = session?.photoBase64;
+    const gen = session?.previewGen ?? 0;
+    if (!key || session.enterVia !== 'upload' || tooManyFaces || !gen) return undefined;
+    if (hasAiPreview && !session.previewLoading) return undefined;
+    const token = `${gen}:${session.faceCount ?? 0}:${key.length}`;
+    if (previewGenKey.current === token) return undefined;
+    previewGenKey.current = token;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/landing-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            photoBase64: key,
+            faceCount: session.faceCount ?? session.detectedFaces ?? null,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+        if (!cancelled) onPreviewReady?.(data.previewUrl);
+      } catch {
+        if (!cancelled) onPreviewError?.();
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [
+    session?.photoBase64, session?.enterVia, session?.faceCount, session?.detectedFaces,
+    session?.previewGen, session?.previewLoading, tooManyFaces, hasAiPreview,
+    onPreviewReady, onPreviewError,
+  ]);
+
+  const pay = async () => {
+    if (!hasQuote || tooManyFaces) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await checkoutPack(quote.basePack.id, quote.faceCount);
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.25rem',
-          color:'var(--dark)' }}>
+        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.25rem', color:'var(--dark)' }}>
           <span style={{ color:'var(--clay)' }}>Mini</span>Nous
         </div>
-        <div className="tag" style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
-          ✓ 7 personnages reconnus
+        <div className="tag" style={{ background: tooManyFaces ? 'var(--clay-pale)' : 'var(--forest-pale)',
+          color: tooManyFaces ? 'var(--clay-deep)' : 'var(--forest)' }}>
+          {tooManyFaces
+            ? `⚠ ${faceCountForQuote} personnages — max ${MAX_FACES}`
+            : hasQuote && showCountAdjuster
+              ? `✓ ${quote.faceCount} pers. · ${quote.label}`
+              : hasQuote && session?.detectedFaces
+                ? `✓ ${session.detectedFaces} pers. · ${quote.label}`
+                : `✓ ${packDef?.label} · exemple`}
         </div>
       </nav>
 
       <div className="two-col" style={{ maxWidth:1100, margin:'0 auto', padding:'44px 28px',
         display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
 
-        {/* LEFT — Preview */}
         <div>
-          <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)',
-            marginBottom:18 }}>
-            🎨 Premier aperçu
+          <div className="tag" style={{
+            background: isExampleOnly ? 'var(--bark-pale)' : 'var(--clay-pale)',
+            color: isExampleOnly ? 'var(--bark)' : 'var(--clay)',
+            marginBottom:18,
+          }}>
+            {isExampleOnly ? '📋 Exemple illustratif' : previewLoading ? '⏳ Préparation…' : '🎨 Aperçu atelier · filigrané'}
           </div>
-          <h2 style={{ color:'var(--dark)', marginBottom:14 }}>Votre groupe en bois</h2>
-          <p style={{ color:'var(--muted)', marginBottom:22, lineHeight:1.7 }}>
-            Un avant-goût de ce que nos équipes vont fabriquer pour vous.
-            Les détails sont finalisés après votre commande.
+          <h2 style={{ color:'var(--dark)', marginBottom:14 }}>
+            {hasAiPreview ? 'Vos figurines dans l\'atelier' : 'Exemple · figurines bois atelier'}
+          </h2>
+
+          {tooManyFaces && (
+            <div style={{ background:'#fff5f0', border:'1.5px solid var(--clay-light)', borderRadius:16,
+              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
+              <p style={{ color:'var(--clay-deep)', fontSize:'.88rem', lineHeight:1.65, marginBottom:12 }}>
+                <strong>{session.detectedFaces ?? faceCountForQuote} personnages repérés</strong> — maximum{' '}
+                <strong>{MAX_FACES} figurines</strong> par commande. Choisissez une photo avec {MAX_FACES} personnes ou moins.
+              </p>
+              <PhotoUploadZone compact onFile={onPhotoUpload} label="Choisir une autre photo"
+                hint={`Jusqu'à ${MAX_FACES} personnages`} />
+              <div style={{ marginTop:14 }}>
+                <PersonCountQuestion
+                  count={Math.min(MAX_FACES, session.faceCount ?? MAX_FACES)}
+                  detected={session.detectedFaces}
+                  max={MAX_FACES}
+                  onChange={onFaceCountChange}
+                  photoUrl={session.photoUrl}
+                />
+              </div>
+            </div>
+          )}
+
+          {isExampleOnly && !tooManyFaces && (
+            <div style={{ background:'#fff', border:'1.5px solid var(--bark-light)', borderRadius:16,
+              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
+              <p style={{ color:'var(--dark)', fontSize:'.88rem', lineHeight:1.65, marginBottom:10 }}>
+                Exemple du <strong>rendu atelier</strong> (figurines bois sur établi). Uploadez votre photo pour voir votre groupe personnalisé.
+              </p>
+              <PhotoUploadZone compact onFile={onPhotoUpload} label="Uploader ma photo de groupe"
+                hint="Comptage des personnages · Aperçu gratuit" />
+            </div>
+          )}
+
+          <p style={{ color:'var(--muted)', marginBottom:14, lineHeight:1.7, fontSize:'.9rem' }}>
+            {previewFailed && 'L\'aperçu n\'a pas pu être préparé — exemple affiché. '}
+            {hasAiPreview && session.faceCount != null && (
+              <><strong>{session.faceCount} personnage{session.faceCount > 1 ? 's' : ''}</strong> pour votre commande, prêt{session.faceCount > 1 ? 's' : ''} à être taillé{session.faceCount > 1 ? 's' : ''} en bois. </>
+            )}
+            Ceci est un <strong>aperçu filigrané</strong> — après commande, l&apos;atelier vous accompagne pour peaufiner chaque figurine avant fabrication.
           </p>
 
-          {/* Composite preview */}
-          <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
-            boxShadow:'0 16px 48px rgba(44,31,20,.13)', marginBottom:20 }}>
-            <img src={IMG.after} alt="Résultat" style={{ width:'100%', display:'block' }}/>
-            <div style={{ position:'absolute', bottom:16, left:'50%',
-              transform:'translateX(-50%)', whiteSpace:'nowrap',
-              background:'rgba(44,31,20,.78)', color:'#fff', borderRadius:100,
-              padding:'8px 20px', fontSize:'.78rem', fontWeight:600,
-              backdropFilter:'blur(8px)', display:'flex', alignItems:'center', gap:7 }}>
-              <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6"
-                fill="none" stroke="#fff" strokeWidth="1.5"/><path d="M7 4v3l2 2"
-                stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              Commandez pour voir tous les détails
-            </div>
+          <div style={{ background:'var(--forest-pale)', borderRadius:14, padding:'14px 16px',
+            marginBottom:18, textAlign:'left' }}>
+            <p style={{ color:'var(--forest)', fontSize:'.82rem', lineHeight:1.65, margin:0 }}>
+              <strong>Après commande</strong> : ajustez chaque figurine dans notre studio, affinez les traits et validez avant la découpe laser à Nantes.
+            </p>
           </div>
 
-          {/* Figurine strip preview */}
-          <div style={{ background:'var(--bark-pale)', borderRadius:18, padding:'22px 16px',
-            display:'flex', gap:10, justifyContent:'center', alignItems:'flex-end',
-            overflowX:'auto' }}>
-            {PEOPLE.map(p => (
-              <div key={p.id} style={{ textAlign:'center', flexShrink:0 }}>
-                <Figurine person={p} scale={.58}/>
-                <div style={{ fontSize:'.62rem', color:'var(--muted)', marginTop:4 }}>
-                  {p.name}
+          {previewFailed && (
+            <p style={{ color:'var(--clay-deep)', fontSize:'.82rem', marginBottom:12 }}>{session.error}</p>
+          )}
+
+          {showCountAdjuster && !tooManyFaces && (
+            <div style={{ marginBottom:18 }}>
+              <PersonCountQuestion
+                count={session.faceCount ?? 2}
+                detected={session.detectedFaces}
+                max={MAX_FACES}
+                onChange={onFaceCountChange}
+                photoUrl={session.photoUrl}
+              />
+            </div>
+          )}
+
+          <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
+            boxShadow:'0 16px 48px rgba(44,31,20,.13)' }}>
+            {previewLoading ? (
+              <PreviewLoadingEncart photoUrl={session.photoUrl} />
+            ) : (
+              <WatermarkedPreview src={previewSrc} alt="Aperçu figurines bois" style={{ width:'100%', display:'block' }} />
+            )}
+            {!previewLoading && (
+              <>
+                <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+                  background:'repeating-linear-gradient(-24deg, transparent, transparent 22px, rgba(44,31,20,.06) 22px, rgba(44,31,20,.06) 44px)' }}/>
+                <div style={{ position:'absolute', top:14, left:14, background:'rgba(44,31,20,.82)',
+                  color:'#fff', borderRadius:100, padding:'6px 14px', fontSize:'.72rem', fontWeight:700 }}>
+                  {hasAiPreview ? 'APERÇU · filigrane' : 'EXEMPLE · filigrane'}
                 </div>
-              </div>
-            ))}
+                <div style={{ position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)',
+                  whiteSpace:'nowrap', background:'rgba(44,31,20,.78)', color:'#fff', borderRadius:100,
+                  padding:'8px 20px', fontSize:'.78rem', fontWeight:600, backdropFilter:'blur(8px)' }}>
+                  {hasAiPreview ? 'Version finale + studio après commande' : 'Uploadez votre photo pour un aperçu perso'}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* RIGHT — Pricing panel */}
         <div style={{ position:'sticky', top:80 }}>
           <div style={{ background:'#fff', borderRadius:24, padding:34,
             boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
-            <h3 style={{ color:'var(--dark)', marginBottom:22, fontSize:'1.35rem' }}>
-              Votre commande
-            </h3>
+            {hasQuote ? (
+              <>
+                <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.35rem' }}>{quote.label}</h3>
+                <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:12, lineHeight:1.6 }}>
+                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · fabrication Nantes · expédition vendredi
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.35rem' }}>Photo trop chargée</h3>
+                <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:12, lineHeight:1.6 }}>
+                  Maximum {MAX_FACES} personnages par commande
+                </p>
+              </>
+            )}
 
-            {/* Line items */}
-            <div style={{ display:'flex', flexDirection:'column', gap:13,
-              paddingBottom:22, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:22 }}>
-              {[
-                { l:'Base — 2 personnes incluses', v:`${base} €` },
-                { l:`+${N - 2} personnes supplémentaires (×12 €)`, v:`+${extra} €`, hot:true },
-              ].map(r => (
-                <div key={r.l} style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:'.86rem',
-                    color: r.hot ? 'var(--clay)' : 'var(--muted)' }}>{r.l}</span>
-                  <span style={{ fontWeight:700, fontSize:'.88rem',
-                    color: r.hot ? 'var(--clay)' : 'var(--dark)' }}>{r.v}</span>
+            <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:18,
+              padding:'12px 14px', background:'var(--bark-pale)', borderRadius:12, fontSize:'.78rem', color:'var(--muted)' }}>
+              <span>✓ Aperçu gratuit (filigrané)</span>
+              <span>✓ Studio d&apos;édition après commande</span>
+              <span>✓ Fabrication laser bois contreplaqué</span>
+            </div>
+
+            {hasQuote && (
+              <div style={{ display:'flex', flexDirection:'column', gap:10,
+                paddingBottom:20, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:20 }}>
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>{quote.basePack.label}</span>
+                  <span style={{ fontWeight:700 }}>{quote.basePriceEur} €</span>
                 </div>
-              ))}
-
-              {/* Options */}
-              {[
-                { l:'Socle gravé avec prénoms', sub:'Option gravure · recommandé', price:15,
-                  val:socle, set:setSocle },
-                { l:'Taille M — 20 cm', sub:'Standard : 15 cm de hauteur', price:20,
-                  val:taille, set:setTaille },
-              ].map(o => (
-                <div key={o.l} style={{ background:'var(--bark-pale)', borderRadius:14,
-                  padding:'14px 16px' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between',
-                    alignItems:'center', gap:12 }}>
-                    <div>
-                      <div style={{ fontWeight:600, fontSize:'.86rem',
-                        color:'var(--dark)' }}>{o.l}</div>
-                      <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>{o.sub}</div>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-                      {o.val && (
-                        <span style={{ fontWeight:700, color:'var(--clay)',
-                          fontSize:'.88rem' }}>+{o.price} €</span>
-                      )}
-                      <Toggle on={o.val} setOn={o.set}/>
-                    </div>
+                {quote.extraCount > 0 && (
+                  <div style={{ display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>
+                      + {quote.extraCount} pers. × {quote.extraPersonEur} €
+                    </span>
+                    <span style={{ fontWeight:700 }}>
+                      {(quote.extraCount * Number(quote.extraPersonEur)).toFixed(2)} €
+                    </span>
                   </div>
-                </div>
-              ))}
+                )}
+                {Number(quote.shippingEur) > 0 ? (
+                  <div style={{ display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>Frais de port</span>
+                    <span style={{ fontWeight:700 }}>{Number(quote.shippingEur).toFixed(0)} €</span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize:'.82rem', color:'var(--forest)' }}>🎁 Port offert</div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
+              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem', color:'var(--dark)' }}>Total TTC</span>
+              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)' }}>
+                {hasQuote ? `${quote.totalEur} €` : '—'}
+              </span>
             </div>
 
-            {/* Total */}
-            <div style={{ display:'flex', justifyContent:'space-between',
-              alignItems:'center', marginBottom:26 }}>
-              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem',
-                color:'var(--dark)' }}>Total TTC</span>
-              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2.1rem',
-                color:'var(--clay)', transition:'all .3s ease' }}>{total} €</span>
-            </div>
+            {error && <p style={{ color:'var(--clay-deep)', fontSize:'.85rem', marginBottom:12 }}>{error}</p>}
 
-            <button className="btn-clay" style={{ width:'100%', padding:'16px',
-              fontSize:'.95rem', display:'flex', alignItems:'center',
-              justifyContent:'center', gap:10 }}
-              onClick={() => setShowStripe(true)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
-                  stroke="#fff" strokeWidth="2"/><path d="M9 12l2 2 4-4"
-                  stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Valider & Payer · Accéder à l'éditeur
+            <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
+              opacity: (soldOut || tooManyFaces) ? .5 : 1 }}
+              disabled={busy || soldOut || tooManyFaces || !hasQuote}
+              onClick={pay}>
+              {tooManyFaces ? `Max ${MAX_FACES} personnages`
+                : soldOut ? 'Complet cette semaine'
+                : busy ? 'Redirection vers le paiement…'
+                : 'Commander et peaufiner à l\'atelier →'}
             </button>
 
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8,
-              marginTop:14 }}>
-              {['🔒 SSL 256', '↩️ 30 jours', '🪵 Nantes'].map(t => (
-                <div key={t} style={{ background:'var(--bark-pale)', borderRadius:10,
-                  padding:'8px 4px', textAlign:'center', fontSize:'.68rem',
-                  color:'var(--bark)', fontWeight:600 }}>{t}</div>
-              ))}
-            </div>
-
-            {/* Testimonial */}
-            <div style={{ marginTop:18, padding:'14px 16px', background:'var(--forest-pale)',
-              borderRadius:12, display:'flex', gap:10 }}>
-              <span style={{ fontSize:'1.1rem', flexShrink:0 }}>💬</span>
-              <p style={{ fontSize:'.76rem', color:'var(--forest)', fontStyle:'italic',
-                lineHeight:1.6 }}>
-                "Le rendu est bluffant, ma mère a pleuré ! Livré en 5 jours." —
-                <strong> Cléa T.</strong>
-              </p>
-            </div>
+            <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:14, textAlign:'center', lineHeight:1.55 }}>
+              Paiement sécurisé · Pack de base + {extraEur.toFixed(2)} € / pers. supplémentaire
+            </p>
           </div>
         </div>
       </div>
-
-      {showStripe && (
-        <StripeModal total={total} onPay={() => go('editor')}
-          onClose={() => setShowStripe(false)}/>
-      )}
     </div>
   );
 }
@@ -978,7 +1432,7 @@ function Editor({ go }) {
             {/* Caption */}
             <p style={{ textAlign:'center', color:'rgba(255,255,255,.2)',
               fontSize:'.72rem', marginTop:16 }}>
-              Aperçu simulé · Chaque personnage sera fabriqué en bois dans notre atelier
+              Aperçu atelier · Chaque personnage sera fabriqué en bois dans notre atelier
             </p>
           </div>
         </div>
@@ -1003,7 +1457,7 @@ function Editor({ go }) {
               <div style={{ display:'flex', justifyContent:'space-between',
                 alignItems:'center', marginBottom:12 }}>
                 <span style={{ color:'#fff', fontWeight:600, fontSize:'.85rem' }}>
-                  Générer une variante
+                  Générer une nouvelle version
                 </span>
                 <span style={{ background:'rgba(192,104,74,.25)',
                   color:'var(--clay-light)', borderRadius:100,
@@ -1014,12 +1468,12 @@ function Editor({ go }) {
               <button className="btn-clay" style={{ width:'100%', padding:'12px',
                 fontSize:'.85rem', opacity: regens === 0 ? .4 : 1 }}
                 onClick={doRegen} disabled={regens === 0 || regen}>
-                {regen ? '⚙️ Génération…' : '🔄 Nouvelle variante'}
+                {regen ? '⚙️ Préparation…' : '🔄 Nouvelle version'}
               </button>
               {regens === 0 && (
                 <p style={{ fontSize:'.72rem', color:'rgba(255,255,255,.3)',
                   textAlign:'center', marginTop:8 }}>
-                  Régénérations épuisées pour cette figurine
+                  Essais épuisés pour cette figurine
                 </p>
               )}
             </div>
@@ -1223,15 +1677,29 @@ function Success() {
 /* ─── APP SHELL ───────────────────────────────────────────────── */
 const NAV_STEPS = [
   { id:'landing',    label:'Photo' },
-  { id:'processing', label:'Préparation' },
-  { id:'pricing',    label:'Commande' },
+  { id:'pricing',    label:'Aperçu' },
   { id:'editor',     label:'Studio' },
   { id:'success',    label:'Atelier' },
 ];
 
 function App() {
   const [state, setState] = useState('landing');
+  const [selectedPack, setSelectedPack] = useState('famille');
+  const [session, setSession] = useState({
+    enterVia: null,
+    photoUrl: null,
+    photoBase64: null,
+    previewUrl: null,
+    detectedFaces: null,
+    faceCount: null,
+    previewGen: 0,
+    previewLoading: false,
+    error: null,
+  });
   const [tick, setTick] = useState(0);
+  const { status } = useWeekStatus();
+  const packs = status?.packs ?? DEFAULT_PACKS;
+  const packDef = getPackDef(selectedPack || 'famille', packs);
 
   const go = useCallback(next => {
     setTick(t => t + 1);
@@ -1239,13 +1707,87 @@ function App() {
     window.scrollTo({ top:0, behavior:'smooth' });
   }, []);
 
+  const startPackRoute = useCallback((packId) => {
+    setSelectedPack(packId);
+    setSession({
+      enterVia: 'pack',
+      photoUrl: null,
+      photoBase64: null,
+      previewUrl: null,
+      detectedFaces: null,
+      faceCount: null,
+      previewGen: 0,
+      previewLoading: false,
+      error: null,
+    });
+    go('pricing');
+  }, [go]);
+
+  const beginPhotoFlow = useCallback(async (file, { enterVia = 'upload' } = {}) => {
+    try {
+      const { photoUrl, photoBase64 } = await readImageFile(file);
+      let detected = 0;
+      try {
+        detected = await detectFaceCount(photoBase64);
+      } catch { /* fallback */ }
+      const initialCount = detected > 0 ? Math.min(MAX_FACES, detected) : 2;
+      setSelectedPack(packIdForFaceCount(initialCount));
+      setSession(s => ({
+        enterVia,
+        photoUrl,
+        photoBase64,
+        previewUrl: null,
+        detectedFaces: detected > 0 ? detected : null,
+        faceCount: initialCount,
+        previewGen: (s.previewGen ?? 0) + 1,
+        previewLoading: true,
+        error: null,
+      }));
+      setTick(t => t + 1);
+      go('pricing');
+    } catch {
+      alert('Impossible de lire cette image. Essayez un autre fichier.');
+    }
+  }, [go]);
+
+  const onPhotoUpload = useCallback((file) => {
+    beginPhotoFlow(file, { enterVia: 'upload' });
+  }, [beginPhotoFlow]);
+
+  const onPaywallPhotoUpload = useCallback((file) => {
+    beginPhotoFlow(file, { enterVia: 'upload' });
+  }, [beginPhotoFlow]);
+
+  const onPreviewReady = useCallback((previewUrl) => {
+    setSession(s => ({ ...s, previewUrl, previewLoading: false, error: null }));
+  }, []);
+
+  const onPreviewError = useCallback(() => {
+    setSession(s => ({ ...s, error: 'Aperçu indisponible pour le moment', previewLoading: false }));
+  }, []);
+
+  const onFaceCountChange = useCallback((count) => {
+    const n = Math.max(1, Math.min(MAX_FACES, count));
+    setSelectedPack(packIdForFaceCount(n));
+    setSession(s => ({
+      ...s,
+      faceCount: n,
+      previewUrl: null,
+      previewLoading: !!s.photoBase64,
+      previewGen: (s.previewGen ?? 0) + 1,
+      error: null,
+    }));
+  }, []);
+
   const idx = NAV_STEPS.findIndex(s => s.id === state);
-  const dark = ['processing','editor'].includes(state);
+  const dark = state === 'editor';
 
   const screens = {
-    landing:    <Landing    go={go}/>,
-    processing: <Processing go={go}/>,
-    pricing:    <Pricing    go={go}/>,
+    landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload} />,
+    pricing:    <Paywall packDef={packDef} status={status} session={session} packs={packs}
+                  onPhotoUpload={onPaywallPhotoUpload}
+                  onPreviewReady={onPreviewReady} onPreviewError={onPreviewError}
+                  onFaceCountChange={onFaceCountChange} />,
     editor:     <Editor     go={go}/>,
     success:    <Success/>,
   };

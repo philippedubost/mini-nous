@@ -53,6 +53,8 @@ export const DECOUPE_OPTIMIZE_OPTS = {
   strokeWidth: 1,
   /** Lissage des paths corps avant union (0 = brut, 100 = fort). */
   pathSmoothness: 14,
+  /** Compensation kerf socle en mm (ex. -0.1 resserre les fentes). */
+  kerfMm: 0,
 }
 
 function luma(r, g, b) {
@@ -391,11 +393,25 @@ function polylineCentroid(p) {
   return [sx / p.length, sy / p.length]
 }
 
-/** Dégradé vert → bleu ; t ∈ [0,1] (0 = gauche / vert, 1 = droite / bleu). */
-export function orderDebugColor(t) {
+function lerpRgbColor(t, from, to) {
   const u = Math.max(0, Math.min(1, t))
   const lerp = (a, b) => Math.round(a + (b - a) * u)
-  return `rgb(${lerp(34, 37)}, ${lerp(197, 99)}, ${lerp(94, 235)})`
+  return `rgb(${lerp(from[0], to[0])}, ${lerp(from[1], to[1])}, ${lerp(from[2], to[2])})`
+}
+
+/** Dégradé vert → bleu ; t ∈ [0,1] (0 = gauche / vert, 1 = droite / bleu). */
+export function orderGravureDebugColor(t) {
+  return lerpRgbColor(t, [34, 197, 94], [37, 99, 235])
+}
+
+/** Dégradé jaune → rouge ; t ∈ [0,1] (0 = 1er path, 1 = dernier). */
+export function orderDecoupeDebugColor(t) {
+  return lerpRgbColor(t, [234, 179, 8], [220, 38, 38])
+}
+
+/** @deprecated Préférer orderGravureDebugColor ou orderDecoupeDebugColor. */
+export function orderDebugColor(t) {
+  return orderGravureDebugColor(t)
 }
 
 function polylineLength(p) {
@@ -512,10 +528,15 @@ function sortEntriesByX(entries) {
   return items
 }
 
-function debugColorForX(cx, minX, maxX) {
+/** Couleur gravure selon le centroïde X (gauche vert → droite bleu). */
+export function gravureStrokeColorForCenterX(cx, minX, maxX) {
   const span = maxX - minX
   const t = span > 1e-6 ? (cx - minX) / span : 0
-  return orderDebugColor(t)
+  return orderGravureDebugColor(t)
+}
+
+function debugColorForX(cx, minX, maxX) {
+  return gravureStrokeColorForCenterX(cx, minX, maxX)
 }
 
 function pathStartFromD(d) {
@@ -524,7 +545,28 @@ function pathStartFromD(d) {
   return [0, 0]
 }
 
-/** Réordonne les `<path>` d'un SVG (autotrace) + couleurs debug optionnelles. */
+export function yieldToMain() {
+  return new Promise(resolve => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve())
+    else setTimeout(resolve, 0)
+  })
+}
+
+function sortPathEntriesByX(entries) {
+  return [...entries].sort((a, b) => {
+    const delta = (a.cx ?? 0) - (b.cx ?? 0)
+    if (Math.abs(delta) > 1e-6) return delta
+    return (a.cy ?? 0) - (b.cy ?? 0)
+  })
+}
+
+function applyPathOrderMeta(path, index, pathCount) {
+  path.setAttribute('data-mn-order', String(index))
+  path.setAttribute('data-mn-strategy', 'sortX')
+  path.setAttribute('data-mn-path-count', String(pathCount))
+}
+
+/** Réordonne les `<path>` d'un SVG par centroïde X + couleurs debug optionnelles. */
 export function optimizeSvgForLaser(svg, opts = {}) {
   if (!svg || typeof DOMParser === 'undefined') return svg
   const o = { ...DEFAULT_TRACE_OPTS, ...opts }
@@ -594,22 +636,107 @@ export function polylinesToSvg(polylines, width, height, opts = {}) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n  ${paths}\n</svg>`
 }
 
-function eyeEllipseSvg(eye, opts) {
-  const { x: cx, y: cy, rx, ry } = eye
-  const color = opts.eyeStrokeColor ?? '#e11d48'
-  const sw = Math.max(2, opts.eyeStrokeWidth ?? opts.strokeWidth ?? 1)
-  // Rotation 90° → ellipses verticales ; scale X très serré ≈ trait horizontal
-  return `<g transform="translate(${cx.toFixed(2)} ${cy.toFixed(2)}) rotate(90) scale(0.35 0.25) translate(${(-cx).toFixed(2)} ${(-cy).toFixed(2)})"><ellipse cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/></g>`
+function transformEyePoint(x, y, cx, cy) {
+  const dx = x - cx
+  const dy = y - cy
+  const rdx = -dy
+  const rdy = dx
+  return [rdx * 0.35 + cx, rdy * 0.25 + cy]
 }
 
-/** Append eye ellipses (pixel coords) before closing </svg>. */
+/** Ellipse yeux → path fermé (même transform qu'avant, sans élément <ellipse>). */
+export function eyeToPathD(eye, segments = 28) {
+  const { x: cx, y: cy, rx, ry } = eye
+  const pts = []
+  for (let i = 0; i <= segments; i++) {
+    const t = (i / segments) * Math.PI * 2
+    const ex = cx + rx * Math.cos(t)
+    const ey = cy + ry * Math.sin(t)
+    pts.push(transformEyePoint(ex, ey, cx, cy))
+  }
+  return `M ${pts.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(' L ')} Z`
+}
+
+function collectPathEntry(d, o) {
+  const rawD = d || ''
+  const processedD = o.laserRoundTrip
+    ? appendRoundTripPathD(rawD, o.laserMinPathLength)
+    : rawD
+  const start = pathStartFromD(processedD)
+  const pts = parsePathPoints(processedD)
+  const [cx, cy] = pts.length ? polylineCentroid(pts) : start
+  return { d: processedD, cx, cy }
+}
+
+/**
+ * Calque gravure final : tri X (gauche → droite), ordre DOM = ordre de gravure.
+ * Dégradé vert (gauche) → bleu (droite) selon le centroïde X de chaque path.
+ */
+export function finalizeGravureSvg(svg, { mappedEyes, extraPathDs = [], opts = {} } = {}) {
+  if (!svg || typeof DOMParser === 'undefined') return svg
+  const o = { ...DEFAULT_TRACE_OPTS, ...opts }
+  const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+  const root = doc.documentElement
+  const entries = []
+
+  for (const el of [...root.querySelectorAll('path')]) {
+    entries.push(collectPathEntry(el.getAttribute('d') || '', o))
+    el.remove()
+  }
+  root.querySelectorAll('ellipse, g').forEach(el => el.remove())
+
+  for (const face of mappedEyes ?? []) {
+    for (const eye of [face.leftEye, face.rightEye]) {
+      if (!eye) continue
+      entries.push(collectPathEntry(eyeToPathD(eye), o))
+    }
+  }
+
+  for (const d of extraPathDs) {
+    if (d) entries.push(collectPathEntry(d, o))
+  }
+
+  if (!entries.length) return svg
+
+  const ordered = sortPathEntriesByX(entries)
+  const sw = o.strokeWidth ?? 1
+  const minX = Math.min(...ordered.map(e => e.cx ?? 0))
+  const maxX = Math.max(...ordered.map(e => e.cx ?? 0))
+
+  ordered.forEach((entry, i) => {
+    const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.setAttribute('d', entry.d)
+    path.setAttribute('fill', 'none')
+    applyPathOrderMeta(path, i, ordered.length)
+    const stroke = o.pathOrderDebug !== false
+      ? gravureStrokeColorForCenterX(entry.cx ?? 0, minX, maxX)
+      : (o.strokeColor ?? '#000000')
+    path.setAttribute('stroke', stroke)
+    path.setAttribute('stroke-width', String(sw))
+    path.setAttribute('stroke-linecap', 'round')
+    path.setAttribute('stroke-linejoin', 'round')
+    root.appendChild(path)
+  })
+
+  return new XMLSerializer().serializeToString(root)
+}
+
+/** Calque gravure final async — tri X sans bloquer l'UI. */
+export async function finalizeGravureSvgAsync(
+  svg,
+  { mappedEyes, extraPathDs = [], opts = {}, onProgress, signal } = {},
+) {
+  onProgress?.({ phase: 'order', message: 'Tri X…', percent: 50 })
+  await yieldToMain()
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+  const result = finalizeGravureSvg(svg, { mappedEyes, extraPathDs, opts })
+  onProgress?.({ phase: 'done', message: 'Gravure finalisée', percent: 100 })
+  return result
+}
+
+/** @deprecated Utiliser finalizeGravureSvg — conserve le nom pour compatibilité. */
 export function appendEyeEllipsesToSvg(svg, mappedFaces, opts = {}) {
-  if (!svg || !mappedFaces?.length) return svg
-  const ellipses = mappedFaces.flatMap(f => [
-    eyeEllipseSvg(f.leftEye, opts),
-    eyeEllipseSvg(f.rightEye, opts),
-  ]).join('\n  ')
-  return svg.replace(/\s*<\/svg>\s*$/, `\n  ${ellipses}\n</svg>`)
+  return finalizeGravureSvg(svg, { mappedEyes: mappedFaces, opts })
 }
 
 export function traceCenterline(imageData, opts = {}) {

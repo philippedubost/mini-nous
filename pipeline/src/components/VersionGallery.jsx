@@ -12,10 +12,15 @@ const SOURCE_LABELS = {
   admin_rerun: 'Relance admin',
   admin_extraction: 'Extraction admin',
   admin_laser_regen: 'Regénération SVG',
+  admin_laser_studio: 'Studio SVG',
+  admin_laser_bulk: 'Regénération bulk',
+  lab_trace: 'Labo trace',
 }
 
 function isSvgUrl(url) {
-  return /\.svg(\?|$)/i.test(url ?? '') || (url ?? '').includes('image/svg')
+  return /\.svg(\?|$)/i.test(url ?? '')
+    || (url ?? '').includes('image/svg')
+    || (url ?? '').startsWith('data:image/svg')
 }
 
 function LoupeIcon() {

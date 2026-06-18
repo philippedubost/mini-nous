@@ -1,5 +1,6 @@
 import { getSupabase, ASSET_META } from './lib/supabase.js'
 import { selectAssetVersion, deleteAssetVersion, groupVersions } from './lib/assets.js'
+import { enrichGenerationsWithFabrication } from './lib/fabrication.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -38,11 +39,14 @@ export default async function handler(req, res) {
           .order('version', { ascending: false })
         if (verErr) throw new Error(verErr.message)
 
+        const [enriched] = await enrichGenerationsWithFabrication(supabase, [generation])
+
         return res.status(200).json({
-          generation,
+          generation: enriched,
           steps,
           versions,
           versionsByType: groupVersions(versions),
+          fabrication: enriched.fabrication,
         })
       }
 
@@ -70,16 +74,17 @@ export default async function handler(req, res) {
         ;(acc[s.generation_id] ??= []).push(s)
         return acc
       }, {})
-      const result = generations.map(g => ({
+      const withSteps = generations.map(g => ({
         ...g,
         steps: byGen[g.id] ?? [],
       }))
+      const result = await enrichGenerationsWithFabrication(supabase, withSteps)
 
       return res.status(200).json({ generations: result })
     }
 
     if (req.method === 'POST') {
-      const { faceCount, resolution, aspectRatio, settings, falModel } = req.body ?? {}
+      const { faceCount, resolution, aspectRatio, settings, falModel, orderId } = req.body ?? {}
       const { data, error } = await supabase
         .from('mini_nous_generations')
         .insert({
@@ -89,6 +94,7 @@ export default async function handler(req, res) {
           settings: settings ?? null,
           fal_model: falModel ?? 'fal-ai/nano-banana-pro/edit',
           status: 'running',
+          order_id: orderId ?? null,
         })
         .select()
         .single()
@@ -138,15 +144,24 @@ export default async function handler(req, res) {
       const patch = {}
       if (status) patch.status = status
       if (errorMessage !== undefined) patch.error_message = errorMessage
+      if (req.body?.settings !== undefined) patch.settings = req.body.settings
+
+      if (!Object.keys(patch).length) {
+        return res.status(400).json({ error: 'Aucune modification' })
+      }
+
+      patch.updated_at = new Date().toISOString()
 
       const { data, error } = await supabase
         .from('mini_nous_generations')
         .update(patch)
         .eq('id', id)
         .select()
-        .single()
+
       if (error) throw new Error(error.message)
-      return res.status(200).json({ generation: data })
+      const generation = data?.[0]
+      if (!generation) throw new Error('Génération introuvable ou mise à jour refusée')
+      return res.status(200).json({ generation })
     }
 
     return res.status(405).json({ error: 'Method not allowed' })

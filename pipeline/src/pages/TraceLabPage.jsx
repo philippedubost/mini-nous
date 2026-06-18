@@ -1,18 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ZoomableStage from '../components/ZoomableStage'
-import { fetchGeneration, fetchGenerations } from '../lib/storage'
+import { fetchGeneration, fetchGenerations, uploadAsset } from '../lib/storage'
 import {
-  DEFAULT_TRACE_OPTS,
   OUTLINE_TRACE_OPTS,
-  DECOUPE_OPTIMIZE_OPTS,
-  appendEyeEllipsesToSvg,
-  checkAutotraceAvailable,
+  finalizeGravureSvgAsync,
   imageDataToObjectUrl,
-  loadImageDataFromFile,
   loadImageDataFromUrl,
   optimizeSvgForLaser,
-  traceAutotraceServer,
   traceCenterline,
 } from '../lib/centerlineTrace'
 import {
@@ -20,24 +15,38 @@ import {
   saveTraceSettings,
   resetTraceSettings,
   DEFAULT_TRACE_SETTINGS,
+  buildTraceSettingsPayload,
+  outlineOptsForExtraction,
+  gravureTraceOpts,
+  DEFAULT_MASK_CONTOUR_SW,
 } from '../lib/traceSettings'
 import { detectFacesGuided, mapFacesToTarget, paintEyeMasksOnImageData } from '../lib/faceLandmarks'
-import { buildMergedLaserSvg } from '../lib/laserSvg'
-import { buildDecoupePreUnionSvg, mergeDecoupeSocleUnion } from '../lib/decoupeUnion'
+import { buildMergedLaserSvgAsync } from '../lib/laserSvg'
+import { buildDecoupeWithSoclesSvg } from '../lib/decoupeUnion'
 import { extractBodyRegionsDetailed } from '../lib/bodyRegions'
+import { processLineArt, buildGravureMaskPreview } from '../lib/outline'
+import { imageDataToCanvas, svgToDataUrl } from '../lib/laserPipeline'
 
 const PARAMS = [
-  { key: 'threshold', label: 'Seuil', hint: 'Niveau de gris → noir/blanc (≈ 200–240 pour line art)', min: 1, max: 254, step: 1, engines: ['browser'] },
-  { key: 'despeckleLevel', label: 'Désépoussiérage', hint: 'Supprime les petits îlots parasites', min: 0, max: 12, step: 1, engines: ['browser', 'autotrace'] },
-  { key: 'filterIterations', label: 'Lissage (filtre)', hint: 'Passes de flou avant le tracé', min: 0, max: 8, step: 1, engines: ['browser', 'autotrace'] },
-  { key: 'smoothness', label: 'Lissage du tracé', hint: 'Adoucit les crénelures (0 = brut, 100 = très lisse)', min: 0, max: 100, step: 1, engines: ['browser', 'autotrace'] },
-  { key: 'errorThreshold', label: 'Seuil d\'erreur', hint: '0 = max de détails (navigateur)', min: 0, max: 10, step: 0.1, engines: ['browser', 'autotrace'] },
-  { key: 'mergeDistance', label: 'Fusion segments', hint: 'Polylignes coupées (navigateur, px)', min: 0, max: 12, step: 1, engines: ['browser'] },
-  { key: 'lineThreshold', label: 'Longueur min. ligne', hint: 'Ignore les polylignes trop courtes', min: 1, max: 20, step: 1, engines: ['browser', 'autotrace'] },
-  { key: 'cornerThreshold', label: 'Seuil coins', hint: 'Autotrace uniquement', min: 0, max: 180, step: 1, engines: ['autotrace'] },
-  { key: 'strokeWidth', label: 'Épaisseur SVG', hint: 'Épaisseur du trait exporté', min: 0.25, max: 8, step: 0.25, engines: ['browser'] },
-  { key: 'chunkSize', label: 'Taille des blocs', hint: 'Plus petit = plus de détails', min: 2, max: 24, step: 1, engines: ['browser'] },
+  { key: 'threshold', label: 'Seuil', hint: 'Niveau de gris → noir/blanc (≈ 200–240 pour line art)', min: 1, max: 254, step: 1 },
+  { key: 'despeckleLevel', label: 'Désépoussiérage', hint: 'Supprime les petits îlots parasites', min: 0, max: 12, step: 1 },
+  { key: 'filterIterations', label: 'Lissage (filtre)', hint: 'Passes de flou avant le tracé', min: 0, max: 8, step: 1 },
+  { key: 'smoothness', label: 'Lissage du tracé', hint: 'Adoucit les crénelures (0 = brut, 100 = très lisse)', min: 0, max: 100, step: 1 },
+  { key: 'errorThreshold', label: 'Seuil d\'erreur', hint: '0 = max de détails', min: 0, max: 10, step: 0.1 },
+  { key: 'mergeDistance', label: 'Fusion segments', hint: 'Polylignes coupées (px)', min: 0, max: 12, step: 1 },
+  { key: 'lineThreshold', label: 'Longueur min. ligne', hint: 'Ignore les polylignes trop courtes', min: 1, max: 20, step: 1 },
+  { key: 'strokeWidth', label: 'Épaisseur SVG', hint: 'Épaisseur du trait exporté', min: 0.25, max: 8, step: 0.25 },
+  { key: 'chunkSize', label: 'Taille des blocs', hint: 'Plus petit = plus de détails', min: 2, max: 24, step: 1 },
 ]
+
+const MASK_CONTOUR_PARAM = {
+  key: 'maskContourSw',
+  label: 'Épaisseur masque contour',
+  hint: 'Zone autour du contour extérieur retirée de la gravure (px)',
+  min: 0,
+  max: 16,
+  step: 1,
+}
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
@@ -78,24 +87,17 @@ function PhotoPanel({ imageData, lineDesignData, faceData, detecting, detectErro
   const H = imageData?.height ?? 1
   const faces = faceData?.faces ?? []
   const bodies = faceData?.bodies ?? []
-  const mode = faceData?.mode
 
   return (
     <section className="rounded-2xl border border-stone-800 bg-stone-900/40 overflow-hidden">
       <div className="px-4 py-3 border-b border-stone-800 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-stone-100">Photo personnages</h3>
-          <p className="text-xs text-stone-500">
-            Photo step1 · line art step2 (avant découpe outline/gravure) · MediaPipe
-            {mode && mode !== 'none' && (
-              <span className="text-stone-600"> · {mode}</span>
-            )}
-          </p>
+          <h3 className="font-semibold text-stone-100">Sources</h3>
         </div>
-        {detecting && <span className="text-[10px] text-amber-400">Détection…</span>}
-        {!detecting && (
+        {detecting && <span className="text-[10px] text-amber-400">Détection visages…</span>}
+        {!detecting && faces.length > 0 && (
           <span className="text-[10px] text-stone-500">
-            {bodies.length} corps · {faces.length} visage{faces.length !== 1 ? 's' : ''}
+            {faces.length} visage{faces.length !== 1 ? 's' : ''} détecté{faces.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -196,231 +198,133 @@ function PhotoPanel({ imageData, lineDesignData, faceData, detecting, detectErro
   )
 }
 
-function TraceSlot({
-  title, subtitle, imageData, setImageData, traceOpts, optimizeOpts, engine, traceEnabled = true,
-  debounceMs = 320, mappedEyes = null, maskEyesBeforeTrace = false, maskData = null,
-  applyDecoupeUnion = false, onTraceResult = null,
-}) {
-  const inputId = useId()
-  const [result, setResult] = useState(null)
+function svgPreview(svg) {
+  if (!svg) return null
+  return (
+    <div
+      className="relative w-full [&_svg]:max-w-none [&_svg]:w-full [&_svg]:h-auto bg-white rounded"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
+
+function DecoupeLabPanel({ imageData, maskData, decoupeOpts, onTraceResult }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-
-  const onFile = useCallback(async (file) => {
-    if (!file?.type?.startsWith('image/')) return
-    setError(null)
-    try {
-      setImageData(await loadImageDataFromFile(file))
-    } catch (err) {
-      setError(err.message)
-    }
-  }, [setImageData])
-
-  const traceImageData = useMemo(() => {
-    if (!imageData || !maskEyesBeforeTrace || !mappedEyes?.length) return imageData
-    return paintEyeMasksOnImageData(imageData, mappedEyes)
-  }, [imageData, maskEyesBeforeTrace, mappedEyes])
+  const [tracedSvg, setTracedSvg] = useState(null)
 
   useEffect(() => {
-    if (!traceImageData || !traceEnabled) {
-      setResult(null)
+    if (!imageData) {
+      setTracedSvg(null)
+      onTraceResult?.(null)
       return undefined
     }
     setBusy(true)
     let cancelled = false
-    const t = setTimeout(async () => {
+    const t = setTimeout(() => {
       try {
-        const out = engine === 'autotrace'
-          ? await traceAutotraceServer(traceImageData, traceOpts)
-          : traceCenterline(traceImageData, traceOpts)
+        const result = traceCenterline(imageData, OUTLINE_TRACE_OPTS)
         if (!cancelled) {
-          setResult(out)
+          setTracedSvg(result.svg)
+          onTraceResult?.({ svg: result.svg, width: result.width, height: result.height })
           setError(null)
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.message)
-          setResult(null)
+          setTracedSvg(null)
+          onTraceResult?.(null)
         }
       } finally {
         if (!cancelled) setBusy(false)
       }
-    }, debounceMs)
+    }, 320)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [traceImageData, traceOpts, engine, debounceMs, traceEnabled])
+  }, [imageData, onTraceResult])
 
-  useEffect(() => {
-    onTraceResult?.(result ? { svg: result.svg, width: result.width, height: result.height } : null)
-  }, [result, onTraceResult])
-
-  const sourceUrl = traceImageData ? imageDataToObjectUrl(traceImageData) : null
-  const binaryUrl = result?.preview ? imageDataToObjectUrl(result.preview) : null
-
-  const optimizedSvg = useMemo(() => {
-    if (!result?.svg) return null
-    return optimizeSvgForLaser(result.svg, optimizeOpts)
-  }, [result?.svg, optimizeOpts])
-
-  const preUnionSvg = useMemo(() => {
-    if (!optimizedSvg || !applyDecoupeUnion || !maskData?.bodies?.length) return null
-    return buildDecoupePreUnionSvg(optimizedSvg, maskData, optimizeOpts)
-  }, [optimizedSvg, maskData, applyDecoupeUnion, optimizeOpts])
-
-  const finalSvg = useMemo(() => {
-    if (!optimizedSvg) return null
-    let svg = optimizedSvg
-    if (applyDecoupeUnion && maskData?.bodies?.length) {
-      svg = mergeDecoupeSocleUnion(svg, maskData, {
-        decoupeColor: '#dc2626',
-        ...optimizeOpts,
-      })
-    }
-    if (mappedEyes?.length) {
-      svg = appendEyeEllipsesToSvg(svg, mappedEyes, {
-        ...optimizeOpts,
-        eyeStrokeColor: '#000000',
-      })
-    }
-    return svg
-  }, [optimizedSvg, maskData, mappedEyes, optimizeOpts, applyDecoupeUnion])
-
-  const svgStage = (svg, { ghost = false } = {}) => svg ? (
-    <div className="relative w-full min-w-[200px]">
-      {ghost && sourceUrl && (
-        <img
-          src={sourceUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-contain opacity-15 pointer-events-none"
-        />
-      )}
-      <div
-        className="relative w-full [&_svg]:max-w-none [&_svg]:w-full [&_svg]:h-auto"
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-    </div>
-  ) : null
-
-  const outlinePreview = svgStage(optimizedSvg, { ghost: engine === 'browser' })
-  const preUnionPreview = svgStage(preUnionSvg)
-  const unionPreview = svgStage(finalSvg, { ghost: engine === 'browser' })
-
-  const decoupeSteps = applyDecoupeUnion && maskData?.bodies?.length > 0
+  const displaySvg = useMemo(() => {
+    if (!tracedSvg) return null
+    const optimized = optimizeSvgForLaser(tracedSvg, decoupeOpts)
+    if (!maskData?.bodies?.length) return optimized
+    return buildDecoupeWithSoclesSvg(optimized, maskData, decoupeOpts)
+  }, [tracedSvg, maskData, decoupeOpts])
 
   return (
     <section className="rounded-2xl border border-stone-800 bg-stone-900/40 overflow-hidden">
       <div className="px-4 py-3 border-b border-stone-800 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-semibold text-stone-100">{title}</h3>
-          <p className="text-xs text-stone-500">
-            {subtitle}
-            {maskData?.bodies?.length ? ` · ${maskData.bodies.length} union découpe+socle` : ''}
-            {mappedEyes?.length ? ` · ${mappedEyes.length * 2} ellipses yeux` : ''}
-            {maskEyesBeforeTrace && mappedEyes?.length ? ' · masque yeux avant trace' : ''}
-          </p>
+          <h3 className="font-semibold text-stone-100">Outline / Découpe</h3>
+          <p className="text-xs text-stone-500">Corps (bleu) + socles (rouge)</p>
         </div>
-        {traceEnabled && finalSvg && (
-          <a
-            href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(finalSvg)}`}
-            download={`${title.toLowerCase().replace(/\s+/g, '-')}.svg`}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950"
-          >
-            SVG
-          </a>
-        )}
+        {busy && <span className="text-[10px] text-amber-400">Calcul…</span>}
       </div>
+      {error && <p className="px-4 py-2 text-sm text-red-400 border-b border-stone-800">{error}</p>}
+      <div className="p-3">
+        <ZoomableStage label="Corps + socles" empty={!displaySvg && <p className="text-xs text-stone-500">Outline indisponible</p>}>
+          {svgPreview(displaySvg)}
+        </ZoomableStage>
+      </div>
+    </section>
+  )
+}
 
-      {error && (
-        <p className="px-4 py-2 text-sm text-red-400 border-b border-stone-800">{error}</p>
-      )}
+function GravureLabPanel({ imageData, gravureOpts, mappedEyes, maskPreviewData, onTraceResult }) {
+  const [busy, setBusy] = useState(false)
+  const [progressMsg, setProgressMsg] = useState('')
+  const maskPreviewUrl = maskPreviewData ? imageDataToObjectUrl(maskPreviewData) : null
 
-      <div
-        className={traceEnabled
-          ? `grid divide-y md:divide-y-0 md:divide-x divide-stone-800 ${decoupeSteps ? 'md:grid-cols-5' : 'md:grid-cols-3'}`
-          : ''}
-        onDragOver={e => e.preventDefault()}
-        onDrop={e => {
-          e.preventDefault()
-          onFile(e.dataTransfer.files?.[0])
-        }}
-        onPaste={e => {
-          const file = [...(e.clipboardData?.items ?? [])]
-            .find(i => i.type.startsWith('image/'))
-            ?.getAsFile()
-          if (file) onFile(file)
-        }}
-        tabIndex={0}
-      >
-        <div className="p-3">
-          <ZoomableStage
-            label="Source"
-            empty={!sourceUrl && (
-              <p className="text-xs text-stone-500">Image absente pour cette génération</p>
-            )}
-          >
-            {sourceUrl && (
-              <img src={sourceUrl} alt="" className="max-w-full object-contain" draggable={false} />
-            )}
-          </ZoomableStage>
-          <div className="mt-2">
-            <label
-              htmlFor={inputId}
-              className="cursor-pointer inline-block text-xs font-medium px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700"
-            >
-              Remplacer par fichier…
-            </label>
-            <input
-              id={inputId}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => onFile(e.target.files?.[0])}
-            />
-          </div>
+  useEffect(() => {
+    if (!imageData) {
+      onTraceResult?.(null)
+      return undefined
+    }
+    setBusy(true)
+    setProgressMsg('Tracé…')
+    let cancelled = false
+    const controller = new AbortController()
+    const t = setTimeout(async () => {
+      try {
+        const input = mappedEyes?.length ? paintEyeMasksOnImageData(imageData, mappedEyes) : imageData
+        const result = traceCenterline(input, gravureOpts)
+        setProgressMsg('Finalisation…')
+        const svg = await finalizeGravureSvgAsync(result.svg, {
+          mappedEyes,
+          opts: gravureOpts,
+          signal: controller.signal,
+          onProgress: p => { if (!cancelled) setProgressMsg(p.message ?? 'Finalisation…') },
+        })
+        if (!cancelled) onTraceResult?.({ svg, width: result.width, height: result.height })
+      } catch (err) {
+        if (err?.name === 'AbortError') return
+        if (!cancelled) onTraceResult?.(null)
+      } finally {
+        if (!cancelled) {
+          setBusy(false)
+          setProgressMsg('')
+        }
+      }
+    }, 320)
+    return () => { cancelled = true; controller.abort(); clearTimeout(t) }
+  }, [imageData, gravureOpts, mappedEyes, onTraceResult])
+
+  return (
+    <section className="rounded-2xl border border-stone-800 bg-stone-900/40 overflow-hidden">
+      <div className="px-4 py-3 border-b border-stone-800 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-stone-100">Gravure</h3>
+          <p className="text-xs text-stone-500">Contour extérieur masqué avant tracé</p>
         </div>
-
-        {traceEnabled && (
-          <>
-            <div className="p-3">
-              <ZoomableStage label="Binaire (pré-traité)" empty={!binaryUrl && null}>
-                {binaryUrl && (
-                  <img src={binaryUrl} alt="" className="max-w-full object-contain" draggable={false} />
-                )}
-              </ZoomableStage>
-            </div>
-
-            <div className="p-3 relative">
-              {busy && (
-                <span className="absolute top-3 right-6 z-10 text-[10px] text-amber-400 bg-stone-900/90 px-2 py-0.5 rounded">
-                  Calcul…
-                </span>
-              )}
-              <ZoomableStage label={`Outline tracé${result?.engine === 'autotrace' ? ' (autotrace)' : ''} · sans socle`}>
-                {decoupeSteps ? outlinePreview : unionPreview}
-              </ZoomableStage>
-              {result?.polylines && (
-                <p className="text-[10px] text-stone-600 mt-1">
-                  {result.polylines.length} polyligne{result.polylines.length !== 1 ? 's' : ''}
-                  {mappedEyes?.length ? ` · ${mappedEyes.length * 2} ellipses yeux` : ''}
-                </p>
-              )}
-            </div>
-
-            {decoupeSteps && (
-              <>
-                <div className="p-3">
-                  <ZoomableStage label="Avant union · corps bleu + socle rouge">
-                    {preUnionPreview}
-                  </ZoomableStage>
-                </div>
-                <div className="p-3">
-                  <ZoomableStage label="Après union · découpe rouge">
-                    {unionPreview}
-                  </ZoomableStage>
-                </div>
-              </>
-            )}
-          </>
-        )}
+        {busy && <span className="text-[10px] text-amber-400">{progressMsg || 'Calcul…'}</span>}
+      </div>
+      <div className="p-3">
+        <ZoomableStage
+          label="Gravure masquée (contour extérieur retiré)"
+          empty={!maskPreviewUrl && <p className="text-xs text-stone-500">Gravure indisponible</p>}
+        >
+          {maskPreviewUrl && (
+            <img src={maskPreviewUrl} alt="" className="max-w-full object-contain bg-white rounded block" draggable={false} />
+          )}
+        </ZoomableStage>
       </div>
     </section>
   )
@@ -431,8 +335,7 @@ export default function TraceLabPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [opts, setOpts] = useState(initialTrace.gravure)
   const [decoupeOpts, setDecoupeOpts] = useState(initialTrace.decoupe)
-  const [engine, setEngine] = useState(initialTrace.engine)
-  const [autotraceOk, setAutotraceOk] = useState(null)
+  const [productionSavedAt, setProductionSavedAt] = useState(null)
 
   const [generations, setGenerations] = useState([])
   const [gensLoading, setGensLoading] = useState(true)
@@ -457,7 +360,17 @@ export default function TraceLabPage() {
 
   const setOpt = (key, value) => setOpts(o => ({ ...o, [key]: value }))
   const setDecoupeOpt = (key, value) => setDecoupeOpts(o => ({ ...o, [key]: value }))
-  const visibleParams = PARAMS.filter(p => p.engines.includes(engine))
+
+  const extractionOpts = useMemo(
+    () => outlineOptsForExtraction({ gravure: opts }),
+    [opts.maskContourSw],
+  )
+  const gravureTraceSettings = useMemo(() => gravureTraceOpts(opts), [opts])
+
+  const gravureMaskPreview = useMemo(
+    () => buildGravureMaskPreview(gravureData, silhouetteData),
+    [gravureData, silhouetteData],
+  )
 
   const maskData = useMemo(() => {
     const src = silhouetteData || gravureData || outlineData
@@ -470,22 +383,102 @@ export default function TraceLabPage() {
     return mapFacesToTarget(faceData.faces, gravureData.width, gravureData.height)
   }, [faceData, gravureData])
 
-  const mergedSvg = useMemo(() => buildMergedLaserSvg({
-    decoupeSvg: outlineRaw?.svg,
-    gravureSvg: gravureRaw?.svg,
-    maskData,
-    mappedEyes,
-    opts,
-    decoupeOpts,
-  }), [outlineRaw, gravureRaw, maskData, mappedEyes, opts, decoupeOpts])
+  const [mergedSvg, setMergedSvg] = useState(null)
+  const [mergedBusy, setMergedBusy] = useState(false)
+  const [mergedProgress, setMergedProgress] = useState('')
+  const [saveSvgBusy, setSaveSvgBusy] = useState(false)
+  const [saveSvgMsg, setSaveSvgMsg] = useState(null)
 
   useEffect(() => {
-    checkAutotraceAvailable().then(setAutotraceOk)
-  }, [])
+    if (!outlineRaw?.svg || !gravureRaw?.svg) {
+      setMergedSvg(null)
+      setMergedBusy(false)
+      setMergedProgress('')
+      return undefined
+    }
+
+    const controller = new AbortController()
+    setMergedBusy(true)
+    setMergedProgress('Fusion SVG…')
+    setMergedSvg(null)
+
+    buildMergedLaserSvgAsync({
+      decoupeSvg: outlineRaw.svg,
+      gravureSvg: gravureRaw.svg,
+      maskData,
+      mappedEyes,
+      opts: gravureTraceOpts(opts),
+      decoupeOpts,
+      signal: controller.signal,
+      onProgress: msg => setMergedProgress(typeof msg === 'string' ? msg : msg?.message ?? 'Fusion…'),
+    })
+      .then(svg => {
+        if (!controller.signal.aborted) setMergedSvg(svg)
+      })
+      .catch(err => {
+        if (err?.name !== 'AbortError') console.warn('[TraceLab] fusion SVG:', err.message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setMergedBusy(false)
+          setMergedProgress('')
+        }
+      })
+
+    return () => controller.abort()
+  }, [outlineRaw, gravureRaw, maskData, mappedEyes, opts, decoupeOpts])
 
   useEffect(() => {
-    saveTraceSettings({ engine, gravure: opts, decoupe: decoupeOpts })
-  }, [engine, opts, decoupeOpts])
+    setSaveSvgMsg(null)
+  }, [generationId, mergedSvg])
+
+  const saveMergedSvgToGeneration = useCallback(async () => {
+    if (!generationId || !mergedSvg) return
+    setSaveSvgBusy(true)
+    setSaveSvgMsg(null)
+    try {
+      const traceSettings = buildTraceSettingsPayload({
+        engine: 'browser',
+        gravure: opts,
+        decoupe: decoupeOpts,
+      })
+      const { version } = await uploadAsset(generationId, 'laser_merged', {
+        base64: svgToDataUrl(mergedSvg),
+        status: 'done',
+        source: 'lab_trace',
+        metadata: { traceSettings },
+      })
+      setSaveSvgMsg(`Nouvelle version v${version} enregistrée pour cette génération ✓`)
+    } catch (err) {
+      setSaveSvgMsg(err.message || 'Échec enregistrement du SVG')
+    } finally {
+      setSaveSvgBusy(false)
+      setTimeout(() => setSaveSvgMsg(null), 5000)
+    }
+  }, [generationId, mergedSvg, opts, decoupeOpts])
+
+  const saveProductionSettings = useCallback(() => {
+    saveTraceSettings(buildTraceSettingsPayload({ engine: 'browser', gravure: opts, decoupe: decoupeOpts }))
+    setProductionSavedAt(Date.now())
+  }, [opts, decoupeOpts])
+
+  useEffect(() => {
+    if (!lineDesignData) return undefined
+    let cancelled = false
+    const t = setTimeout(async () => {
+      try {
+        const layers = await processLineArt(imageDataToCanvas(lineDesignData), extractionOpts)
+        if (cancelled) return
+        const toData = canvas => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+        setOutlineData(toData(layers.outline))
+        setSilhouetteData(toData(layers.outlineBulky))
+        setGravureData(toData(layers.gravure))
+      } catch (err) {
+        if (!cancelled) console.warn('[TraceLab] extraction:', err.message)
+      }
+    }, 320)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [lineDesignData, extractionOpts])
 
   useEffect(() => {
     setGensLoading(true)
@@ -570,11 +563,13 @@ export default function TraceLabPage() {
         lineDesignUrl ? loadImageDataFromUrl(lineDesignUrl) : Promise.resolve(null),
       ])
 
-      setOutlineData(outline)
-      setSilhouetteData(silhouette)
-      setGravureData(gravure)
       setPhotoData(photo)
       setLineDesignData(lineDesign)
+      if (!lineDesign) {
+        setOutlineData(outline)
+        setSilhouetteData(silhouette)
+        setGravureData(gravure)
+      }
       setSearchParams({ gen: id }, { replace: true })
     } catch (err) {
       setLoadError(err.message)
@@ -608,19 +603,12 @@ export default function TraceLabPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="border-b border-stone-800 bg-stone-900/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-[1600px] mx-auto px-4 py-3">
-          <a href="/pipeline/" className="text-sm text-stone-500 hover:text-stone-300">← Pipeline</a>
-          <h1 className="text-lg font-bold mt-0.5">Labo — Centerline trace</h1>
-          <p className="text-xs text-stone-500 max-w-2xl mt-1">
-            Sélectionnez une génération : outline, gravure et photo step1 sont chargées automatiquement.
-            Les yeux détectés sur la photo sont reportés en ellipses sur la gravure.
-          </p>
-        </div>
-      </header>
+    <div className="max-w-[1600px] mx-auto px-4 py-6">
+      <p className="text-xs text-stone-500 max-w-2xl mb-6">
+        Photo source, line design, aperçu découpe et gravure masquée.
+      </p>
 
-      <div className="max-w-[1600px] mx-auto px-4 py-6 grid lg:grid-cols-[300px_1fr] gap-6">
+      <div className="grid lg:grid-cols-[300px_1fr] gap-6">
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4 space-y-3">
             <h2 className="text-sm font-semibold text-stone-200">Génération</h2>
@@ -659,33 +647,11 @@ export default function TraceLabPage() {
           </div>
 
           <div className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4 space-y-4">
-            <h2 className="text-sm font-semibold text-stone-200">Moteur</h2>
-            <div className="flex flex-col gap-2">
-              <label className="flex items-start gap-2 text-xs text-stone-300 cursor-pointer">
-                <input type="radio" name="engine" checked={engine === 'browser'} onChange={() => setEngine('browser')} className="accent-amber-500 mt-0.5" />
-                <span>
-                  <span className="font-medium text-stone-200">Navigateur</span>
-                  <span className="block text-stone-500">Skeleton-tracing</span>
-                </span>
-              </label>
-              <label className={`flex items-start gap-2 text-xs cursor-pointer ${autotraceOk === false ? 'opacity-50' : 'text-stone-300'}`}>
-                <input type="radio" name="engine" checked={engine === 'autotrace'} onChange={() => setEngine('autotrace')} disabled={autotraceOk === false} className="accent-amber-500 mt-0.5" />
-                <span>
-                  <span className="font-medium text-stone-200">Autotrace (local)</span>
-                  <span className="block text-stone-500">
-                    {autotraceOk === false ? 'Non disponible' : 'Inkscape centerline'}
-                  </span>
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4 space-y-4">
             <h2 className="text-sm font-semibold text-stone-200">Paramètres découpe</h2>
             <Slider
               id="decoupe-path-smoothness"
               label="Lissage paths corps"
-              hint="Réduit les points des silhouettes avant union (0 = brut). Utile si artefact vertical à la fermeture."
+              hint="Réduit les points des silhouettes (0 = brut)."
               min={0}
               max={100}
               step={1}
@@ -703,7 +669,17 @@ export default function TraceLabPage() {
 
           <div className="rounded-2xl border border-stone-800 bg-stone-900/60 p-4 space-y-4">
             <h2 className="text-sm font-semibold text-stone-200">Paramètres gravure</h2>
-            {visibleParams.map(p => (
+            <Slider
+              id={`trace-${MASK_CONTOUR_PARAM.key}`}
+              label={MASK_CONTOUR_PARAM.label}
+              hint={MASK_CONTOUR_PARAM.hint}
+              min={MASK_CONTOUR_PARAM.min}
+              max={MASK_CONTOUR_PARAM.max}
+              step={MASK_CONTOUR_PARAM.step}
+              value={opts.maskContourSw ?? DEFAULT_MASK_CONTOUR_SW}
+              onChange={v => setOpt('maskContourSw', v)}
+            />
+            {PARAMS.map(p => (
               <Slider
                 key={p.key}
                 id={`trace-${p.key}`}
@@ -716,10 +692,9 @@ export default function TraceLabPage() {
                 onChange={v => setOpt(p.key, v)}
               />
             ))}
-            <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer">
-              <input type="checkbox" checked={opts.pathOrderDebug} onChange={e => setOpt('pathOrderDebug', e.target.checked)} className="accent-amber-500" />
-              Dégradé ordre laser (vert → bleu, selon X)
-            </label>
+            <p className="text-[10px] text-stone-600 leading-snug">
+              Paths triés par centroïde X (gauche → droite), dégradé vert (gauche) → bleu (droite).
+            </p>
             <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer">
               <input type="checkbox" checked={opts.laserRoundTrip} onChange={e => setOpt('laserRoundTrip', e.target.checked)} className="accent-amber-500" />
               Aller-retour petits segments
@@ -730,12 +705,30 @@ export default function TraceLabPage() {
                 const d = resetTraceSettings()
                 setOpts(d.gravure)
                 setDecoupeOpts(d.decoupe)
-                setEngine(d.engine)
+                setProductionSavedAt(null)
               }}
               className="w-full text-xs py-2 rounded-lg border border-stone-700 text-stone-400 hover:text-stone-200"
             >
-              Réinitialiser
+              Réinitialiser tout (brouillon)
             </button>
+          </div>
+
+          <div className="rounded-2xl border border-amber-800/60 bg-amber-950/20 p-4 space-y-3">
+            <p className="text-[10px] text-stone-500 leading-snug">
+              Enregistre tous les paramètres visibles ci-dessus pour le pipeline automatique.
+            </p>
+            <button
+              type="button"
+              onClick={saveProductionSettings}
+              className="w-full rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 text-sm font-semibold py-2.5"
+            >
+              Enregistrer Paramètres pour Pipeline Automatique
+            </button>
+            {productionSavedAt && (
+              <p className="text-[10px] text-emerald-400 text-center">
+                Enregistré {new Date(productionSavedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
         </aside>
 
@@ -755,54 +748,79 @@ export default function TraceLabPage() {
                 detecting={detecting}
                 detectError={detectError}
               />
-              <TraceSlot
-                title="Outline / Découpe"
-                subtitle="Outline tracé → aperçu corps+socle → union (fermeture au socle seulement)"
+              <DecoupeLabPanel
                 imageData={outlineData}
-                setImageData={setOutlineData}
-                traceOpts={OUTLINE_TRACE_OPTS}
-                optimizeOpts={decoupeOpts}
-                engine={engine}
                 maskData={maskData}
-                applyDecoupeUnion
+                decoupeOpts={decoupeOpts}
                 onTraceResult={setOutlineRaw}
               />
-              <TraceSlot
-                title="Gravure"
-                subtitle="Gravure + ellipses yeux (masque blanc avant trace)"
+              <GravureLabPanel
                 imageData={gravureData}
-                setImageData={setGravureData}
-                traceOpts={opts}
-                optimizeOpts={opts}
-                engine={engine}
+                gravureOpts={gravureTraceSettings}
                 mappedEyes={mappedEyes}
-                maskEyesBeforeTrace
+                maskPreviewData={gravureMaskPreview}
                 onTraceResult={setGravureRaw}
               />
 
-              {mergedSvg && (
+              {(mergedSvg || mergedBusy) && (
                 <section className="rounded-2xl border border-stone-800 bg-stone-900/40 overflow-hidden">
                   <div className="px-4 py-3 border-b border-stone-800 flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h3 className="font-semibold text-stone-100">SVG fusionné laser</h3>
                       <p className="text-xs text-stone-500">
-                        Calque « découpe » (rouge) + « gravure » (noir, yeux inclus)
+                        {mergedBusy
+                          ? (mergedProgress || 'Calcul…')
+                          : 'Calque « découpe » (rouge) + « gravure » (tri X, vert → bleu)'}
                       </p>
                     </div>
-                    <a
-                      href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(mergedSvg)}`}
-                      download="mini-nous-laser.svg"
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950"
-                    >
-                      Télécharger SVG fusionné
-                    </a>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {generationId && mergedSvg && (
+                        <button
+                          type="button"
+                          disabled={saveSvgBusy}
+                          onClick={saveMergedSvgToGeneration}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white"
+                        >
+                          {saveSvgBusy
+                            ? 'Enregistrement…'
+                            : 'Ajouter comme nouvelle version du SVG pour cette génération'}
+                        </button>
+                      )}
+                      {mergedSvg && (
+                        <a
+                          href={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(mergedSvg)}`}
+                          download="mini-nous-laser.svg"
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950"
+                        >
+                          Télécharger SVG fusionné
+                        </a>
+                      )}
+                      {mergedBusy && (
+                        <span className="inline-block w-4 h-4 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin" />
+                      )}
+                    </div>
                   </div>
-                  <div className="p-3">
-                    <ZoomableStage label="Aperçu export (découpe + gravure)">
-                      <div
-                        className="relative w-full [&_svg]:max-w-none [&_svg]:w-full [&_svg]:h-auto bg-white rounded"
-                        dangerouslySetInnerHTML={{ __html: mergedSvg }}
-                      />
+                  {saveSvgMsg && (
+                    <p className={`px-4 py-2 text-xs border-b border-stone-800 ${
+                      saveSvgMsg.includes('✓') ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                    >
+                      {saveSvgMsg}
+                    </p>
+                  )}
+                  <div className="p-3 space-y-2">
+                    <ZoomableStage
+                      label="Aperçu export (découpe + gravure)"
+                      empty={mergedBusy && !mergedSvg && (
+                        <p className="text-xs text-stone-500">{mergedProgress || 'Fusion en cours…'}</p>
+                      )}
+                    >
+                      {mergedSvg && (
+                        <div
+                          className="relative w-full [&_svg]:max-w-none [&_svg]:w-full [&_svg]:h-auto bg-white rounded"
+                          dangerouslySetInnerHTML={{ __html: mergedSvg }}
+                        />
+                      )}
                     </ZoomableStage>
                   </div>
                 </section>

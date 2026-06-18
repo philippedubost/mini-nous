@@ -2,11 +2,13 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { detectPersons, drawBoxes } from '../lib/faceDetect'
 
 const THRESHOLD_DEFAULT = 0.4
+const MAX_FILE_BYTES = 5 * 1024 * 1024
 
-export default function Upload({ onReady }) {
+export default function Upload({ onReady, initialFaceCount, lockedCount = false }) {
   const [preview, setPreview] = useState(null)
   const [file, setFile] = useState(null)
-  const [count, setCount] = useState(3)
+  const [fileError, setFileError] = useState(null)
+  const [count, setCount] = useState(initialFaceCount ?? 3)
   const [threshold, setThreshold] = useState(THRESHOLD_DEFAULT)
   const [detecting, setDetecting] = useState(false)
   const inputRef = useRef(null)
@@ -40,6 +42,11 @@ export default function Upload({ onReady }) {
 
   const handleFile = useCallback((f) => {
     if (!f || !f.type.startsWith('image/')) return
+    if (f.size > MAX_FILE_BYTES) {
+      setFileError('Photo trop lourde — maximum 5 Mo.')
+      return
+    }
+    setFileError(null)
     setFile(f)
     detectionRef.current = null
     setPreview(URL.createObjectURL(f))
@@ -59,8 +66,12 @@ export default function Upload({ onReady }) {
     handleFile(e.dataTransfer.files[0])
   }, [handleFile])
 
-  const dec = () => setCount(n => Math.max(1, n - 1))
-  const inc = () => setCount(n => Math.min(10, n + 1))
+  useEffect(() => {
+    if (initialFaceCount != null) setCount(initialFaceCount)
+  }, [initialFaceCount])
+
+  const dec = () => { if (!lockedCount) setCount(n => Math.max(1, n - 1)) }
+  const inc = () => { if (!lockedCount) setCount(n => Math.min(10, n + 1)) }
 
   return (
     <div className="space-y-4">
@@ -90,12 +101,16 @@ export default function Upload({ onReady }) {
           <div className="py-8 text-stone-400">
             <div className="text-4xl mb-2">📷</div>
             <p>Déposer une photo de groupe</p>
-            <p className="text-sm mt-1 text-stone-500">ou cliquer pour choisir</p>
+            <p className="text-sm mt-1 text-stone-500">ou cliquer pour choisir · max 5 Mo</p>
           </div>
         )}
         <input ref={inputRef} type="file" accept="image/*" className="hidden"
           onChange={e => handleFile(e.target.files[0])} />
       </div>
+
+      {fileError && (
+        <p className="text-sm text-red-400 text-center">{fileError}</p>
+      )}
 
       {/* Person counter */}
       <div className="bg-stone-900 border border-stone-700 rounded-xl px-4 py-3 space-y-3">
@@ -110,13 +125,13 @@ export default function Upload({ onReady }) {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={dec}
-              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center">
+            <button onClick={dec} disabled={lockedCount}
+              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center disabled:opacity-40">
               −
             </button>
             <span className="text-xl font-bold text-amber-400 tabular-nums w-6 text-center">{count}</span>
-            <button onClick={inc}
-              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center">
+            <button onClick={inc} disabled={lockedCount}
+              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center disabled:opacity-40">
               +
             </button>
           </div>

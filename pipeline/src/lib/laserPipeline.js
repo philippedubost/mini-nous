@@ -1,14 +1,13 @@
 import {
   OUTLINE_TRACE_OPTS,
   traceCenterline,
-  traceAutotraceServer,
   loadImageDataFromUrl,
 } from './centerlineTrace'
 import { processLineArt } from './outline'
 import { extractBodyRegionsDetailed } from './bodyRegions'
 import { detectFacesGuided, mapFacesToTarget, paintEyeMasksOnImageData } from './faceLandmarks'
-import { buildMergedLaserSvg } from './laserSvg'
-import { gravureOptsForExport, loadTraceSettings } from './traceSettings'
+import { buildMergedLaserSvgAsync } from './laserSvg'
+import { gravureOptsForExport, gravureTraceOpts, loadTraceSettings, outlineOptsForExtraction } from './traceSettings'
 
 export function canvasToImageData(canvas) {
   return canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
@@ -76,7 +75,7 @@ export async function buildGenerationLaserSvg({
   onProgress,
 }) {
   const settings = traceSettings ?? loadTraceSettings()
-  const { engine, gravure: gravureOpts, decoupe: decoupeOpts } = settings
+  const { gravure: gravureOpts, decoupe: decoupeOpts } = settings
 
   const outlineData = canvasToImageData(layers.outline)
   const gravureData = canvasToImageData(layers.gravure)
@@ -104,27 +103,24 @@ export async function buildGenerationLaserSvg({
   }
 
   onProgress?.('Trace outline…')
-  const outlineTrace = engine === 'autotrace'
-    ? await traceAutotraceServer(outlineData, OUTLINE_TRACE_OPTS)
-    : traceCenterline(outlineData, OUTLINE_TRACE_OPTS)
+  const outlineTrace = traceCenterline(outlineData, OUTLINE_TRACE_OPTS)
 
   onProgress?.('Trace gravure…')
   let gravureInput = gravureData
   if (mappedEyes?.length) {
     gravureInput = paintEyeMasksOnImageData(gravureData, mappedEyes)
   }
-  const gravureTrace = engine === 'autotrace'
-    ? await traceAutotraceServer(gravureInput, gravureOpts)
-    : traceCenterline(gravureInput, gravureOpts)
+  const gravureTrace = traceCenterline(gravureInput, gravureTraceOpts(gravureOpts))
 
   onProgress?.('Fusion SVG laser…')
-  const merged = buildMergedLaserSvg({
+  const merged = await buildMergedLaserSvgAsync({
     decoupeSvg: outlineTrace.svg,
     gravureSvg: gravureTrace.svg,
     maskData,
     mappedEyes,
     opts: gravureOptsForExport(gravureOpts),
     decoupeOpts,
+    onProgress: msg => onProgress?.(typeof msg === 'string' ? msg : msg?.message),
   })
 
   if (!merged) throw new Error('Échec fusion SVG laser')
@@ -139,8 +135,10 @@ export async function extractAndBuildLaserSvg({
   traceSettings,
   onProgress,
 }) {
+  const settings = traceSettings ?? loadTraceSettings()
+  const outlineOpts = outlineOptsForExtraction(settings)
   onProgress?.('Extraction silhouette…')
-  const layers = await processLineArt(step2Url)
+  const layers = await processLineArt(step2Url, outlineOpts)
   const merged = await buildGenerationLaserSvg({
     layers,
     photoUrl,

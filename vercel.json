@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install && cd pipeline && npm install",
   "outputDirectory": "dist",
+  "framework": null,
   "rewrites": [
     { "source": "/pipeline", "destination": "/pipeline/index.html" },
     { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" }

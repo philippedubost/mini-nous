@@ -78,7 +78,7 @@ export async function uploadPipelineAssetToR2(body, env) {
       Key: key,
       Body: buffer,
       ContentType: contentType,
-      CacheControl: 'public, max-age=31536000',
+      CacheControl: body.cacheControl ?? 'public, max-age=31536000',
     })
   )
 

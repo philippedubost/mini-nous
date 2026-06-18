@@ -1,13 +1,9 @@
 /**
- * Découpe : union booléenne corps + socle par personnage.
- * Fermeture uniquement au socle (pas de corde tête↔fin du tracé).
+ * Découpe : corps ouverts + socle par personnage (sans union booléenne).
  */
 
-import polygonClipping from 'polygon-clipping'
 import { parsePathPoints, pointsToLinePathD, simplifyBodyPathPoints } from './centerlineTrace'
-import { computeSocleRects, roundedRectPath, roundedRectPolygon } from './socle'
-
-const { union: polyUnion } = polygonClipping
+import { computeSocleRects, roundedRectPath } from './socle'
 
 export const DECOUPE_BODY_COLOR = '#2563eb'
 export const DECOUPE_SOCLE_COLOR = '#dc2626'
@@ -52,93 +48,6 @@ function assignPathBodyId(pts, labels, W, H, bodies, bodyIds) {
   return best
 }
 
-function isClosedPath(pts) {
-  if (pts.length < 3) return false
-  const [x0, y0] = pts[0]
-  const [xn, yn] = pts[pts.length - 1]
-  return Math.hypot(x0 - xn, y0 - yn) < 0.5
-}
-
-function twoLowestIndices(pts) {
-  const sorted = pts
-    .map((p, i) => ({ i, y: p[1], x: p[0] }))
-    .sort((a, b) => b.y - a.y || a.x - b.x)
-  let iA = sorted[0].i
-  let iB = sorted[1].i
-  if (iA === iB && sorted.length > 2) iB = sorted[2].i
-  return [iA, iB]
-}
-
-function topY(seg) {
-  return Math.min(...seg.map(p => p[1]))
-}
-
-/** Arc extérieur entre chevilles — ordre original des points conservé. */
-function outerArcBetween(pts, iA, iB) {
-  if (iA === iB) return pts
-  let a = iA
-  let b = iB
-  if (a > b) [a, b] = [b, a]
-
-  const forward = pts.slice(a, b + 1)
-  const wrap = [...pts.slice(b), ...pts.slice(0, a + 1)]
-  return topY(forward) <= topY(wrap) ? forward : wrap
-}
-
-/**
- * Anneau pour union booléenne : fermeture au bas du socle seulement.
- * Ne relie jamais le 1er et le dernier point du tracé ouvert directement.
- */
-function bodyRingForUnion(pts, rect) {
-  if (!pts || pts.length < 3) return null
-
-  if (isClosedPath(pts)) {
-    const [x0, y0] = pts[0]
-    if (pts[pts.length - 1][0] === x0 && pts[pts.length - 1][1] === y0) return pts
-    return [...pts, [x0, y0]]
-  }
-
-  const [iA, iB] = twoLowestIndices(pts)
-  const outer = outerArcBetween(pts, iA, iB)
-  if (outer.length < 2) return null
-
-  const start = outer[0]
-  const end = outer[outer.length - 1]
-  const bottomY = rect.y + rect.h
-
-  return [...outer, [end[0], bottomY], [start[0], bottomY], start]
-}
-
-function bodyRingsFromItems(items, rect) {
-  return items.map(({ pts }) => bodyRingForUnion(pts, rect)).filter(Boolean)
-}
-
-function ringToPathD(ring) {
-  return `M ${ring.map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`).join(' L ')} Z`
-}
-
-function unionRings(rings) {
-  let result = null
-  for (const ring of rings) {
-    if (!ring || ring.length < 3) continue
-    const poly = [[ring]]
-    result = result ? polyUnion(result, poly) : poly
-  }
-  return result
-}
-
-function multiPolygonToPathItems(multi) {
-  const items = []
-  for (const poly of multi || []) {
-    if (!poly?.length) continue
-    items.push({ ring: poly[0], hole: false })
-    for (let i = 1; i < poly.length; i++) {
-      items.push({ ring: poly[i], hole: true })
-    }
-  }
-  return items
-}
-
 function appendPathEl(doc, root, d, stroke, sw, attrs = {}) {
   const path = doc.createElementNS('http://www.w3.org/2000/svg', 'path')
   path.setAttribute('d', d)
@@ -147,21 +56,25 @@ function appendPathEl(doc, root, d, stroke, sw, attrs = {}) {
   path.setAttribute('stroke-width', String(sw))
   path.setAttribute('stroke-linecap', 'round')
   path.setAttribute('stroke-linejoin', 'round')
-  for (const [k, v] of Object.entries(attrs)) path.setAttribute(k, v)
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v != null) path.setAttribute(k, String(v))
+  }
   root.appendChild(path)
 }
 
 function groupPathsByBody(outlineSvg, maskData, opts = {}) {
   const smoothness = opts.pathSmoothness ?? 0
+  const kerfMm = opts.kerfMm ?? 0
+  const pxPerMm = opts.pxPerMm ?? (maskData.width / (opts.sheetMm ?? maskData.width))
   const { bodies, labels, width: W, height: H } = maskData
   const bodyIds = new Set(bodies.map(b => b.id))
-  const rects = computeSocleRects(bodies, W, H)
+  const rects = computeSocleRects(bodies, W, H, { kerfMm, pxPerMm })
   const rectById = new Map(bodies.map((b, i) => [b.id, rects[i]]))
 
   const doc = new DOMParser().parseFromString(outlineSvg, 'image/svg+xml')
   const root = doc.documentElement
   const pathEls = [...root.querySelectorAll('path')].filter(
-    el => !el.hasAttribute('data-socle') && !el.hasAttribute('data-union') && !el.hasAttribute('data-corps'),
+    el => !el.hasAttribute('data-socle') && !el.hasAttribute('data-corps'),
   )
 
   const byBody = new Map()
@@ -239,20 +152,20 @@ function appendOpenBodyAndSocle(doc, root, items, rect, bodyStroke, socleStroke,
       roundedRectPath(rect.x, rect.y, rect.w, rect.h, rect.r),
       socleStroke,
       sw,
-      { 'data-socle': '1', ...socleAttrs },
+      { 'data-socle': '1', id: `socle-${socleAttrs['data-body-id'] ?? 'body'}`, ...socleAttrs },
     )
   }
 }
 
-/**
- * Segments outline dans la zone pieds / socle — gravure noire.
- */
-export function extractFootDecoupePathDs(outlineSvg, maskData) {
+/** Segments outline dans la zone pieds / socle — gravure noire. */
+export function extractFootDecoupePathDs(outlineSvg, maskData, opts = {}) {
   if (!outlineSvg || !maskData?.bodies?.length || !maskData.labels) return []
 
+  const kerfMm = opts.kerfMm ?? 0
+  const pxPerMm = opts.pxPerMm ?? (maskData.width / (opts.sheetMm ?? maskData.width))
   const { bodies, labels, width: W, height: H } = maskData
   const bodyIds = new Set(bodies.map(b => b.id))
-  const rects = computeSocleRects(bodies, W, H)
+  const rects = computeSocleRects(bodies, W, H, { kerfMm, pxPerMm })
   const rectById = new Map(bodies.map((b, i) => [b.id, rects[i]]))
   const bodyById = new Map(bodies.map(b => [b.id, b]))
 
@@ -279,8 +192,8 @@ export function extractFootDecoupePathDs(outlineSvg, maskData) {
   return ds
 }
 
-/** Aperçu : paths corps ouverts (bleu) + socle (rouge) — tracé inchangé. */
-export function buildDecoupePreUnionSvg(outlineSvg, maskData, opts = {}) {
+/** Paths corps ouverts (bleu) + socle (rouge) par personnage. */
+export function buildDecoupeWithSoclesSvg(outlineSvg, maskData, opts = {}) {
   if (!outlineSvg || !maskData?.bodies?.length || !maskData.labels) return outlineSvg
 
   const bodyColor = opts.bodyColor ?? DECOUPE_BODY_COLOR
@@ -305,45 +218,5 @@ export function buildDecoupePreUnionSvg(outlineSvg, maskData, opts = {}) {
   return new XMLSerializer().serializeToString(root)
 }
 
-/**
- * Union corps + socle (Path ▸ Union) : anneau fermé au socle uniquement, puis union booléenne.
- */
-export function mergeDecoupeSocleUnion(outlineSvg, maskData, opts = {}) {
-  if (!outlineSvg || !maskData?.bodies?.length || !maskData.labels) return outlineSvg
-
-  const stroke = opts.decoupeColor ?? DECOUPE_SOCLE_COLOR
-  const sw = opts.strokeWidth ?? 1
-
-  const { doc, root, byBody, unassigned, bodies, rectById } = groupPathsByBody(outlineSvg, maskData, opts)
-
-  for (const el of [...root.querySelectorAll('path')]) el.remove()
-  for (const { el } of unassigned) root.appendChild(el)
-
-  for (const body of [...bodies].sort((a, b) => a.cx - b.cx || a.cy - b.cy)) {
-    const items = byBody.get(body.id) || []
-    const rect = rectById.get(body.id)
-    if (!rect) {
-      for (const { d } of items) appendPathEl(doc, root, d, stroke, sw)
-      continue
-    }
-
-    const bodyRings = bodyRingsFromItems(items, rect)
-    const socleRing = roundedRectPolygon(rect.x, rect.y, rect.w, rect.h, rect.r)
-    const merged = unionRings([...bodyRings, socleRing])
-    const pathItems = multiPolygonToPathItems(merged)
-
-    if (!pathItems.length) {
-      appendOpenBodyAndSocle(doc, root, items, rect, stroke, stroke, sw, { 'data-union-fallback': '1' })
-      continue
-    }
-
-    for (const { ring, hole } of pathItems) {
-      appendPathEl(doc, root, ringToPathD(ring), stroke, sw, {
-        'data-union': '1',
-        ...(hole ? { 'data-hole': '1' } : {}),
-      })
-    }
-  }
-
-  return new XMLSerializer().serializeToString(root)
-}
+/** @deprecated utiliser buildDecoupeWithSoclesSvg */
+export const buildDecoupePreUnionSvg = buildDecoupeWithSoclesSvg

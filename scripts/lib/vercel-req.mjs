@@ -6,13 +6,14 @@ export function readBody(req) {
     const chunks = []
     req.on('data', c => chunks.push(c))
     req.on('end', () => {
-      const raw = Buffer.concat(chunks).toString()
-      if (!raw) return resolve(undefined)
+      const raw = Buffer.concat(chunks)
+      if (!raw.length) return resolve({ rawBody: Buffer.alloc(0), body: undefined })
       const ct = req.headers['content-type'] || ''
+      const text = raw.toString()
       if (ct.includes('application/json')) {
-        try { resolve(JSON.parse(raw)) } catch { resolve(undefined) }
+        try { resolve({ rawBody: raw, body: JSON.parse(text) }) } catch { resolve({ rawBody: raw, body: undefined }) }
       } else {
-        resolve(raw)
+        resolve({ rawBody: raw, body: text })
       }
     })
     req.on('error', reject)
@@ -49,12 +50,13 @@ export function createVercelRes(nodeRes) {
 
 export async function handleApiRequest(nodeReq, nodeRes, handler) {
   const url = parseUrl(nodeReq.url, true)
-  const body = await readBody(nodeReq)
+  const { rawBody, body } = await readBody(nodeReq)
   const req = {
     method: nodeReq.method,
     headers: nodeReq.headers,
     query: url.query,
     body,
+    rawBody,
   }
   const res = createVercelRes(nodeRes)
   await handler(req, res)

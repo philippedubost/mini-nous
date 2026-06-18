@@ -8,18 +8,29 @@ async function apiJson(path, options = {}) {
   return data
 }
 
-export async function createGeneration({ faceCount, resolution, aspectRatio, settings, falModel }) {
+export async function createGeneration({ faceCount, resolution, aspectRatio, settings, falModel, orderId }) {
   const { generation } = await apiJson('/api/generations', {
     method: 'POST',
-    body: JSON.stringify({ faceCount, resolution, aspectRatio, settings, falModel }),
+    body: JSON.stringify({ faceCount, resolution, aspectRatio, settings, falModel, orderId }),
   })
   return generation
 }
 
-export async function updateGeneration(id, { status, errorMessage } = {}) {
+export async function fetchOrderByToken(token) {
+  return apiJson(`/api/orders?token=${encodeURIComponent(token)}`)
+}
+
+export async function linkOrderGeneration(token, generationId) {
+  return apiJson('/api/orders', {
+    method: 'PATCH',
+    body: JSON.stringify({ token, generationId }),
+  })
+}
+
+export async function updateGeneration(id, { status, errorMessage, settings } = {}) {
   const { generation } = await apiJson('/api/generations', {
     method: 'PATCH',
-    body: JSON.stringify({ id, status, errorMessage }),
+    body: JSON.stringify({ id, status, errorMessage, settings }),
   })
   return generation
 }
@@ -57,6 +68,48 @@ export async function uploadAsset(generationId, assetType, payload = {}) {
 export async function fetchGenerations() {
   const { generations } = await apiJson('/api/generations')
   return generations
+}
+
+export async function fetchProductionWeeks() {
+  return apiJson('/api/production-weeks')
+}
+
+export async function fetchProductionWeek(weekKey) {
+  return apiJson(`/api/production-weeks?week=${encodeURIComponent(weekKey)}`)
+}
+
+export async function buildProductionWeekBatch(weekKey, { dryRun = false, kerf } = {}) {
+  return apiJson('/api/production-weeks', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'build-batch', weekKey, dryRun, kerf }),
+  })
+}
+
+export async function buildSelectionBatch(generationIds, { weekKey, dryRun = false, kerf } = {}) {
+  return apiJson('/api/production-weeks', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'build-batch-selection',
+      generationIds,
+      weekKey: weekKey || undefined,
+      dryRun,
+      kerf,
+    }),
+  })
+}
+
+export async function assignGenerationToWeek(weekKey, generationId, { customerName } = {}) {
+  return apiJson('/api/production-weeks', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'assign-generation', weekKey, generationId, customerName }),
+  })
+}
+
+export async function removeGenerationFromWeek(orderId) {
+  return apiJson('/api/production-weeks', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'remove-order', orderId }),
+  })
 }
 
 export async function fetchGeneration(id) {

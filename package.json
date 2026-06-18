@@ -7,11 +7,14 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/dev.mjs",
-    "dev:vercel": "vercel dev --listen 3333"
+    "batch": "node scripts/batch-maker/cli.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
+    "@fal-ai/client": "^1.4.0",
     "@supabase/supabase-js": "^2.97.0",
+    "@xmldom/xmldom": "^0.9.10",
+    "stripe": "^17.7.0",
     "ws": "^8.21.0"
   }
 }

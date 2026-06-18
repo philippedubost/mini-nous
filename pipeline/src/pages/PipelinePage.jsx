@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useCallback, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import Step from '../components/Step'
 import Preview from '../components/Preview'
-import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS } from '../lib/settings'
+import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS, falStepFormat } from '../lib/settings'
 import { loadTraceSettings } from '../lib/traceSettings'
 import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
 import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
 import {
   createGeneration, updateGeneration, persistAsset, markStepRunning,
+  fetchOrderByToken, linkOrderGeneration,
 } from '../lib/storage'
 
 const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
@@ -20,7 +21,11 @@ const INITIAL_STEPS = [
 ]
 
 export default function PipelinePage() {
+  const [searchParams] = useSearchParams()
+  const orderToken = searchParams.get('order')
   const [settings] = useState(loadSettings)
+  const [orderInfo, setOrderInfo] = useState(null)
+  const [orderError, setOrderError] = useState(null)
   const [phase, setPhase] = useState('upload')
   const [steps, setSteps] = useState(INITIAL_STEPS)
   const [globalError, setGlobalError] = useState(null)
@@ -30,6 +35,13 @@ export default function PipelinePage() {
     setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   }, [])
 
+  useEffect(() => {
+    if (!orderToken) return
+    fetchOrderByToken(orderToken)
+      .then(({ order }) => setOrderInfo(order))
+      .catch(err => setOrderError(err.message))
+  }, [orderToken])
+
   const handleStart = useCallback(async (file, faceCount) => {
     setPhase('running')
     setGlobalError(null)
@@ -38,19 +50,25 @@ export default function PipelinePage() {
 
     let generationId = null
     const traceSettings = loadTraceSettings()
+    const effectiveFaceCount = orderInfo?.faceCount ?? faceCount
 
     try {
-      const globalFmt = { resolution: settings.resolution, aspectRatio: settings.aspectRatio }
+      const fmt1 = falStepFormat(cfg1, settings)
+      const fmt2 = falStepFormat(cfg2, settings)
 
       try {
         const generation = await createGeneration({
-          faceCount,
+          faceCount: effectiveFaceCount,
           resolution: settings.resolution,
           aspectRatio: settings.aspectRatio,
           settings: { ...settings, traceSettings },
           falModel: FAL_MODEL,
+          orderId: orderInfo?.id ?? null,
         })
         generationId = generation.id
+        if (orderToken && orderInfo?.id) {
+          await linkOrderGeneration(orderToken, generationId).catch(() => {})
+        }
       } catch (storageErr) {
         console.warn('[storage] création génération:', storageErr.message)
       }
@@ -72,9 +90,9 @@ export default function PipelinePage() {
       patchStep(0, { status: 'running' })
       await markStepRunning(generationId, 'step1')
       try {
-        const prompt = buildPrompt1(faceCount, cfg1.prompt)
+        const prompt = buildPrompt1(effectiveFaceCount, cfg1.prompt)
         const imgs = resolveImageUrls(cfg1.imageInputs, urlMap)
-        url1 = await runFalStep({ ...cfg1, ...globalFmt, prompt }, imgs, log => patchStep(0, { log }))
+        url1 = await runFalStep({ ...cfg1, ...fmt1, prompt }, imgs, log => patchStep(0, { log }))
         urlMap.step1 = url1
         patchStep(0, { status: 'done', image: url1, log: null })
         await persistAsset(generationId, 'step1', { falUrl: url1, url: url1, prompt, status: 'done' })
@@ -88,7 +106,7 @@ export default function PipelinePage() {
       await markStepRunning(generationId, 'step2')
       try {
         const imgs = resolveImageUrls(cfg2.imageInputs, urlMap)
-        url2 = await runFalStep({ ...cfg2, ...globalFmt }, imgs, log => patchStep(1, { log }))
+        url2 = await runFalStep({ ...cfg2, ...fmt2, prompt: cfg2.prompt }, imgs, log => patchStep(1, { log }))
         urlMap.step2 = url2
         patchStep(1, { status: 'done', image: url2, log: null })
         await persistAsset(generationId, 'step2', { falUrl: url2, url: url2, prompt: cfg2.prompt, status: 'done' })
@@ -104,7 +122,7 @@ export default function PipelinePage() {
         const { layers, merged } = await extractAndBuildLaserSvg({
           step2Url: url2,
           photoUrl: url1,
-          faceCount,
+          faceCount: effectiveFaceCount,
           traceSettings: loadTraceSettings(),
           onProgress: log => patchStep(2, { log }),
         })
@@ -141,7 +159,7 @@ export default function PipelinePage() {
       setGlobalError(err.message)
       setPhase('error')
     }
-  }, [settings, patchStep])
+  }, [settings, patchStep, orderInfo, orderToken])
 
   const reset = () => {
     setPhase('upload')
@@ -173,12 +191,31 @@ export default function PipelinePage() {
           </Link>
         </div>
 
-        {phase === 'upload' && <Upload onReady={handleStart} />}
+        {phase === 'upload' && (
+          <>
+            {orderInfo && (
+              <div className="rounded-xl border border-emerald-800/50 bg-emerald-950/30 p-4 text-sm text-emerald-200">
+                Commande confirmée · {orderInfo.packType} · {orderInfo.faceCount} personnage{orderInfo.faceCount > 1 ? 's' : ''}
+                {orderInfo.shipDate && ` · Expédition ${new Date(orderInfo.shipDate + 'T12:00:00').toLocaleDateString('fr-FR')}`}
+              </div>
+            )}
+            {orderError && (
+              <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">
+                {orderError} — <Link to="/" className="underline">Retour boutique</Link>
+              </div>
+            )}
+            <Upload
+              onReady={handleStart}
+              initialFaceCount={orderInfo?.faceCount}
+              lockedCount={!!orderInfo?.faceCount}
+            />
+          </>
+        )}
 
         {phase !== 'upload' && (
           <div className="space-y-4">
-            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} config={{ ...settings.steps[0], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
-            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} config={{ ...settings.steps[1], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
+            <Step number={1} label={STEP_LABELS[1]} {...steps[0]} config={{ ...settings.steps[0], ...falStepFormat(settings.steps[0], settings) }} />
+            <Step number={2} label={STEP_LABELS[2]} {...steps[1]} config={{ ...settings.steps[1], ...falStepFormat(settings.steps[1], settings) }} />
             <Step number={3} label={STEP_LABELS[3]} {...steps[2]} config={{ ...settings.steps[2], resolution: settings.resolution, aspectRatio: settings.aspectRatio }} />
 
             {globalError && (

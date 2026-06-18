@@ -8,8 +8,16 @@
  *   → gravure = line art dans le masque dilaté, hors zone bulky
  *   → overlay = rouge découpe serrée + bleu gravure
  *
- * Default opts: { thresh:240, dm:2, sw:4, swTight:0, swr:1 }
+ * Default opts: { thresh:240, dm:2, sw:8, swTight:0, swr:1 }
  */
+
+export const DEFAULT_OUTLINE_OPTS = {
+  thresh: 240,
+  dm: 2,
+  sw: 8,
+  swTight: 0,
+  swr: 1,
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -210,4 +218,29 @@ export async function processLineArt(source, {
   }
 
   return { outline: outlineC, outlineBulky: outlineBulkyC, gravure: gravureC, overlay: overlayC }
+}
+
+/** Aperçu gravure : zones masquées par le contour bulky en rouge. */
+export function buildGravureMaskPreview(gravureData, bulkyData) {
+  if (!gravureData || !bulkyData) return null
+  const W = gravureData.width
+  const H = gravureData.height
+  if (bulkyData.width !== W || bulkyData.height !== H) return null
+  const out = new ImageData(W, H)
+  for (let i = 0; i < W * H; i++) {
+    const gi = i * 4
+    const masked = bulkyData.data[gi] < 200
+    if (masked) {
+      out.data[gi] = 220
+      out.data[gi + 1] = 48
+      out.data[gi + 2] = 48
+      out.data[gi + 3] = 255
+    } else {
+      out.data[gi] = gravureData.data[gi]
+      out.data[gi + 1] = gravureData.data[gi + 1]
+      out.data[gi + 2] = gravureData.data[gi + 2]
+      out.data[gi + 3] = 255
+    }
+  }
+  return out
 }

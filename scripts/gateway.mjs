@@ -3,10 +3,11 @@ import { dirname, join, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { request as httpRequest } from 'node:http'
 import { createServer } from 'node:http'
+import { handleApiRequest } from './lib/vercel-req.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const MIME = {
-  '.html': 'text/html',
+  '.html': 'text/html; charset=utf-8',
   '.css': 'text/css',
   '.js': 'application/javascript',
   '.json': 'application/json',
@@ -53,10 +54,28 @@ function serveStatic(req, res) {
   res.end(readFileSync(filePath))
 }
 
-export function startGateway({ port, apiPort, vitePort }) {
-  const server = createServer((req, res) => {
+export function startGateway({ port, vitePort, apiRoutes }) {
+  const server = createServer(async (req, res) => {
     const path = req.url?.split('?')[0] || ''
-    if (path.startsWith('/api/')) return proxy(req, res, apiPort)
+    if (path.startsWith('/api/')) {
+      try {
+        const match = path.match(/^\/api\/([^/?]+)/)
+        const handler = match ? apiRoutes[match[1]] : null
+        if (!handler) {
+          res.writeHead(404, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: `Unknown API: ${match?.[1] ?? path}` }))
+          return
+        }
+        await handleApiRequest(req, res, handler)
+      } catch (err) {
+        console.error('[api]', err)
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: err.message || 'Server error' }))
+        }
+      }
+      return
+    }
     if (path.startsWith('/pipeline')) return proxy(req, res, vitePort)
     return serveStatic(req, res)
   })

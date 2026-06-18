@@ -1,18 +1,23 @@
 import { getSupabase, ASSET_META } from './supabase.js'
 import { deleteR2Object, resolveR2Key } from './r2.js'
 
+/** Prochain numéro de version (toutes lignes, y compris soft-deleted — la contrainte unique les compte). */
 export async function getNextVersion(supabase, generationId, assetType) {
   const { data, error } = await supabase
     .from('mini_nous_asset_versions')
     .select('version')
     .eq('generation_id', generationId)
     .eq('asset_type', assetType)
-    .is('deleted_at', null)
     .order('version', { ascending: false })
     .limit(1)
     .maybeSingle()
   if (error) throw new Error(error.message)
   return (data?.version ?? 0) + 1
+}
+
+export function isDuplicateVersionError(err) {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.includes('duplicate key') || msg.includes('unique constraint')
 }
 
 export async function saveAssetVersion(supabase, {
