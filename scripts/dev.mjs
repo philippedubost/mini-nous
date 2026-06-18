@@ -1,5 +1,5 @@
 import { createServer } from 'node:net'
-import { readFileSync, existsSync, readdirSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -44,23 +44,13 @@ async function waitForVite(port, timeoutMs = 20000) {
   throw new Error(`Vite interne : pas de réponse sur 127.0.0.1:${port}`)
 }
 
-async function loadHandler(relPath) {
-  return (await import(pathToFileURL(join(rootDir, relPath)).href)).default
-}
-
 async function requirePort(port, label) {
   if (await isFree(port)) return
   throw new Error(`${label} : le port ${port} est déjà utilisé. Arrêtez l'autre serveur (Ctrl+C) puis relancez.`)
 }
 
 async function loadApiRoutes() {
-  const apiDir = join(rootDir, 'api')
-  const routes = {}
-  for (const file of readdirSync(apiDir).sort()) {
-    if (!file.endsWith('.js')) continue
-    const name = file.slice(0, -3)
-    routes[name] = await loadHandler(`api/${file}`)
-  }
+  const { routes } = await import(pathToFileURL(join(rootDir, 'lib/api/router.js')).href)
   return routes
 }
 
