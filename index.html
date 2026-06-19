@@ -895,13 +895,59 @@ function isImageFile(file) {
   );
 }
 
-function readImageFile(file) {
+function loadImageElementFromFile(file) {
   return new Promise((resolve, reject) => {
-    const photoUrl = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image illisible')); };
+    img.src = url;
+  });
+}
+
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+async function compressImageFile(file, maxBytes = MAX_UPLOAD_BYTES) {
+  if (!file || file.size <= maxBytes) return file;
+
+  const img = await loadImageElementFromFile(file);
+  let w = img.naturalWidth;
+  let h = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  let quality = 0.9;
+
+  for (let pass = 0; pass < 16; pass++) {
+    if (pass > 0) {
+      if (pass % 2 === 1) quality = Math.max(0.42, quality - 0.08);
+      else {
+        w = Math.max(720, Math.round(w * 0.86));
+        h = Math.max(720, Math.round(h * 0.86));
+      }
+    }
+    const scale = Math.min(1, 4096 / Math.max(w, h));
+    const cw = Math.max(1, Math.round(w * scale));
+    const ch = Math.max(1, Math.round(h * scale));
+    canvas.width = cw;
+    canvas.height = ch;
+    ctx.drawImage(img, 0, 0, cw, ch);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob && blob.size <= maxBytes) {
+      const base = (file.name || 'photo').replace(/\.[^.]+$/i, '');
+      return new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+    }
+  }
+  throw new Error('Impossible de compresser sous 3 Mo — essayez une photo plus petite.');
+}
+
+async function readImageFile(file) {
+  const prepared = await compressImageFile(file);
+  return new Promise((resolve, reject) => {
+    const photoUrl = URL.createObjectURL(prepared);
     const reader = new FileReader();
-    reader.onload = () => resolve({ photoUrl, photoBase64: reader.result });
+    reader.onload = () => resolve({ photoUrl, photoBase64: reader.result, file: prepared });
     reader.onerror = () => { URL.revokeObjectURL(photoUrl); reject(new Error('Lecture impossible')); };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(prepared);
   });
 }
 
@@ -917,13 +963,12 @@ function PhotoUploadZone({ onFile, onDemo, compact, label, hint, showDemo }) {
       alert('Choisissez une image (JPG, PNG, HEIC…).');
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      alert('Image trop lourde — maximum 3 Mo.');
-      return;
-    }
     setLoading(true);
     try {
-      await onFile(file);
+      const prepared = await compressImageFile(file);
+      await onFile(prepared);
+    } catch (err) {
+      alert(err.message || 'Impossible de traiter cette image.');
     } finally {
       setLoading(false);
     }
@@ -949,7 +994,7 @@ function PhotoUploadZone({ onFile, onDemo, compact, label, hint, showDemo }) {
           {loading ? 'On lit votre photo…' : (label || 'Glissez votre photo de groupe ici')}
         </h3>
         <p style={{ color:'var(--muted)', marginBottom: compact ? 16 : 24, fontSize:'.88rem' }}>
-          {loading ? 'Quelques secondes' : (hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 3 Mo')}
+          {loading ? 'Quelques secondes' : (hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · compressé auto si > 3 Mo')}
         </p>
         <button type="button" className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem',
           opacity: loading ? .75 : 1, display:'inline-flex', alignItems:'center', gap:8 }}

@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { detectPersons, drawBoxes } from '../lib/faceDetect'
+import { compressImageFile } from '../lib/compressImage'
 
 const THRESHOLD_DEFAULT = 0.4
-const MAX_FILE_BYTES = 5 * 1024 * 1024
 
 export default function Upload({ onReady, initialFaceCount, lockedCount = false }) {
   const [preview, setPreview] = useState(null)
@@ -11,6 +11,7 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
   const [count, setCount] = useState(initialFaceCount ?? 3)
   const [threshold, setThreshold] = useState(THRESHOLD_DEFAULT)
   const [detecting, setDetecting] = useState(false)
+  const [preparing, setPreparing] = useState(false)
   const inputRef = useRef(null)
   const imgRef = useRef(null)
   const canvasRef = useRef(null)
@@ -40,17 +41,23 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
     }
   }, [redrawBoxes])
 
-  const handleFile = useCallback((f) => {
+  const handleFile = useCallback(async (f) => {
     if (!f || !f.type.startsWith('image/')) return
-    if (f.size > MAX_FILE_BYTES) {
-      setFileError('Photo trop lourde — maximum 5 Mo.')
-      return
-    }
+    setPreparing(true)
     setFileError(null)
-    setFile(f)
-    detectionRef.current = null
-    setPreview(URL.createObjectURL(f))
-    runDetection(f, threshold)
+    try {
+      const prepared = await compressImageFile(f)
+      setFile(prepared)
+      detectionRef.current = null
+      setPreview(URL.createObjectURL(prepared))
+      await runDetection(prepared, threshold)
+    } catch (err) {
+      setFileError(err.message || 'Impossible de traiter cette image.')
+      setFile(null)
+      setPreview(null)
+    } finally {
+      setPreparing(false)
+    }
   }, [threshold, runDetection])
 
   // Re-run detection when threshold slider changes (debounced 400ms)
@@ -72,13 +79,14 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
 
   const dec = () => { if (!lockedCount) setCount(n => Math.max(1, n - 1)) }
   const inc = () => { if (!lockedCount) setCount(n => Math.min(10, n + 1)) }
+  const busy = preparing || detecting
 
   return (
     <div className="space-y-4">
       {/* Drop zone */}
       <div
         className="border-2 border-dashed border-stone-600 rounded-xl p-4 text-center cursor-pointer hover:border-amber-500 transition-colors"
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !preparing && inputRef.current?.click()}
         onDrop={onDrop}
         onDragOver={e => e.preventDefault()}
       >
@@ -99,13 +107,13 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
           </div>
         ) : (
           <div className="py-8 text-stone-400">
-            <div className="text-4xl mb-2">📷</div>
-            <p>Déposer une photo de groupe</p>
-            <p className="text-sm mt-1 text-stone-500">ou cliquer pour choisir · max 5 Mo</p>
+            <div className="text-4xl mb-2">{preparing ? '⏳' : '📷'}</div>
+            <p>{preparing ? 'Compression de la photo…' : 'Déposer une photo de groupe'}</p>
+            <p className="text-sm mt-1 text-stone-500">ou cliquer pour choisir · compressé auto si &gt; 3 Mo</p>
           </div>
         )}
-        <input ref={inputRef} type="file" accept="image/*" className="hidden"
-          onChange={e => handleFile(e.target.files[0])} />
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" disabled={preparing}
+          onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }} />
       </div>
 
       {fileError && (
@@ -117,10 +125,10 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm text-stone-300">Personnes</span>
-            {detecting && (
+            {(detecting || preparing) && (
               <span className="text-[10px] text-amber-400/70 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
-                détection…
+                {preparing ? 'compression…' : 'détection…'}
               </span>
             )}
           </div>
@@ -169,7 +177,7 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
       )}
 
       <button
-        disabled={!file}
+        disabled={!file || busy}
         onClick={() => onReady(file, count)}
         className="w-full py-3 rounded-xl font-semibold transition-colors bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed text-stone-950"
       >
