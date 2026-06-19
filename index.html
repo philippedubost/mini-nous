@@ -479,7 +479,7 @@ function AccountNavLink() {
 function SizeReminder() {
   return (
     <p style={{ fontSize:'.82rem', color:'var(--muted)', marginTop:16, lineHeight:1.65, textAlign:'center' }}>
-      Chaque figurine mesure <strong style={{ color:'var(--dark)' }}>18 cm</strong> — la taille d&apos;une main adulte.
+      Les figurines sont à l&apos;échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ — par exemple 18 cm pour 1 m 80.
     </p>
   );
 }
@@ -800,7 +800,7 @@ function UgcFeed() {
 function SizeScaleBanner() {
   return (
     <div className="size-banner" style={{ marginTop: 0 }}>
-      <img src={IMG.size} alt="Figurines MiniNous à côté d'un smartphone — 18 cm de haut"/>
+      <img src={IMG.size} alt="Figurines MiniNous — échelle 1/10 environ, 18 cm pour 1 m 80"/>
     </div>
   );
 }
@@ -1652,7 +1652,7 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
               <>
                 <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem' }}>{quote.label}</h3>
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
-                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · 18 cm · Nantes · livraison vendredi
+                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · échelle 1/10 · Nantes · livraison vendredi
                 </p>
               </>
             ) : (

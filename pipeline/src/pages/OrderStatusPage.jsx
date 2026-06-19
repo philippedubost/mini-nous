@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchOrderByToken } from '../lib/storage'
+import CustomerLayout from '../components/CustomerLayout'
 
 const STEPS = [
   { key: 'awaiting_photo', label: 'Photo' },
@@ -62,125 +63,109 @@ export default function OrderStatusPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100">
-      <header className="border-b border-stone-800 px-6 py-4 flex items-center justify-between max-w-3xl mx-auto">
-        <Link to="/" className="font-bold text-amber-400/90 hover:text-amber-300 transition-colors">
-          Les MiniNous
-        </Link>
-        <span className="text-xs text-stone-500">Ma commande</span>
-      </header>
+    <CustomerLayout
+      title={order ? 'Votre commande' : undefined}
+      subtitle={order ? `${order.packLabel} · ${order.faceCount} figurine${order.faceCount > 1 ? 's' : ''}${order.amountEur ? ` · ${order.amountEur} €` : ''}` : undefined}
+      navRight={<span className="customer-muted text-xs">Suivi commande</span>}
+    >
+      {loading && (
+        <p className="customer-muted text-center py-12">Chargement de votre commande…</p>
+      )}
 
-      <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-        {loading && (
-          <p className="text-stone-400 text-center py-16">Chargement de votre commande…</p>
-        )}
+      {error && !loading && (
+        <div className="customer-alert-warn text-center space-y-4">
+          <p>{error}</p>
+          <a href="/" className="customer-link">← Boutique</a>
+        </div>
+      )}
 
-        {error && !loading && (
-          <div className="rounded-2xl border border-amber-800/40 bg-amber-950/20 p-6 text-center space-y-4">
-            <p className="text-amber-200 text-sm">{error}</p>
-            <a href="/" className="text-sm text-stone-400 hover:text-stone-200">← Boutique</a>
-          </div>
-        )}
-
-        {order && !loading && (
-          <>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold">Votre commande</h1>
-              <p className="text-stone-400 text-sm">
-                {order.packLabel} · {order.faceCount} figurine{order.faceCount > 1 ? 's' : ''}
-                {order.amountEur ? ` · ${order.amountEur} €` : ''}
-              </p>
-            </div>
-
-            {/* Timeline */}
-            <div className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6">
-              <div className="flex justify-between gap-2 mb-6">
-                {STEPS.map((s, i) => (
-                  <div key={s.key} className="flex-1 text-center">
-                    <div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
-                      i <= currentStep
-                        ? 'bg-amber-500 text-stone-950'
-                        : 'bg-stone-800 text-stone-500'
-                    }`}>
-                      {i + 1}
-                    </div>
-                    <span className={`text-[10px] sm:text-xs ${i <= currentStep ? 'text-stone-200' : 'text-stone-600'}`}>
-                      {s.label}
-                    </span>
+      {order && !loading && (
+        <>
+          <div className="customer-card">
+            <div className="flex justify-between gap-2 mb-6">
+              {STEPS.map((s, i) => (
+                <div key={s.key} className="flex-1 text-center">
+                  <div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
+                    i <= currentStep ? 'customer-step-active' : 'customer-step-idle'
+                  }`}>
+                    {i + 1}
                   </div>
-                ))}
-              </div>
-
-              <div className="rounded-xl border border-amber-800/30 bg-amber-950/20 px-4 py-3">
-                <p className="font-semibold text-amber-100">{order.workflowLabel}</p>
-                <p className="text-sm text-amber-200/70 mt-1">{order.workflowHint}</p>
-              </div>
+                  <span className={`text-[10px] sm:text-xs font-medium ${i <= currentStep ? 'text-[#2C1F14]' : 'customer-muted'}`}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
             </div>
 
-            {order.previewUrl && (
-              <div className="rounded-2xl border border-stone-800 overflow-hidden bg-stone-900/30">
-                <p className="text-xs text-stone-500 px-4 pt-3">Aperçu atelier</p>
-                <img
-                  src={order.previewUrl}
-                  alt="Aperçu de votre design"
-                  className="w-full max-h-80 object-contain bg-stone-900/50"
-                />
+            <div className="customer-status-box">
+              <p className="font-semibold text-[#C0684A]">{order.workflowLabel}</p>
+              <p className="text-sm customer-muted mt-1">{order.workflowHint}</p>
+            </div>
+          </div>
+
+          {order.previewUrl && (
+            <div className="customer-card overflow-hidden !p-0">
+              <p className="text-xs customer-muted px-4 pt-3">Aperçu atelier</p>
+              <img
+                src={order.previewUrl}
+                alt="Aperçu de votre design"
+                className="w-full max-h-80 object-contain bg-[#F5EDE0] p-2"
+              />
+            </div>
+          )}
+
+          <div className="customer-card space-y-3 text-sm">
+            {shipLabel && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">Livraison prévue</span>
+                <span className="text-[#2C1F14] text-right font-medium">{shipLabel}</span>
               </div>
             )}
+            {order.paidAt && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">Payé le</span>
+                <span className="text-[#2C1F14] font-medium">{formatDate(order.paidAt)}</span>
+              </div>
+            )}
+            {order.email && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">E-mail</span>
+                <span className="text-[#2C1F14] truncate font-medium">{order.email}</span>
+              </div>
+            )}
+          </div>
 
-            <div className="rounded-2xl border border-stone-800 bg-stone-900/30 p-5 space-y-3 text-sm">
-              {shipLabel && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-500">Livraison prévue</span>
-                  <span className="text-stone-200 text-right">{shipLabel}</span>
-                </div>
-              )}
-              {order.paidAt && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-500">Payé le</span>
-                  <span className="text-stone-200">{formatDate(order.paidAt)}</span>
-                </div>
-              )}
-              {order.email && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-stone-500">E-mail</span>
-                  <span className="text-stone-200 truncate">{order.email}</span>
-                </div>
-              )}
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {order.editable && order.workflowStatus === 'awaiting_photo' && (
+              <Link
+                to={`/studio?order=${encodeURIComponent(orderToken)}`}
+                className="customer-btn-clay flex-1 text-center"
+              >
+                Envoyer ma photo →
+              </Link>
+            )}
+            {order.editable && order.workflowStatus !== 'awaiting_photo' && (
+              <Link
+                to={`/studio?order=${encodeURIComponent(orderToken)}`}
+                className="customer-btn-clay flex-1 text-center"
+              >
+                Ouvrir le studio →
+              </Link>
+            )}
+            {!order.editable && (
+              <p className="flex-1 text-center py-3 text-sm customer-muted">
+                Votre commande est en fabrication — modifications fermées.
+              </p>
+            )}
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              {order.editable && order.workflowStatus === 'awaiting_photo' && (
-                <Link
-                  to={`/studio?order=${encodeURIComponent(orderToken)}`}
-                  className="flex-1 text-center py-3.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 transition-colors"
-                >
-                  Envoyer ma photo →
-                </Link>
-              )}
-              {order.editable && order.workflowStatus !== 'awaiting_photo' && (
-                <Link
-                  to={`/studio?order=${encodeURIComponent(orderToken)}`}
-                  className="flex-1 text-center py-3.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 transition-colors"
-                >
-                  Ouvrir le studio →
-                </Link>
-              )}
-              {!order.editable && (
-                <p className="flex-1 text-center py-3.5 text-sm text-stone-500">
-                  Votre commande est en fabrication — modifications fermées.
-                </p>
-              )}
-            </div>
-
-            <p className="text-xs text-stone-600 text-center leading-relaxed">
-              Conservez cette page en favori pour retrouver votre commande.
-              {order.email ? ' Un e-mail de confirmation vous a aussi été envoyé.' : ''}
-              {' '}Ou <Link to="/compte" className="text-amber-600 hover:text-amber-500">connectez-vous</Link> pour tout retrouver.
-            </p>
-          </>
-        )}
-      </main>
-    </div>
+          <p className="text-xs customer-muted text-center leading-relaxed">
+            Conservez cette page en favori pour retrouver votre commande.
+            {order.email ? ' Un e-mail de confirmation vous a aussi été envoyé.' : ''}
+            {' '}Ou <Link to="/compte" className="text-[#C0684A] hover:underline">connectez-vous</Link> pour tout retrouver.
+          </p>
+        </>
+      )}
+    </CustomerLayout>
   )
 }

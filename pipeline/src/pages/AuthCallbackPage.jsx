@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import CustomerLayout from '../components/CustomerLayout'
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -45,19 +46,19 @@ export default function AuthCallbackPage() {
   }, [navigate])
 
   return (
-    <div className="min-h-screen bg-stone-950 flex items-center justify-center p-6">
-      <div className="text-center space-y-4">
+    <CustomerLayout center>
+      <div className="text-center space-y-4 max-w-sm">
         {!error ? (
-          <p className="text-stone-400">Connexion en cours…</p>
+          <p className="customer-muted">Connexion en cours…</p>
         ) : (
           <>
-            <p className="text-amber-300 text-sm max-w-sm">{error}</p>
-            <Link to="/compte/connexion" className="text-amber-400 hover:text-amber-300 text-sm">
+            <p className="customer-alert-warn">{error}</p>
+            <Link to="/compte/connexion" className="customer-link">
               Réessayer →
             </Link>
           </>
         )}
       </div>
-    </div>
+    </CustomerLayout>
   )
 }
