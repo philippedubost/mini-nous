@@ -32,7 +32,8 @@ input{font-family:inherit}
 @keyframes screenIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 
 /* Nav */
-.nav-glass{background:rgba(250,247,242,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(196,168,130,.2)}
+.nav-account-link{font-family:Quicksand,sans-serif;font-size:.82rem;font-weight:600;color:var(--muted);text-decoration:none;padding:8px 12px;border-radius:100px;transition:color var(--t),background var(--t)}
+.nav-account-link:hover{color:var(--clay);background:var(--clay-pale)}
 
 /* Tags */
 .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:100px;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
@@ -126,6 +127,99 @@ input{font-family:inherit}
 .pack-price{font-family:Quicksand,sans-serif;font-size:1.75rem;font-weight:700;color:var(--dark);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .pack-price small{font-size:.85rem;font-weight:500;color:var(--muted)}
 .pack-price .pack-shipping{font-size:.72rem;font-weight:500;color:var(--muted)}
+
+/* Triptyque Photo → Tracé → Déco */
+.triptych{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:center;max-width:920px;margin:0 auto}
+.triptych.triptych-vertical{grid-template-columns:1fr;max-width:380px;gap:8px}
+.triptych-vertical .triptych-arrow{display:block;text-align:center;font-size:1.1rem;line-height:1}
+.triptych-step{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(44,31,20,.12);background:#fff}
+.triptych-step img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:center;display:block}
+.triptych-step img.crop-top{object-position:top center}
+.triptych-step-contain{background:var(--bark-pale)}
+.triptych-step-contain img{object-fit:contain !important;object-position:center !important}
+.triptych-step-contain img.crop-top{object-position:center !important}
+.paywall-photo-thumb{width:80px;height:60px;border-radius:8px;border:2px solid var(--bark-light);flex-shrink:0;background:var(--bark-pale);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.paywall-photo-thumb img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
+.triptych-ratio-square .triptych-step img{aspect-ratio:1/1}
+.triptych-ratio-landscape .triptych-step img{aspect-ratio:16/10}
+.triptych.triptych-vertical.triptych-ratio-landscape{max-width:100%;gap:6px}
+.triptych-label{position:absolute;bottom:10px;left:10px;right:10px;background:rgba(44,31,20,.78);color:#fff;border-radius:100px;padding:6px 12px;font-size:.68rem;font-weight:700;text-align:center;backdrop-filter:blur(8px)}
+.triptych-arrow{color:var(--clay);font-size:1.35rem;font-weight:700;opacity:.85;user-select:none}
+@media(max-width:768px){
+  .triptych{grid-template-columns:1fr;gap:16px}
+  .triptych-arrow{display:none}
+  .triptych:not(.triptych-ratio-square):not(.triptych-ratio-landscape) .triptych-step img{aspect-ratio:16/11}
+  .triptych-ratio-landscape.triptych-vertical .triptych-step img{aspect-ratio:16/10}
+}
+
+/* UGC — galerie simplifiée */
+.ugc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
+@media(max-width:900px){.ugc-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.ugc-grid{grid-template-columns:1fr 1fr}}
+.ugc-tile{border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(44,31,20,.1);background:var(--bark-pale)}
+.ugc-tile img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.social-row{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:28px}
+.social-link{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid var(--bark-light);color:var(--dark);transition:all var(--t);box-shadow:0 4px 16px rgba(44,31,20,.08)}
+.social-link:hover{border-color:var(--clay);color:var(--clay);transform:translateY(-2px);box-shadow:0 8px 24px rgba(192,104,74,.18)}
+.social-link svg{width:22px;height:22px;fill:currentColor}
+
+/* Démo photos + échelle */
+.demo-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.demo-chip{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:100px;border:2px solid var(--bark-light);background:#fff;cursor:pointer;transition:all var(--t);font-size:.78rem;font-weight:600;color:var(--dark)}
+.demo-chip:hover{border-color:var(--clay);transform:translateY(-2px);box-shadow:0 6px 20px rgba(192,104,74,.15)}
+.demo-chip img{width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:top center}
+.img-crop-top{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.hero-photo-wrap{border-radius:24px;overflow:hidden;box-shadow:0 36px 80px rgba(44,31,20,.18);aspect-ratio:4/5;max-height:520px}
+.fr-badge{display:inline-flex;width:18px;height:18px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(44,31,20,.12);flex-shrink:0;vertical-align:middle}
+.fr-badge span{flex:1;height:100%}
+.size-banner{border-radius:20px;overflow:hidden;box-shadow:0 16px 48px rgba(44,31,20,.12);margin-top:28px}
+.size-banner img{width:100%;display:block}
+
+/* Micro-animations landing */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gentleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes softPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.anim-in{animation:fadeUp .65s cubic-bezier(.4,0,.2,1) both}
+.anim-d1{animation-delay:.08s}.anim-d2{animation-delay:.16s}.anim-d3{animation-delay:.24s}
+.anim-d4{animation-delay:.32s}.anim-d5{animation-delay:.4s}
+.anim-float{animation:gentleFloat 5s ease-in-out infinite}
+.how-card{transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .28s ease}
+.how-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(44,31,20,.08)}
+.triptych-step{animation:fadeUp .6s ease both}
+.triptych-step:nth-child(1){animation-delay:.05s}
+.triptych-step:nth-child(3){animation-delay:.15s}
+.triptych-step:nth-child(5){animation-delay:.25s}
+.btn-clay{transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease}
+.pack-card{transition:transform .28s ease,box-shadow .28s ease}
+@media (prefers-reduced-motion:reduce){
+  .anim-in,.anim-float,.triptych-step{animation:none}
+  .how-card:hover,.pack-card:hover{transform:none}
+  .live-dot{animation:none}
+}
+
+/* Triptyque landing — tracé plus large */
+.triptych-landing{grid-template-columns:1fr auto 1.5fr auto 1fr;max-width:980px}
+.triptych-landing .triptych-step-wide img{aspect-ratio:3/2 !important}
+
+/* Atelier live */
+.atelier-live{padding:64px 28px;background:var(--cream)}
+.atelier-live-inner{max-width:820px;margin:0 auto;text-align:center}
+.live-badge{position:absolute;top:14px;left:14px;z-index:2;display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:100px;background:rgba(255,255,255,.94);border:1.5px solid rgba(192,104,74,.25);font-family:Quicksand,sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--clay);box-shadow:0 4px 16px rgba(44,31,20,.12)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#e53935;box-shadow:0 0 0 0 rgba(229,57,53,.5);animation:livePulse 1.8s ease infinite}
+@keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.45)}50%{box-shadow:0 0 0 6px rgba(229,57,53,0)}}
+.atelier-video-wrap{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 56px rgba(44,31,20,.14);background:var(--dark);margin-top:24px}
+.atelier-video-wrap video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+
+/* Bientôt — mode assis */
+.coming-soon{padding:72px 28px;background:var(--bark-pale)}
+.coming-soon-inner{max-width:720px;margin:0 auto;text-align:center;position:relative;border-radius:24px;overflow:hidden}
+.coming-soon-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(44,31,20,.12) 0%,rgba(44,31,20,.45) 50%,rgba(44,31,20,.62) 100%);pointer-events:none;z-index:1}
+.coming-soon-img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;filter:grayscale(.3) saturate(.82) brightness(.88)}
+.coming-soon-copy{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;z-index:2}
+.coming-soon-copy-box{background:rgba(44,31,20,.82);backdrop-filter:blur(10px);border-radius:18px;padding:22px 26px;max-width:480px;box-shadow:0 12px 40px rgba(44,31,20,.25)}
+.coming-soon-tag{display:inline-block;padding:6px 14px;border-radius:100px;background:rgba(255,255,255,.95);font-family:Quicksand,sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;color:var(--dark);margin-bottom:12px}
+.coming-soon-copy h2{color:#fff;font-size:clamp(1.35rem,3vw,1.75rem);margin-bottom:8px}
+.coming-soon-copy p{color:rgba(255,255,255,.95);font-size:.9rem;line-height:1.65;margin:0}
 </style>
 </head>
 <body>
@@ -134,11 +228,11 @@ input{font-family:inherit}
 /** @jsx React.createElement */
 const { useState, useEffect, useRef, useCallback } = React;
 
-async function checkoutPack(packId, faceCount) {
+async function checkoutPack(packId, faceCount, gift = {}) {
   const res = await fetch('/api/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pack: packId, faceCount }),
+    body: JSON.stringify({ pack: packId, faceCount, ...gift }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Erreur paiement');
@@ -146,7 +240,13 @@ async function checkoutPack(packId, faceCount) {
 }
 
 const EXTRA_PERSON_EUR = 4.5;
+const EXTRA_PERSON_EUR_TRIO = 2;
 const MAX_FACES = 8;
+
+function extraUnitEur(faceCount, extraCount, defaultEur = EXTRA_PERSON_EUR) {
+  if (Number(faceCount) === 3 && extraCount > 0) return EXTRA_PERSON_EUR_TRIO;
+  return defaultEur;
+}
 
 function computeDynamicQuote(faceCount, packs, extraPersonEur = EXTRA_PERSON_EUR) {
   const n = Number(faceCount);
@@ -160,9 +260,10 @@ function computeDynamicQuote(faceCount, packs, extraPersonEur = EXTRA_PERSON_EUR
     if (p.faceCount <= n) basePack = p;
   }
   const extraCount = Math.max(0, n - basePack.faceCount);
+  const unitEur = extraUnitEur(n, extraCount, extraPersonEur);
   const basePrice = Number(basePack.priceEur);
   const shipping = Number(basePack.shippingEur) || 0;
-  const extraTotal = extraCount * Number(extraPersonEur);
+  const extraTotal = extraCount * unitEur;
   const total = basePrice + extraTotal + shipping;
 
   return {
@@ -170,7 +271,7 @@ function computeDynamicQuote(faceCount, packs, extraPersonEur = EXTRA_PERSON_EUR
     faceCount: n,
     basePack,
     extraCount,
-    extraPersonEur: Number(extraPersonEur).toFixed(2),
+    extraPersonEur: unitEur.toFixed(2),
     basePriceEur: basePrice.toFixed(2),
     shippingEur: shipping.toFixed(2),
     totalEur: total.toFixed(2),
@@ -228,20 +329,68 @@ const DEFAULT_PACKS = [
   { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'44.90', shippingEur:'0.00', totalEur:'44.90' },
 ];
 
-const PACK_LINEARTS = {
-  duo:            'images/duo-lineart.jpg',
-  famille:        'images/famille4-lineart.jpg',
-  grande_famille: 'images/famille7-lineart.png',
+/** Visuels atelier par nombre de personnages (photo · tracé · figurines). */
+const FAMILY_SHOWCASE = {
+  2: { photo: 'images/duo.webp', lineart: 'images/duo-lineart.webp', objet: 'images/groupe4_objet.webp' },
+  3: { photo: 'images/famille3.webp', lineart: 'images/famille3-lineart.webp', objet: 'images/famille3-objet.webp' },
+  4: { photo: 'images/famille4.webp', lineart: 'images/famille4-lineart.webp', objet: 'images/famille4-objet.webp' },
+  5: { photo: 'images/famille5.webp', lineart: 'images/famille5-lineart.webp', objet: 'images/famille5-objet.webp' },
+  6: { photo: 'images/famille7.webp', lineart: 'images/famille4-lineart.webp', objet: 'images/groupe6_objet.webp' },
+  7: { photo: 'images/famille7.webp', lineart: 'images/famille7-lineart.webp', objet: 'images/groupe6_objet.webp' },
+  8: { photo: 'images/famille7.webp', lineart: 'images/famille7-lineart.webp', objet: 'images/etagere_objet.webp' },
 };
 
-const PACK_PREVIEWS = {
-  duo:            'images/duo.jpg',
-  famille:        'images/famille4.jpg',
-  grande_famille: 'images/famille7.jpg',
-};
+const SHOWCASE_COUNTS = Object.keys(FAMILY_SHOWCASE).map(Number).sort((a, b) => a - b);
 
-function PackPhoto({ packId }) {
-  const src = PACK_LINEARTS[packId];
+function getShowcaseForCount(faceCount) {
+  const n = Number(faceCount) || 4;
+  if (FAMILY_SHOWCASE[n]) return FAMILY_SHOWCASE[n];
+  let best = SHOWCASE_COUNTS[0];
+  for (const c of SHOWCASE_COUNTS) {
+    if (Math.abs(c - n) < Math.abs(best - n)) best = c;
+  }
+  return FAMILY_SHOWCASE[best] || FAMILY_SHOWCASE[4];
+}
+
+function MadeInFranceBadge() {
+  return (
+    <span className="fr-badge" aria-hidden="true" title="Fabriqué en France">
+      <span style={{ background:'#0055A4' }}/>
+      <span style={{ background:'#fff' }}/>
+      <span style={{ background:'#EF4135' }}/>
+    </span>
+  );
+}
+
+function BrandLogo({ onClick, compact }) {
+  return (
+    <button type="button" onClick={onClick} aria-label="Retour à l'accueil"
+      style={{ fontFamily:'Quicksand', fontWeight:700,
+        fontSize: compact ? '1.25rem' : '1.35rem', color:'var(--dark)',
+        background:'none', border:'none', padding:0, cursor:'pointer' }}>
+      <span style={{ color:'var(--clay)' }}>Mini</span>Nous
+    </button>
+  );
+}
+
+function AccountNavLink() {
+  return (
+    <a href={PIPELINE.compte} className="nav-account-link">
+      Mon compte
+    </a>
+  );
+}
+
+function SizeReminder() {
+  return (
+    <p style={{ fontSize:'.82rem', color:'var(--muted)', marginTop:16, lineHeight:1.65, textAlign:'center' }}>
+      Chaque figurine mesure <strong style={{ color:'var(--dark)' }}>18 cm</strong> — la taille d&apos;une main adulte.
+    </p>
+  );
+}
+
+function PackPhoto({ faceCount }) {
+  const src = getShowcaseForCount(faceCount).lineart;
   if (!src) return null;
   return (
     <div className="pack-photo">
@@ -253,8 +402,41 @@ function PackPhoto({ packId }) {
 function getPackDef(packId, packs) {
   const list = packs?.length ? packs : DEFAULT_PACKS;
   const base = list.find(p => p.id === packId) || list[0];
-  return { ...base, preview: PACK_PREVIEWS[base.id] || 'images/apres-ref.png' };
+  const showcase = getShowcaseForCount(base.faceCount);
+  return { ...base, preview: showcase.objet, showcase };
 }
+
+const DEMO_PHOTOS = [
+  { count: 2, label: '2 personnes', src: 'images/duo.webp', faceCount: 2, childCount: 0, showcaseCount: 2 },
+  { count: 4, label: '4 personnes', src: 'images/famille4.webp', faceCount: 4, childCount: 2, showcaseCount: 4 },
+  { count: 7, label: '7 personnes', src: 'images/famille7.webp', faceCount: 7, childCount: 1, showcaseCount: 7 },
+];
+
+function presetFromFileName(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('famille3')) return { faceCount: 3, childCount: 0, showcaseCount: 3 };
+  const demo = DEMO_PHOTOS.find(d => n.includes(`demo-${d.count}`) || n.includes(d.src.replace('images/', '')));
+  return demo || null;
+}
+
+const UGC_IMAGES = [
+  'images/social/ugc-01.webp',
+  'images/social/ugc-02.webp',
+  'images/social/ugc-03.webp',
+  'images/social/ugc-04.webp',
+  'images/social/ugc-05.webp',
+  'images/social/ugc-07.webp',
+];
+
+const SOCIAL_LINKS = {
+  instagram: 'https://www.instagram.com/atelier.mininous/',
+  tiktok: 'https://www.tiktok.com/@atelier.mininous',
+};
+
+const PIPELINE = {
+  compte: '/pipeline/compte',
+  connexion: '/pipeline/compte/connexion',
+};
 
 /** Pack catalogue le plus adapté au nombre de visages détectés. */
 function packIdForFaceCount(faceCount) {
@@ -266,9 +448,9 @@ function packIdForFaceCount(faceCount) {
 }
 
 const PACK_CTA = {
-  duo: 'Voir l\'exemple Duo →',
-  famille: 'Voir l\'exemple Famille →',
-  grande_famille: 'Voir l\'exemple Grande Famille →',
+  duo: 'Pack Duo →',
+  famille: 'Pack Famille →',
+  grande_famille: 'Grande Famille →',
 };
 
 function PackCards({ onPackExample }) {
@@ -283,21 +465,16 @@ function PackCards({ onPackExample }) {
         <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.95rem' }}>
           Fabrication artisanale sur-mesure · Réception vendredi chez vous · Places limitées
         </p>
-        <p style={{ color:'var(--clay-deep)', marginBottom:24, lineHeight:1.65, fontSize:'.82rem',
-          maxWidth:560, marginLeft:'auto', marginRight:'auto' }}>
-          Les visuels ci-dessous sont des <strong>exemples du rendu atelier</strong> (figurines bois sur établi) —
-          pas votre photo. Uploadez la vôtre pour voir votre groupe en figurines bois.
-        </p>
         <div className="pack-grid">
           {packs.map((p, i) => (
-            <div key={p.id} className={`pack-card${i === 1 ? ' featured' : ''}`}>
+            <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 1 ? ' featured' : ''}`}>
               {i === 1 && (
                 <span className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', alignSelf:'flex-start' }}>
                   Le plus populaire
                 </span>
               )}
+              <PackPhoto faceCount={p.faceCount} />
               <h3 style={{ fontFamily:'Quicksand', color:'var(--dark)', fontSize:'1.15rem' }}>{p.label}</h3>
-              <PackPhoto packId={p.id} />
               <p style={{ fontSize:'.85rem', color:'var(--muted)' }}>
                 {p.faceCount} personnage{p.faceCount > 1 ? 's' : ''}
               </p>
@@ -317,9 +494,6 @@ function PackCards({ onPackExample }) {
             </div>
           ))}
         </div>
-        <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:16 }}>
-          Aperçu gratuit · Paiement après validation de votre rendu
-        </p>
       </div>
     </div>
   );
@@ -328,12 +502,12 @@ function PackCards({ onPackExample }) {
 /* ─── ASSETS ──────────────────────────────────────────────────── */
 const IMG = {
   hero:      'images/hero.webp',
-  before:    'images/famille4.jpg',
-  after:     'images/famille4-lineart.jpg',
-  upload:    'images/famille7.jpg',
-  lifestyle: 'images/af5dfcad-37bc-4917-99fd-c47c7d53d8a2.jpg',
-  atelier:   'images/apres-ref.png',
-  refFal:    'images/apres-ref.png',
+  upload:    'images/famille4.webp',
+  lifestyle: 'images/bibliotheque.webp',
+  atelier:   'images/famille4-objet.webp',
+  size:      'images/size2.webp',
+  assis:     'images/assis.webp',
+  triptych:  FAMILY_SHOWCASE[4],
 };
 
 /* Face boxes on the "before" photo — 7 people */
@@ -453,71 +627,128 @@ function Toggle({ on, setOn }) {
   );
 }
 
-/* ─── BEFORE / AFTER SLIDER ───────────────────────────────────── */
-function BeforeAfter() {
-  const [pos, setPos] = useState(50);
-  const dragging = useRef(false);
-  const ref = useRef(null);
-
-  const move = useCallback((cx) => {
-    if (!dragging.current || !ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos(Math.max(4, Math.min(96, ((cx - r.left) / r.width) * 100)));
-  }, []);
-
-  useEffect(() => {
-    const mm = e => move(e.clientX);
-    const tm = e => move(e.touches[0].clientX);
-    const up = () => { dragging.current = false; };
-    window.addEventListener('mousemove', mm);
-    window.addEventListener('touchmove', tm, { passive: true });
-    window.addEventListener('mouseup', up);
-    window.addEventListener('touchend', up);
-    return () => {
-      window.removeEventListener('mousemove', mm);
-      window.removeEventListener('touchmove', tm);
-      window.removeEventListener('mouseup', up);
-      window.removeEventListener('touchend', up);
-    };
-  }, [move]);
-
+function TryMyPhotoButton({ onFile }) {
+  const fileRef = useRef(null);
   return (
-    <div ref={ref} className="ba-wrap" style={{ aspectRatio:'4/3', maxHeight:460, maxWidth:720, margin:'0 auto' }}
-      onMouseDown={() => { dragging.current = true; }}
-      onTouchStart={() => { dragging.current = true; }}
-      onDragStart={e => e.preventDefault()}>
-      {/* Before */}
-      <img src={IMG.before} alt="Photo originale" draggable="false"
-        style={{ width:'100%', height:'100%', objectFit:'cover', pointerEvents:'none' }}/>
-      {/* After */}
-      <div className="ba-after" style={{ clipPath:`inset(0 0 0 ${pos}%)` }}>
-        <img src={IMG.after} alt="Résultat" draggable="false"
-          style={{ width:'100%', height:'100%', objectFit:'cover', background:'#F5EDE0', pointerEvents:'none' }}/>
+    <>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+      <button type="button" className="btn-clay" style={{ width:'100%', padding:'13px 20px', fontSize:'.9rem' }}
+        onClick={() => fileRef.current?.click()}>
+        Essayez avec ma photo de groupe
+      </button>
+    </>
+  );
+}
+
+/* ─── TRIPTYQUE Photo → Tracé → Déco ──────────────────────────── */
+function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain }) {
+  const ratioClass = ratio === 'square' ? ' triptych-ratio-square'
+    : ratio === 'landscape' ? ' triptych-ratio-landscape' : '';
+  const landingClass = wideLineart && !vertical ? ' triptych-landing' : '';
+  const steps = [
+    { src: showcase.photo, label: 'Photo' },
+    { src: showcase.lineart, label: 'Tracé', wide: wideLineart },
+    { src: showcase.objet, label: 'A la maison' },
+  ];
+  const arrow = vertical ? '↓' : '→';
+  return (
+    <div className={`triptych${vertical ? ' triptych-vertical' : ''}${ratioClass}${landingClass}`}>
+      {steps.map((s, i) => (
+        <React.Fragment key={s.label}>
+          {i > 0 && <div className="triptych-arrow" aria-hidden="true">{arrow}</div>}
+          <div className={`triptych-step${s.wide ? ' triptych-step-wide' : ''}${i === 0 && photoContain ? ' triptych-step-contain' : ''}`}>
+            <img src={s.src} alt={s.label} draggable="false"
+              className={i === 0 && !photoContain ? 'crop-top' : undefined}/>
+            <div className="triptych-label">{s.label}</div>
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function SocialLinks() {
+  return (
+    <div className="social-row">
+      <a className="social-link" href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer"
+        aria-label="Instagram Les MiniNous">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.97.24 2.427.403a4.92 4.92 0 0 1 1.775 1.153 4.92 4.92 0 0 1 1.153 1.775c.163.457.349 1.257.403 2.427.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.054 1.17-.24 1.97-.403 2.427a4.92 4.92 0 0 1-1.153 1.775 4.92 4.92 0 0 1-1.775 1.153c-.457.163-1.257.349-2.427.403-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.054-1.97-.24-2.427-.403a4.92 4.92 0 0 1-1.775-1.153 4.92 4.92 0 0 1-1.153-1.775c-.163-.457-.349-1.257-.403-2.427C2.175 15.747 2.163 15.367 2.163 12s.012-3.584.07-4.85c.054-1.17.24-1.97.403-2.427a4.92 4.92 0 0 1 1.153-1.775 4.92 4.92 0 0 1 1.775-1.153c.457-.163 1.257-.349 2.427-.403C8.416 2.175 8.796 2.163 12 2.163zm0 1.622c-3.16 0-3.533.012-4.773.068-1.002.046-1.548.218-1.91.363a3.32 3.32 0 0 0-1.198.781 3.32 3.32 0 0 0-.781 1.198c-.145.362-.317.908-.363 1.91-.056 1.24-.068 1.613-.068 4.773s.012 3.533.068 4.773c.046 1.002.218 1.548.363 1.91.17.428.4.804.781 1.198.394.381.77.611 1.198.781.362.145.908.317 1.91.363 1.24.056 1.613.068 4.773.068s3.533-.012 4.773-.068c1.002-.046 1.548-.218 1.91-.363a3.32 3.32 0 0 0 1.198-.781 3.32 3.32 0 0 0 .781-1.198c.145-.362.317-.908.363-1.91.056-1.24.068-1.613.068-4.773s-.012-3.533-.068-4.773c-.046-1.002-.218-1.548-.363-1.91a3.32 3.32 0 0 0-.781-1.198 3.32 3.32 0 0 0-1.198-.781c-.362-.145-.908-.317-1.91-.363-1.24-.056-1.613-.068-4.773-.068zM12 7.378a4.622 4.622 0 1 1 0 9.244 4.622 4.622 0 0 1 0-9.244zm0 1.622a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm5.804-3.13a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z"/>
+        </svg>
+      </a>
+      <a className="social-link" href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer"
+        aria-label="TikTok Les MiniNous">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.11V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
+        </svg>
+      </a>
+    </div>
+  );
+}
+
+function UgcFeed() {
+  return (
+    <>
+      <div className="ugc-grid">
+        {UGC_IMAGES.map(src => (
+          <div key={src} className="ugc-tile">
+            <img src={src} alt="" loading="lazy" draggable="false"/>
+          </div>
+        ))}
       </div>
-      {/* Labels */}
-      <div style={{ position:'absolute', bottom:14, left:14,
-        background:'rgba(44,31,20,.75)', color:'#fff', padding:'4px 12px',
-        borderRadius:100, fontSize:'.72rem', fontWeight:700, backdropFilter:'blur(8px)' }}>
-        📷 Photo originale
-      </div>
-      <div style={{ position:'absolute', bottom:14, right:14,
-        background:'var(--clay)', color:'#fff', padding:'4px 12px',
-        borderRadius:100, fontSize:'.72rem', fontWeight:700 }}>
-        🪵 Tracé laser
-      </div>
-      {/* Handle */}
-      <div className="ba-handle" style={{ left:`${pos}%` }}>
-        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
-          width:44, height:44, borderRadius:'50%', background:'#fff',
-          boxShadow:'0 4px 20px rgba(0,0,0,.28)', display:'flex', alignItems:'center',
-          justifyContent:'center' }}>
-          <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-            <path d="M1 7h18M7 1L1 7l6 6M13 1l6 6-6 6"
-              stroke="var(--clay)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+      <SocialLinks/>
+    </>
+  );
+}
+
+function SizeScaleBanner() {
+  return (
+    <div className="size-banner" style={{ marginTop: 0 }}>
+      <img src={IMG.size} alt="Figurines MiniNous à côté d'un smartphone — 18 cm de haut"/>
+    </div>
+  );
+}
+
+function AtelierLive() {
+  return (
+    <section className="atelier-live anim-in">
+      <div className="atelier-live-inner">
+        <h2 style={{ color:'var(--dark)', marginBottom:10 }}>En direct de l&apos;Atelier</h2>
+        <p style={{ color:'var(--muted)', lineHeight:1.7, fontSize:'.92rem', maxWidth:520, margin:'0 auto' }}>
+          Retrouvez ici même nos machines en live en train de préparer votre commande.
+        </p>
+        <div className="atelier-video-wrap">
+          <div className="live-badge" aria-label="Diffusion en direct">
+            <span className="live-dot" aria-hidden="true"/>
+            LIVE
+          </div>
+          <video autoPlay loop muted playsInline preload="metadata" aria-label="Atelier MiniNous en direct">
+            <source src="images/mininous-atelier.webm" type="video/webm"/>
+            <source src="images/mininous-atelier.mp4" type="video/mp4"/>
+          </video>
         </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+function ComingSoonSeated() {
+  return (
+    <section className="coming-soon">
+      <div className="coming-soon-inner anim-in">
+        <img src={IMG.assis} alt="" className="coming-soon-img" loading="lazy" draggable="false"/>
+        <div className="coming-soon-copy">
+          <div className="coming-soon-copy-box">
+            <span className="coming-soon-tag">Bientôt</span>
+            <h2>Mode assis</h2>
+            <p>
+              Posés sur vos étagères, les MiniNous ajustent bientôt leur pose à leur environnement.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -580,11 +811,13 @@ function readImageFile(file) {
 }
 
 /* ─── ZONE UPLOAD RÉUTILISABLE ────────────────────────────────── */
-function PhotoUploadZone({ onFile, compact, label, hint }) {
+function PhotoUploadZone({ onFile, onDemo, compact, label, hint, showDemo }) {
   const [drag, setDrag] = useState(false);
+  const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
 
-  const handle = (file) => {
+  const handle = async (file) => {
+    if (loading) return;
     if (!isImageFile(file)) {
       alert('Choisissez une image (JPG, PNG, HEIC…).');
       return;
@@ -593,31 +826,65 @@ function PhotoUploadZone({ onFile, compact, label, hint }) {
       alert('Image trop lourde — maximum 3 Mo.');
       return;
     }
-    onFile(file);
+    setLoading(true);
+    try {
+      await onFile(file);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div
-      className={`dropzone${drag ? ' drag-over' : ''}`}
-      style={{ padding: compact ? '28px 20px' : '56px 32px', cursor:'pointer' }}
-      onClick={() => fileRef.current?.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); handle(e.dataTransfer?.files?.[0]); }}
-    >
-      <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }}
-        onChange={e => { handle(e.target.files?.[0]); e.target.value = ''; }} />
-      <div style={{ fontSize: compact ? '2rem' : '3.5rem', marginBottom: compact ? 8 : 14 }}>📸</div>
-      <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize: compact ? '1rem' : '1.2rem' }}>
-        {label || 'Glissez votre photo de groupe ici'}
-      </h3>
-      <p style={{ color:'var(--muted)', marginBottom: compact ? 16 : 24, fontSize:'.88rem' }}>
-        {hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 3 Mo'}
-      </p>
-      <button type="button" className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem' }}
-        onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
-        Choisir une photo
-      </button>
+    <div>
+      <div
+        className={`dropzone${drag ? ' drag-over' : ''}${loading ? ' drag-over' : ''}`}
+        style={{ padding: compact ? '28px 20px' : '56px 32px', cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? .85 : 1 }}
+        onClick={() => !loading && fileRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); if (!loading) setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); if (!loading) handle(e.dataTransfer?.files?.[0]); }}
+      >
+        <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} disabled={loading}
+          onChange={e => { handle(e.target.files?.[0]); e.target.value = ''; }} />
+        <div style={{ fontSize: compact ? '2rem' : '3.5rem', marginBottom: compact ? 8 : 14 }}>
+          {loading ? '⏳' : '📸'}
+        </div>
+        <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize: compact ? '1rem' : '1.2rem' }}>
+          {loading ? 'On lit votre photo…' : (label || 'Glissez votre photo de groupe ici')}
+        </h3>
+        <p style={{ color:'var(--muted)', marginBottom: compact ? 16 : 24, fontSize:'.88rem' }}>
+          {loading ? 'Quelques secondes' : (hint || 'Jusqu\'à 8 personnes · JPG, PNG, HEIC · Max 3 Mo')}
+        </p>
+        <button type="button" className="btn-clay" style={{ padding:'13px 32px', fontSize:'.9rem',
+          opacity: loading ? .75 : 1, display:'inline-flex', alignItems:'center', gap:8 }}
+          disabled={loading}
+          onClick={e => { e.stopPropagation(); if (!loading) fileRef.current?.click(); }}>
+          {loading && (
+            <span className="spin" style={{ width:16, height:16, border:'2px solid rgba(255,255,255,.35)',
+              borderTopColor:'#fff', borderRadius:'50%', display:'inline-block' }}/>
+          )}
+          {loading ? 'Chargement…' : 'Choisir une photo'}
+        </button>
+      </div>
+      {(showDemo !== false && onDemo) && (
+        <div className="demo-row">
+          <span style={{ fontSize:'.78rem', color:'var(--muted)', width:'100%', marginBottom:4 }}>
+            Pas de photo sous la main ?
+          </span>
+          {DEMO_PHOTOS.map(d => (
+            <button key={d.count} type="button" className="demo-chip" disabled={loading}
+              onClick={async () => {
+                if (loading) return;
+                setLoading(true);
+                try { await onDemo(d); } finally { setLoading(false); }
+              }}>
+              <img src={d.src} alt=""/>
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -698,21 +965,16 @@ function WatermarkedPreview({ src, alt, style = {} }) {
 }
 
 /* ─── STATE 1 · LANDING ───────────────────────────────────────── */
-function Landing({ onPackExample, onPhotoUpload }) {
+function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
       <FomoBar />
       {/* Nav */}
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'16px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.35rem', color:'var(--dark)' }}>
-          <span style={{ color:'var(--clay)' }}>Mini</span>Nous
-        </div>
+        <BrandLogo onClick={onHome}/>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <span className="tag hide-mobile"
-            style={{ background:'var(--bark-pale)', color:'var(--bark)' }}>
-            🪵 Atelier Nantes
-          </span>
+          <AccountNavLink/>
           <span className="tag hide-mobile"
             style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
             ⭐ 4.9/5
@@ -730,9 +992,11 @@ function Landing({ onPackExample, onPhotoUpload }) {
         <div className="hero-grid" style={{ maxWidth:1100, margin:'0 auto',
           display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
           {/* Left */}
-          <div className="hero-text">
-            <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20 }}>
-              ✨ Fabriqué à Nantes
+          <div className="hero-text anim-in">
+            <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20,
+              display:'inline-flex', alignItems:'center', gap:8 }}>
+              <MadeInFranceBadge/>
+              Fabriqué à Nantes
             </div>
             <h1 style={{ color:'var(--dark)', marginBottom:22,
               fontSize:'clamp(2.1rem, 4.5vw, 3.8rem)', lineHeight:1.12 }}>
@@ -761,13 +1025,12 @@ function Landing({ onPackExample, onPhotoUpload }) {
             </div>
           </div>
           {/* Right */}
-          <div className="hero-img" style={{ position:'relative' }}>
-            <div style={{ borderRadius:24, overflow:'hidden',
-              boxShadow:'0 36px 80px rgba(44,31,20,.18)' }}>
-              <img src={IMG.hero} alt="MiniNous" style={{ width:'100%' }}/>
+          <div className="hero-img anim-in anim-d2" style={{ position:'relative' }}>
+            <div className="hero-photo-wrap">
+              <img src={IMG.hero} alt="MiniNous" className="img-crop-top"/>
             </div>
             {/* Badge */}
-            <div className="hide-mobile" style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
+            <div className="hide-mobile anim-float" style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
               borderRadius:16, padding:'12px 18px', boxShadow:'0 10px 32px rgba(44,31,20,.12)',
               display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ width:40, height:40, borderRadius:'50%',
@@ -788,30 +1051,33 @@ function Landing({ onPackExample, onPhotoUpload }) {
         </div>
       </section>
 
-      {/* Before / After */}
-      <section style={{ padding:'60px 28px', background:'var(--bark-pale)' }}>
-        <div style={{ maxWidth:900, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:28 }}>
-            De la photo au personnage en bois
+      {/* Triptyque */}
+      <section className="anim-in anim-d3" style={{ padding:'60px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:960, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>
+            De la photo au salon
           </h2>
-          <BeforeAfter/>
+          <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
+            Votre souvenir devient une figurine en bois — taillée, posée, prête à décorer votre intérieur.
+          </p>
+          <Triptyque showcase={IMG.triptych} ratio="square" wideLineart/>
         </div>
       </section>
 
       {/* How it works */}
       <section style={{ padding:'60px 28px', background:'var(--cream)' }}>
         <div style={{ maxWidth:860, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:32 }}>Comment ça marche ?</h2>
+          <h2 className="anim-in" style={{ color:'var(--dark)', marginBottom:32 }}>Comment ça marche ?</h2>
           <div className="how-cards" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }}>
             {[
               { icon:'📸', title:'Envoyez votre photo',
                 desc:'Une photo de groupe avec 2 à 8 personnes.' },
               { icon:'🪚', title:'On fabrique votre groupe',
                 desc:'Nos équipes découpent chaque personnage en bois d\'après votre photo.' },
-              { icon:'📦', title:'Livré chez vous en 5 jours',
+              { icon:'📦', title:'Livré chez vous le vendredi',
                 desc:'Dans notre boîte kraft, partout en France.' },
-            ].map(s => (
-              <div key={s.title} className="how-card" style={{ background:'var(--bark-pale)',
+            ].map((s, i) => (
+              <div key={s.title} className={`how-card anim-in anim-d${i + 1}`} style={{ background:'var(--bark-pale)',
                 borderRadius:16, padding:'24px 20px', textAlign:'center' }}>
                 <div style={{ fontSize:'2rem', marginBottom:10 }}>{s.icon}</div>
                 <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1rem' }}>
@@ -826,31 +1092,40 @@ function Landing({ onPackExample, onPhotoUpload }) {
         </div>
       </section>
 
+      {/* Échelle visuelle */}
+      <section className="anim-in" style={{ padding:'48px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:720, margin:'0 auto' }}>
+          <SizeScaleBanner/>
+        </div>
+      </section>
+
       {/* Upload photo direct */}
       <section id="photo-upload" style={{ padding:'80px 28px', background:'var(--bark-pale)' }}>
         <div style={{ maxWidth:680, margin:'0 auto', textAlign:'center' }}>
           <h2 style={{ color:'var(--dark)', marginBottom:12 }}>Essayez avec votre photo</h2>
           <p style={{ color:'var(--muted)', marginBottom:20, lineHeight:1.7 }}>
-            On prépare un aperçu de votre groupe en figurines bois sur l&apos;établi d&apos;atelier —
-            comme le rendu final (filigrané, version indicative).
+            Aperçu gratuit de votre groupe en figurines bois — rendu atelier indicatif.
           </p>
           <PhotoUploadZone
             onFile={onPhotoUpload}
+            onDemo={onDemoPhoto}
             label="Glissez votre photo de groupe ici"
-            hint="Jusqu'à 8 personnages · Aperçu gratuit de votre rendu atelier"
+            hint="Jusqu'à 8 personnages · Aperçu gratuit"
           />
         </div>
       </section>
 
-      {/* Lifestyle */}
-      <section style={{ padding:'0 28px 60px', background:'var(--bark-pale)' }}>
-        <div style={{ maxWidth:680, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-          {[IMG.lifestyle, IMG.atelier].map((src, i) => (
-            <div key={i} style={{ borderRadius:16, overflow:'hidden',
-              boxShadow:'0 8px 24px rgba(44,31,20,.1)' }}>
-              <img src={src} alt="" style={{ width:'100%', height:200, objectFit:'cover' }}/>
-            </div>
-          ))}
+      {/* Atelier live */}
+      <AtelierLive/>
+
+      {/* UGC */}
+      <section style={{ padding:'72px 28px', background:'var(--cream)' }}>
+        <div style={{ maxWidth:820, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Chez vous, chez eux</h2>
+          <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.92rem' }}>
+            Des familles qui ont reçu leurs MiniNous — retrouvez-nous sur les réseaux.
+          </p>
+          <UgcFeed/>
         </div>
       </section>
 
@@ -859,6 +1134,9 @@ function Landing({ onPackExample, onPhotoUpload }) {
         <PackCards onPackExample={onPackExample} />
       </section>
 
+      {/* Bientôt — mode assis */}
+      <ComingSoonSeated/>
+
       {/* Footer */}
       <footer style={{ background:'var(--dark)', padding:'36px 28px',
         textAlign:'center', color:'rgba(255,255,255,.35)', fontSize:'.78rem' }}>
@@ -866,8 +1144,19 @@ function Landing({ onPackExample, onPhotoUpload }) {
           fontWeight:700, fontSize:'1.1rem', marginBottom:8 }}>
           <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
         </div>
-        Partie de l'écosystème <strong style={{ color:'rgba(255,255,255,.5)' }}>MiniToit</strong> ·
         Fabrication locale · Nantes, France
+        <div style={{ marginTop:14, display:'flex', justifyContent:'center', gap:16, flexWrap:'wrap' }}>
+          <a href={PIPELINE.compte} style={{ color:'rgba(255,255,255,.5)', textDecoration:'none' }}
+            onMouseOver={e => e.currentTarget.style.color='var(--clay-light)'}
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.5)'}>
+            Mon compte
+          </a>
+          <a href={PIPELINE.connexion} style={{ color:'rgba(255,255,255,.35)', textDecoration:'none' }}
+            onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.55)'}
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.35)'}>
+            Connexion
+          </a>
+        </div>
       </footer>
     </div>
   );
@@ -1009,54 +1298,75 @@ function StripeModal({ total, onPay, onClose }) {
   );
 }
 
-/* ─── CONFIRMATION NOMBRE DE PERSONNAGES ─────────────────────────── */
-function PersonCountQuestion({ count, detected, max, onChange, photoUrl }) {
-  const n = Number(count) || 2;
-  const set = (next) => onChange(Math.max(1, Math.min(max, next)));
+/* ─── COMPOSITION FAMILLE (adultes / enfants) ─────────────────────── */
+function CounterRow({ label, value, min, max, onChange, hint }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10 }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.88rem', color:'var(--dark)' }}>{label}</div>
+        {hint && <div style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:2 }}>{hint}</div>}
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <button type="button" aria-label={`Moins ${label}`}
+          onClick={() => onChange(value - 1)} disabled={value <= min}
+          style={{ width:34, height:34, borderRadius:9, border:'1.5px solid var(--bark-light)',
+            background:'var(--bark-pale)', fontSize:'1.1rem', fontWeight:700,
+            cursor: value <= min ? 'not-allowed' : 'pointer', opacity: value <= min ? .4 : 1 }}>−</button>
+        <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.2rem', minWidth:24, textAlign:'center' }}>{value}</span>
+        <button type="button" aria-label={`Plus ${label}`}
+          onClick={() => onChange(value + 1)} disabled={value >= max}
+          style={{ width:34, height:34, borderRadius:9, border:'1.5px solid var(--bark-light)',
+            background:'var(--bark-pale)', fontSize:'1.1rem', fontWeight:700,
+            cursor: value >= max ? 'not-allowed' : 'pointer', opacity: value >= max ? .4 : 1 }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onChange, photoUrl }) {
+  const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
+  const children = Math.max(0, Math.min(total, Number(childCount) || 0));
+  const adults = total - children;
+
+  const setAdults = (na) => {
+    const nextAdults = Math.max(0, Math.min(max - children, na));
+    onChange({ faceCount: Math.max(1, nextAdults + children), childCount: children });
+  };
+  const setChildren = (nc) => {
+    const nextChildren = Math.max(0, Math.min(max - adults, nc));
+    onChange({ faceCount: Math.max(1, adults + nextChildren), childCount: nextChildren });
+  };
 
   return (
     <div style={{ padding:'14px 16px', background:'#fff', border:'1.5px solid var(--bark-light)',
       borderRadius:14, textAlign:'left' }}>
       <div style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
         {photoUrl && (
-          <img src={photoUrl} alt="Votre photo" style={{
-            width:80, height:60, objectFit:'cover', borderRadius:8,
-            border:'2px solid var(--bark-light)', flexShrink:0,
-          }}/>
+          <div className="paywall-photo-thumb">
+            <img src={photoUrl} alt="Votre photo"/>
+          </div>
         )}
         <div style={{ flex:1, minWidth:0 }}>
           <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
-            color:'var(--dark)', lineHeight:1.55, marginBottom:12 }}>
-            Il y a bien{' '}
-            <span style={{ color:'var(--clay)' }}>{n} personne{n > 1 ? 's' : ''}</span>
-            {' '}sur votre photo&nbsp;?
+            color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
+            {detected != null && detected > 0
+              ? <>Nous avons repéré <span style={{ color:'var(--clay)' }}>{detected} visage{detected > 1 ? 's' : ''}</span> — confirmez la composition :</>
+              : 'Combien de personnages sur votre photo ?'}
           </p>
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <button type="button" aria-label="Moins une personne"
-              onClick={() => set(n - 1)}
-              disabled={n <= 1}
-              style={{ width:36, height:36, borderRadius:9, border:'1.5px solid var(--bark-light)',
-                background:'var(--bark-pale)', fontSize:'1.15rem', fontWeight:700, color:'var(--dark)',
-                cursor: n <= 1 ? 'not-allowed' : 'pointer', opacity: n <= 1 ? .4 : 1 }}>
-              −
-            </button>
-            <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.35rem',
-              color:'var(--dark)', minWidth:28, textAlign:'center' }}>{n}</span>
-            <button type="button" aria-label="Plus une personne"
-              onClick={() => set(n + 1)}
-              disabled={n >= max}
-              style={{ width:36, height:36, borderRadius:9, border:'1.5px solid var(--bark-light)',
-                background:'var(--bark-pale)', fontSize:'1.15rem', fontWeight:700, color:'var(--dark)',
-                cursor: n >= max ? 'not-allowed' : 'pointer', opacity: n >= max ? .4 : 1 }}>
-              +
-            </button>
-            <span style={{ fontSize:'.75rem', color:'var(--muted)', lineHeight:1.45 }}>
-              Ajustez si ce n&apos;est pas le bon nombre
+          <CounterRow label="Adultes" value={adults} min={children === 0 ? 1 : 0} max={max - children}
+            onChange={setAdults}/>
+          <CounterRow label="Enfants" value={children} min={0} max={max - adults}
+            hint="Moins de 12 ans" onChange={setChildren}/>
+          <div style={{ marginTop:12, padding:'10px 12px', background:'var(--bark-pale)', borderRadius:10,
+            display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:'.82rem', color:'var(--muted)' }}>Total figurines</span>
+            <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.15rem', color:'var(--clay)' }}>
+              {total}
             </span>
           </div>
-          {detected != null && detected !== n && (
+          {detected != null && detected !== total && (
             <p style={{ fontSize:'.75rem', color:'var(--clay)', marginTop:10, lineHeight:1.5 }}>
-              Nous en avions repéré {detected} sur la photo — corrigez si besoin.
+              Détection auto : {detected} — ajustez si besoin.
             </p>
           )}
         </div>
@@ -1066,10 +1376,11 @@ function PersonCountQuestion({ count, detected, max, onChange, photoUrl }) {
 }
 
 /* ─── STATE 3 · PAYWALL ───────────────────────────────────────── */
-function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewReady, onPreviewError, onFaceCountChange }) {
+function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, onFaceCountChange, onHome }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const previewGenKey = useRef(null);
+  const [giftMode, setGiftMode] = useState(false);
+  const [giftMessage, setGiftMessage] = useState('');
   const soldOut = status && status.remaining <= 0;
   const extraEur = Number(status?.extraPersonEur) || EXTRA_PERSON_EUR;
 
@@ -1079,77 +1390,32 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
   const quote = computeDynamicQuote(faceCountForQuote, packs, extraEur);
   const tooManyFaces = !quote?.ok && quote?.reason === 'too_many';
   const hasQuote = quote?.ok;
-  const showCountAdjuster = session?.enterVia === 'upload' && session?.photoBase64;
-
-  const isExampleOnly = session?.enterVia === 'pack' && !session?.photoBase64;
-  const hasAiPreview = !!session?.previewUrl;
-  const previewFailed = session?.error && !session?.previewUrl;
-  const previewLoading = !!session?.previewLoading && session?.photoBase64 && !hasAiPreview && !previewFailed && !tooManyFaces;
-  const previewSrc = hasAiPreview ? session.previewUrl : packDef?.preview;
-
-  useEffect(() => {
-    const key = session?.photoBase64;
-    const gen = session?.previewGen ?? 0;
-    if (!key || session.enterVia !== 'upload' || tooManyFaces || !gen) return undefined;
-    if (hasAiPreview && !session.previewLoading) return undefined;
-    const token = `${gen}:${session.faceCount ?? 0}:${key.length}`;
-    if (previewGenKey.current === token) return undefined;
-    previewGenKey.current = token;
-
-    let cancelled = false;
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-    (async () => {
-      try {
-        const res = await fetch('/api/landing-preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            photoBase64: key,
-            faceCount: session.faceCount ?? session.detectedFaces ?? null,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
-
-        const { requestId, model } = data;
-        if (!requestId) throw new Error('Réponse API incomplète');
-
-        const deadline = Date.now() + 180000;
-        while (!cancelled && Date.now() < deadline) {
-          await sleep(2000);
-          const pollUrl = `/api/landing-preview?requestId=${encodeURIComponent(requestId)}&model=${encodeURIComponent(model || '')}`;
-          const pollRes = await fetch(pollUrl);
-          const poll = await pollRes.json().catch(() => ({}));
-          if (!pollRes.ok) throw new Error(poll.error || `Erreur ${pollRes.status}`);
-
-          if (poll.previewUrl) {
-            if (!cancelled) onPreviewReady?.(poll.previewUrl);
-            return;
-          }
-          if (poll.status === 'FAILED') {
-            throw new Error(poll.error || 'Génération échouée');
-          }
-        }
-        throw new Error('Délai dépassé — réessayez dans un instant');
-      } catch (err) {
-        if (!cancelled) onPreviewError?.(err?.message);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [
-    session?.photoBase64, session?.enterVia, session?.faceCount, session?.detectedFaces,
-    session?.previewGen, session?.previewLoading, tooManyFaces, hasAiPreview,
-    onPreviewReady, onPreviewError,
-  ]);
+  const showComposition = session?.enterVia === 'upload' && session?.photoBase64;
+  const isPackOnly = session?.enterVia === 'pack' && !session?.photoBase64;
+  const showcaseCount = session?.showcaseCount ?? session?.faceCount
+    ?? (hasQuote ? quote.faceCount : packDef?.faceCount);
+  const showcase = getShowcaseForCount(showcaseCount);
+  const triptyqueShowcase = showComposition && session?.photoUrl
+    ? { ...showcase, photo: session.photoUrl }
+    : showcase;
+  const exampleCount = showcaseCount;
+  const productEur = hasQuote
+    ? (Number(quote.basePriceEur) + quote.extraCount * Number(quote.extraPersonEur)).toFixed(2)
+    : null;
+  const hasShipping = hasQuote && Number(quote.shippingEur) > 0;
 
   const pay = async () => {
     if (!hasQuote || tooManyFaces) return;
     setBusy(true);
     setError(null);
     try {
-      await checkoutPack(quote.basePack.id, quote.faceCount);
+      await checkoutPack(quote.basePack.id, quote.faceCount, {
+        childCount: session.childCount ?? 0,
+        ...(giftMode ? {
+          giftDelivery: true,
+          giftMessage: giftMessage.trim() || undefined,
+        } : {}),
+      });
     } catch (e) {
       setError(e.message);
       setBusy(false);
@@ -1160,18 +1426,15 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
     <div className="screen" style={{ background:'var(--cream)' }}>
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.25rem', color:'var(--dark)' }}>
-          <span style={{ color:'var(--clay)' }}>Mini</span>Nous
-        </div>
-        <div className="tag" style={{ background: tooManyFaces ? 'var(--clay-pale)' : 'var(--forest-pale)',
-          color: tooManyFaces ? 'var(--clay-deep)' : 'var(--forest)' }}>
-          {tooManyFaces
-            ? `⚠ ${faceCountForQuote} personnages — max ${MAX_FACES}`
-            : hasQuote && showCountAdjuster
-              ? `✓ ${quote.faceCount} pers. · ${quote.label}`
-              : hasQuote && session?.detectedFaces
-                ? `✓ ${session.detectedFaces} pers. · ${quote.label}`
-                : `✓ ${packDef?.label} · exemple`}
+        <BrandLogo compact onClick={onHome}/>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <AccountNavLink/>
+          <div className="tag" style={{ background: tooManyFaces ? 'var(--clay-pale)' : 'var(--forest-pale)',
+            color: tooManyFaces ? 'var(--clay-deep)' : 'var(--forest)' }}>
+            {tooManyFaces
+              ? `⚠ Max ${MAX_FACES} personnages`
+              : hasQuote ? `✓ ${quote.faceCount} figurine${quote.faceCount > 1 ? 's' : ''}` : '—'}
+          </div>
         </div>
       </nav>
 
@@ -1179,72 +1442,17 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
         display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
 
         <div>
-          <div className="tag" style={{
-            background: isExampleOnly ? 'var(--bark-pale)' : 'var(--clay-pale)',
-            color: isExampleOnly ? 'var(--bark)' : 'var(--clay)',
-            marginBottom:18,
-          }}>
-            {isExampleOnly ? '📋 Exemple illustratif' : previewLoading ? '⏳ Préparation…' : '🎨 Aperçu atelier · filigrané'}
-          </div>
-          <h2 style={{ color:'var(--dark)', marginBottom:14 }}>
-            {hasAiPreview ? 'Vos figurines dans l\'atelier' : 'Exemple · figurines bois atelier'}
-          </h2>
-
-          {tooManyFaces && (
-            <div style={{ background:'#fff5f0', border:'1.5px solid var(--clay-light)', borderRadius:16,
-              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
-              <p style={{ color:'var(--clay-deep)', fontSize:'.88rem', lineHeight:1.65, marginBottom:12 }}>
-                <strong>{session.detectedFaces ?? faceCountForQuote} personnages repérés</strong> — maximum{' '}
-                <strong>{MAX_FACES} figurines</strong> par commande. Choisissez une photo avec {MAX_FACES} personnes ou moins.
-              </p>
-              <PhotoUploadZone compact onFile={onPhotoUpload} label="Choisir une autre photo"
-                hint={`Jusqu'à ${MAX_FACES} personnages`} />
-              <div style={{ marginTop:14 }}>
-                <PersonCountQuestion
-                  count={Math.min(MAX_FACES, session.faceCount ?? MAX_FACES)}
-                  detected={session.detectedFaces}
-                  max={MAX_FACES}
-                  onChange={onFaceCountChange}
-                  photoUrl={session.photoUrl}
-                />
-              </div>
+          {session?.isDemoExample && showComposition && !tooManyFaces && (
+            <div style={{ marginBottom:16 }}>
+              <TryMyPhotoButton onFile={onPhotoUpload} />
             </div>
           )}
 
-          {isExampleOnly && !tooManyFaces && (
-            <div style={{ background:'#fff', border:'1.5px solid var(--bark-light)', borderRadius:16,
-              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
-              <p style={{ color:'var(--dark)', fontSize:'.88rem', lineHeight:1.65, marginBottom:10 }}>
-                Exemple du <strong>rendu atelier</strong> (figurines bois sur établi). Uploadez votre photo pour voir votre groupe personnalisé.
-              </p>
-              <PhotoUploadZone compact onFile={onPhotoUpload} label="Uploader ma photo de groupe"
-                hint="Comptage des personnages · Aperçu gratuit" />
-            </div>
-          )}
-
-          <p style={{ color:'var(--muted)', marginBottom:14, lineHeight:1.7, fontSize:'.9rem' }}>
-            {previewFailed && 'L\'aperçu n\'a pas pu être préparé — exemple affiché. '}
-            {hasAiPreview && session.faceCount != null && (
-              <><strong>{session.faceCount} personnage{session.faceCount > 1 ? 's' : ''}</strong> pour votre commande, prêt{session.faceCount > 1 ? 's' : ''} à être taillé{session.faceCount > 1 ? 's' : ''} en bois. </>
-            )}
-            Ceci est un <strong>aperçu filigrané</strong> — après commande, l&apos;atelier vous accompagne pour peaufiner chaque figurine avant fabrication.
-          </p>
-
-          <div style={{ background:'var(--forest-pale)', borderRadius:14, padding:'14px 16px',
-            marginBottom:18, textAlign:'left' }}>
-            <p style={{ color:'var(--forest)', fontSize:'.82rem', lineHeight:1.65, margin:0 }}>
-              <strong>Après commande</strong> : ajustez chaque figurine dans notre studio, affinez les traits et validez avant la découpe laser à Nantes.
-            </p>
-          </div>
-
-          {previewFailed && (
-            <p style={{ color:'var(--clay-deep)', fontSize:'.82rem', marginBottom:12 }}>{session.error}</p>
-          )}
-
-          {showCountAdjuster && !tooManyFaces && (
+          {showComposition && !tooManyFaces && (
             <div style={{ marginBottom:18 }}>
-              <PersonCountQuestion
-                count={session.faceCount ?? 2}
+              <FamilyCompositionQuestion
+                faceCount={session.faceCount ?? 2}
+                childCount={session.childCount ?? 0}
                 detected={session.detectedFaces}
                 max={MAX_FACES}
                 onChange={onFaceCountChange}
@@ -1253,29 +1461,34 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
             </div>
           )}
 
-          <div style={{ position:'relative', borderRadius:20, overflow:'hidden',
-            boxShadow:'0 16px 48px rgba(44,31,20,.13)' }}>
-            {previewLoading ? (
-              <PreviewLoadingEncart photoUrl={session.photoUrl} />
-            ) : (
-              <WatermarkedPreview src={previewSrc} alt="Aperçu figurines bois" style={{ width:'100%', display:'block' }} />
-            )}
-            {!previewLoading && (
-              <>
-                <div style={{ position:'absolute', inset:0, pointerEvents:'none',
-                  background:'repeating-linear-gradient(-24deg, transparent, transparent 22px, rgba(44,31,20,.06) 22px, rgba(44,31,20,.06) 44px)' }}/>
-                <div style={{ position:'absolute', top:14, left:14, background:'rgba(44,31,20,.82)',
-                  color:'#fff', borderRadius:100, padding:'6px 14px', fontSize:'.72rem', fontWeight:700 }}>
-                  {hasAiPreview ? 'APERÇU · filigrane' : 'EXEMPLE · filigrane'}
-                </div>
-                <div style={{ position:'absolute', bottom:16, left:'50%', transform:'translateX(-50%)',
-                  whiteSpace:'nowrap', background:'rgba(44,31,20,.78)', color:'#fff', borderRadius:100,
-                  padding:'8px 20px', fontSize:'.78rem', fontWeight:600, backdropFilter:'blur(8px)' }}>
-                  {hasAiPreview ? 'Version finale + studio après commande' : 'Uploadez votre photo pour un aperçu perso'}
-                </div>
-              </>
-            )}
-          </div>
+          {tooManyFaces && (
+            <div style={{ background:'#fff5f0', border:'1.5px solid var(--clay-light)', borderRadius:16,
+              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
+              <p style={{ color:'var(--clay-deep)', fontSize:'.88rem', lineHeight:1.65, marginBottom:12 }}>
+                Maximum <strong>{MAX_FACES} figurines</strong> par commande — choisissez une photo moins chargée.
+              </p>
+              <PhotoUploadZone compact showDemo={false} onFile={onPhotoUpload} onDemo={onDemoPhoto}
+                label="Choisir une autre photo" hint={`Jusqu'à ${MAX_FACES} personnages`} />
+            </div>
+          )}
+
+          {isPackOnly && !tooManyFaces && (
+            <div style={{ marginBottom:18 }}>
+              <PhotoUploadZone compact onFile={onPhotoUpload} onDemo={onDemoPhoto}
+                label="Ajouter ma photo de groupe" hint="2 à 8 personnages" />
+            </div>
+          )}
+
+          <p style={{ color:'var(--muted)', marginBottom:10, lineHeight:1.7, fontSize:'.92rem' }}>
+            De votre photo aux figurines posées chez vous — voici les trois étapes.
+          </p>
+          <p style={{ fontFamily:'Quicksand', fontWeight:700, color:'var(--dark)',
+            marginBottom:16, fontSize:'1rem' }}>
+            Exemple avec un groupe de {exampleCount} personne{exampleCount > 1 ? 's' : ''}
+          </p>
+
+          <Triptyque showcase={triptyqueShowcase} vertical ratio="landscape" photoContain/>
+          <SizeReminder/>
         </div>
 
         <div style={{ position:'sticky', top:80 }}>
@@ -1283,26 +1496,19 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
             boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
             {hasQuote ? (
               <>
-                <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.35rem' }}>{quote.label}</h3>
-                <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:12, lineHeight:1.6 }}>
-                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · fabrication Nantes · expédition vendredi
+                <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem' }}>{quote.label}</h3>
+                <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
+                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · 18 cm · Nantes · livraison vendredi
                 </p>
               </>
             ) : (
               <>
                 <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.35rem' }}>Photo trop chargée</h3>
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:12, lineHeight:1.6 }}>
-                  Maximum {MAX_FACES} personnages par commande
+                  Maximum {MAX_FACES} personnages
                 </p>
               </>
             )}
-
-            <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:18,
-              padding:'12px 14px', background:'var(--bark-pale)', borderRadius:12, fontSize:'.78rem', color:'var(--muted)' }}>
-              <span>✓ Aperçu gratuit (filigrané)</span>
-              <span>✓ Studio d&apos;édition après commande</span>
-              <span>✓ Fabrication laser bois contreplaqué</span>
-            </div>
 
             {hasQuote && (
               <div style={{ display:'flex', flexDirection:'column', gap:10,
@@ -1321,22 +1527,45 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
                     </span>
                   </div>
                 )}
-                {Number(quote.shippingEur) > 0 ? (
-                  <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>Frais de port</span>
-                    <span style={{ fontWeight:700 }}>{Number(quote.shippingEur).toFixed(0)} €</span>
-                  </div>
-                ) : (
+                {!hasShipping && (
                   <div style={{ fontSize:'.82rem', color:'var(--forest)' }}>🎁 Port offert</div>
                 )}
               </div>
             )}
 
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
-              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem', color:'var(--dark)' }}>Total TTC</span>
-              <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)' }}>
-                {hasQuote ? `${quote.totalEur} €` : '—'}
-              </span>
+            <div style={{ marginBottom:20, padding:'14px 16px', background:'var(--bark-pale)', borderRadius:14 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom: giftMode ? 14 : 0 }}>
+                <div>
+                  <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.9rem', color:'var(--dark)' }}>
+                    🎁 Offrir les MiniNous
+                  </div>
+                  <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>
+                    Expédition directe + petit mot dans le colis
+                  </div>
+                </div>
+                <Toggle on={giftMode} setOn={setGiftMode}/>
+              </div>
+              {giftMode && (
+                <textarea placeholder="Votre message (imprimé dans le colis)"
+                  value={giftMessage} onChange={e => setGiftMessage(e.target.value)} rows={3}
+                  style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem', resize:'vertical', width:'100%' }}/>
+              )}
+            </div>
+
+            <div style={{ marginBottom:22 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12 }}>
+                <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem', color:'var(--dark)' }}>
+                  {hasShipping ? 'Figurines TTC' : 'Total TTC'}
+                </span>
+                <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)', lineHeight:1 }}>
+                  {hasQuote ? `${productEur} €` : '—'}
+                </span>
+              </div>
+              {hasShipping && (
+                <p style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:8, textAlign:'right', lineHeight:1.5 }}>
+                  + {Number(quote.shippingEur).toFixed(0)} € de port · détaillé sur la page de paiement
+                </p>
+              )}
             </div>
 
             {error && <p style={{ color:'var(--clay-deep)', fontSize:'.85rem', marginBottom:12 }}>{error}</p>}
@@ -1347,12 +1576,16 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
               onClick={pay}>
               {tooManyFaces ? `Max ${MAX_FACES} personnages`
                 : soldOut ? 'Complet cette semaine'
-                : busy ? 'Redirection vers le paiement…'
-                : 'Commander et peaufiner à l\'atelier →'}
+                : busy ? 'Redirection…'
+                : giftMode ? 'Commander ce cadeau →'
+                : 'Commander et Accéder au Studio →'}
             </button>
 
             <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:14, textAlign:'center', lineHeight:1.55 }}>
-              Paiement sécurisé · Pack de base + {extraEur.toFixed(2)} € / pers. supplémentaire
+              Paiement sécurisé · Studio inclus
+              {quote?.faceCount === 3
+                ? ' · 3 pers. : +2 € pour la 3e figurine'
+                : ` · +${extraEur.toFixed(2)} € / pers. supplémentaire`}
             </p>
           </div>
         </div>
@@ -1362,7 +1595,7 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onPreviewRead
 }
 
 /* ─── STATE 4 · EDITOR ────────────────────────────────────────── */
-function Editor({ go }) {
+function Editor({ go, onHome }) {
   const [sel, setSel] = useState(null);
   const [regens, setRegens] = useState(3);
   const [regen, setRegen] = useState(false);
@@ -1390,11 +1623,14 @@ function Editor({ go }) {
         borderBottom:'1px solid rgba(255,255,255,.08)',
         padding:'14px 24px', display:'flex', justifyContent:'space-between',
         alignItems:'center', gap:12 }}>
-        <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.15rem',
-          color:'#fff' }}>
-          <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <button type="button" onClick={onHome} aria-label="Retour à l'accueil"
+            style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.15rem',
+              color:'#fff', background:'none', border:'none', padding:0, cursor:'pointer' }}>
+            <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
+          </button>
           <span style={{ color:'rgba(255,255,255,.3)', fontWeight:400,
-            fontSize:'.82rem', marginLeft:10 }}>Studio · Édition</span>
+            fontSize:'.82rem' }}>Studio · Édition</span>
         </div>
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <div style={{ background:'rgba(255,255,255,.07)', borderRadius:100,
@@ -1731,11 +1967,11 @@ function App() {
     enterVia: null,
     photoUrl: null,
     photoBase64: null,
-    previewUrl: null,
     detectedFaces: null,
     faceCount: null,
-    previewGen: 0,
-    previewLoading: false,
+    childCount: 0,
+    showcaseCount: null,
+    isDemoExample: false,
     error: null,
   });
   const [tick, setTick] = useState(0);
@@ -1750,41 +1986,74 @@ function App() {
   }, []);
 
   const startPackRoute = useCallback((packId) => {
+    const p = packs.find(x => x.id === packId) || DEFAULT_PACKS.find(x => x.id === packId);
     setSelectedPack(packId);
     setSession({
       enterVia: 'pack',
       photoUrl: null,
       photoBase64: null,
-      previewUrl: null,
       detectedFaces: null,
       faceCount: null,
-      previewGen: 0,
-      previewLoading: false,
+      childCount: 0,
+      showcaseCount: p?.faceCount ?? null,
+      isDemoExample: false,
       error: null,
     });
     go('pricing');
+  }, [go, packs]);
+
+  const goHome = useCallback(() => {
+    setSelectedPack('famille');
+    setSession({
+      enterVia: null,
+      photoUrl: null,
+      photoBase64: null,
+      detectedFaces: null,
+      faceCount: null,
+      childCount: 0,
+      showcaseCount: null,
+      isDemoExample: false,
+      error: null,
+    });
+    go('landing');
   }, [go]);
 
-  const beginPhotoFlow = useCallback(async (file, { enterVia = 'upload' } = {}) => {
+  const beginPhotoFlow = useCallback(async (file, { enterVia = 'upload', demoPreset = null } = {}) => {
     try {
+      const preset = demoPreset || presetFromFileName(file.name);
       const { photoUrl, photoBase64 } = await readImageFile(file);
-      let detected = 0;
-      try {
-        detected = await detectFaceCount(photoBase64);
-      } catch { /* fallback */ }
-      const initialCount = detected > 0 ? Math.min(MAX_FACES, detected) : 2;
+      let detectedFaces = null;
+      let initialCount = 2;
+      let initialChildren = 0;
+
+      if (preset) {
+        initialCount = preset.faceCount;
+        initialChildren = preset.childCount ?? 0;
+      } else {
+        let detected = 0;
+        try {
+          detected = await detectFaceCount(photoBase64);
+        } catch { /* fallback */ }
+        if (detected > 0) {
+          detectedFaces = detected;
+          initialCount = Math.min(MAX_FACES, detected);
+        }
+      }
+
+      const showcaseCount = preset?.showcaseCount ?? initialCount;
+
       setSelectedPack(packIdForFaceCount(initialCount));
-      setSession(s => ({
+      setSession({
         enterVia,
         photoUrl,
         photoBase64,
-        previewUrl: null,
-        detectedFaces: detected > 0 ? detected : null,
+        detectedFaces,
         faceCount: initialCount,
-        previewGen: (s.previewGen ?? 0) + 1,
-        previewLoading: true,
+        childCount: initialChildren,
+        showcaseCount,
+        isDemoExample: !!demoPreset,
         error: null,
-      }));
+      });
       setTick(t => t + 1);
       go('pricing');
     } catch {
@@ -1792,31 +2061,34 @@ function App() {
     }
   }, [go]);
 
-  const onPhotoUpload = useCallback((file) => {
-    beginPhotoFlow(file, { enterVia: 'upload' });
+  const onPhotoUpload = useCallback((file) => (
+    beginPhotoFlow(file, { enterVia: 'upload' })
+  ), [beginPhotoFlow]);
+
+  const onPaywallPhotoUpload = useCallback((file) => (
+    beginPhotoFlow(file, { enterVia: 'upload' })
+  ), [beginPhotoFlow]);
+
+  const onDemoPhoto = useCallback(async (demo) => {
+    try {
+      const res = await fetch(demo.src);
+      const blob = await res.blob();
+      const file = new File([blob], `demo-${demo.count}.webp`, { type: blob.type || 'image/webp' });
+      beginPhotoFlow(file, { enterVia: 'upload', demoPreset: demo });
+    } catch {
+      alert('Impossible de charger cette photo de démonstration.');
+    }
   }, [beginPhotoFlow]);
 
-  const onPaywallPhotoUpload = useCallback((file) => {
-    beginPhotoFlow(file, { enterVia: 'upload' });
-  }, [beginPhotoFlow]);
-
-  const onPreviewReady = useCallback((previewUrl) => {
-    setSession(s => ({ ...s, previewUrl, previewLoading: false, error: null }));
-  }, []);
-
-  const onPreviewError = useCallback((message) => {
-    setSession(s => ({ ...s, error: message || 'Aperçu indisponible pour le moment', previewLoading: false }));
-  }, []);
-
-  const onFaceCountChange = useCallback((count) => {
-    const n = Math.max(1, Math.min(MAX_FACES, count));
+  const onFaceCountChange = useCallback(({ faceCount, childCount }) => {
+    const n = Math.max(1, Math.min(MAX_FACES, faceCount));
+    const kids = Math.max(0, Math.min(n, childCount ?? 0));
     setSelectedPack(packIdForFaceCount(n));
     setSession(s => ({
       ...s,
       faceCount: n,
-      previewUrl: null,
-      previewLoading: !!s.photoBase64,
-      previewGen: (s.previewGen ?? 0) + 1,
+      childCount: kids,
+      showcaseCount: n,
       error: null,
     }));
   }, []);
@@ -1824,12 +2096,12 @@ function App() {
   const idx = NAV_STEPS.findIndex(s => s.id === state);
 
   const screens = {
-    landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload} />,
+    landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload}
+                  onDemoPhoto={onDemoPhoto} onHome={goHome} />,
     pricing:    <Paywall packDef={packDef} status={status} session={session} packs={packs}
-                  onPhotoUpload={onPaywallPhotoUpload}
-                  onPreviewReady={onPreviewReady} onPreviewError={onPreviewError}
-                  onFaceCountChange={onFaceCountChange} />,
-    editor:     <Editor     go={go}/>,
+                  onPhotoUpload={onPaywallPhotoUpload} onDemoPhoto={onDemoPhoto}
+                  onFaceCountChange={onFaceCountChange} onHome={goHome} />,
+    editor:     <Editor go={go} onHome={goHome}/>,
     success:    <Success/>,
   };
 

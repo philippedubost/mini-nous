@@ -16,14 +16,55 @@ export async function createGeneration({ faceCount, resolution, aspectRatio, set
   return generation
 }
 
-export async function fetchOrderByToken(token) {
-  return apiJson(`/api/orders?token=${encodeURIComponent(token)}`)
+function authHeaders(bearerToken) {
+  return bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}
 }
 
-export async function linkOrderGeneration(token, generationId) {
+export async function fetchOrderByToken(token, bearerToken) {
+  return apiJson(`/api/orders?token=${encodeURIComponent(token)}`, {
+    headers: authHeaders(bearerToken),
+  })
+}
+
+export async function linkOrderGeneration(token, generationId, bearerToken) {
   return apiJson('/api/orders', {
     method: 'PATCH',
-    body: JSON.stringify({ token, generationId }),
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ token, generationId, action: 'link_generation' }),
+  })
+}
+
+export async function orderAction(token, action, bearerToken) {
+  return apiJson('/api/orders', {
+    method: 'PATCH',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ token, action }),
+  })
+}
+
+export async function fetchMyOrders(bearerToken) {
+  return apiJson('/api/me', { headers: authHeaders(bearerToken) })
+}
+
+export async function claimMyOrders(bearerToken) {
+  return apiJson('/api/me', {
+    method: 'POST',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ action: 'claim' }),
+  })
+}
+
+export async function fetchRevisions(token, bearerToken) {
+  return apiJson(`/api/revisions?token=${encodeURIComponent(token)}`, {
+    headers: authHeaders(bearerToken),
+  })
+}
+
+export async function submitRevision(token, characters, bearerToken) {
+  return apiJson('/api/revisions', {
+    method: 'POST',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ token, characters }),
   })
 }
 

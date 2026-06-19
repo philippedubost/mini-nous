@@ -64,7 +64,7 @@ export default function PaymentSuccessPage() {
 
         {!waiting && order && (
           <div className="rounded-xl border border-emerald-800/40 bg-emerald-950/30 p-4 text-sm text-emerald-100 space-y-1">
-            <p>Pack <strong>{order.packType}</strong> · {order.faceCount} personnage{order.faceCount > 1 ? 's' : ''}</p>
+            <p><strong>{order.packLabel || order.packType}</strong> · {order.faceCount} personnage{order.faceCount > 1 ? 's' : ''}</p>
             {shipLabel && <p>Réception prévue {shipLabel}</p>}
           </div>
         )}
@@ -74,12 +74,23 @@ export default function PaymentSuccessPage() {
         )}
 
         {!waiting && orderToken && !error && (
-          <Link
-            to={`/?order=${encodeURIComponent(orderToken)}`}
-            className="inline-block w-full py-3.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 transition-colors"
-          >
-            Envoyer ma photo →
-          </Link>
+          <div className="space-y-3 w-full">
+            <Link
+              to={`/commande?order=${encodeURIComponent(orderToken)}`}
+              className="inline-block w-full py-3.5 rounded-xl font-semibold bg-stone-100 hover:bg-white text-stone-950 transition-colors"
+            >
+              Suivre ma commande
+            </Link>
+            <Link
+              to={`/studio?order=${encodeURIComponent(orderToken)}`}
+              className="inline-block w-full py-3.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 transition-colors"
+            >
+              Envoyer ma photo →
+            </Link>
+            <p className="text-xs text-stone-500 leading-relaxed">
+              Un e-mail de confirmation avec votre lien personnel vous sera envoyé si ce n&apos;est pas déjà fait.
+            </p>
+          </div>
         )}
 
         <a href="/" className="block text-sm text-stone-500 hover:text-stone-300">
