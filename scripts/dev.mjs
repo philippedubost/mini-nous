@@ -1,9 +1,11 @@
 import { createServer } from 'node:net'
-import { readFileSync, existsSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { startGateway } from './gateway.mjs'
+import { loadEnv } from './lib/load-env.mjs'
+import { warnIfSupabaseUnreachable, isSupabaseReachable } from './lib/supabase-check.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(scriptsDir, '..')
@@ -17,20 +19,6 @@ function isFree(port) {
     s.once('error', () => resolve(false))
     s.listen(port, '127.0.0.1', () => s.close(() => resolve(true)))
   })
-}
-
-function loadEnv() {
-  const envPath = join(rootDir, '.env')
-  if (!existsSync(envPath)) return
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const i = trimmed.indexOf('=')
-    if (i === -1) continue
-    const key = trimmed.slice(0, i).trim()
-    const val = trimmed.slice(i + 1).trim()
-    if (!process.env[key]) process.env[key] = val
-  }
 }
 
 function runCommand(cmd, args, cwd) {
@@ -75,6 +63,10 @@ async function loadApiRoutes() {
 
 async function main() {
   loadEnv()
+  await warnIfSupabaseUnreachable()
+  if (!isSupabaseReachable()) {
+    process.env.SUPABASE_REACHABLE = '0'
+  }
   await ensurePipelineDeps()
 
   try {
@@ -96,6 +88,7 @@ async function main() {
       ...process.env,
       VITE_PORT: String(VITE_PORT),
       MINI_NOUS_API_PORT: String(PORT),
+      SUPABASE_REACHABLE: process.env.SUPABASE_REACHABLE || '1',
     },
   })
 

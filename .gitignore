@@ -16,6 +16,7 @@ images/3de6f44e-d476-43fa-84d1-be3e7a9be260.jpg
 .vercel
 .env
 .env.local
+env
 dist/
 output/
 node_modules/

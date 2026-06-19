@@ -1,22 +1,6 @@
-import { readFileSync, existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { loadEnv } from '../../lib/load-env.mjs'
 
-const rootDir = join(dirname(fileURLToPath(import.meta.url)), '../..')
-
-export function loadEnv() {
-  const envPath = join(rootDir, '.env')
-  if (!existsSync(envPath)) return
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const i = trimmed.indexOf('=')
-    if (i === -1) continue
-    const key = trimmed.slice(0, i).trim()
-    const val = trimmed.slice(i + 1).trim()
-    if (!process.env[key]) process.env[key] = val
-  }
-}
+export { loadEnv }
 
 export function parseArgs(argv) {
   const args = { week: null, kerf: Number(process.env.BATCH_KERF_MM) || -0.1, dryRun: false }

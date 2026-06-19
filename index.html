@@ -121,6 +121,8 @@ input{font-family:inherit}
 .pack-card{background:#fff;border-radius:20px;padding:28px 24px;border:2px solid var(--bark-pale);transition:all var(--t);text-align:left;display:flex;flex-direction:column;gap:12px}
 .pack-card:hover{border-color:var(--clay);box-shadow:0 12px 40px rgba(192,104,74,.15);transform:translateY(-4px)}
 .pack-card.featured{border-color:var(--clay);box-shadow:0 16px 48px rgba(192,104,74,.2)}
+.pack-photo{aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:var(--bark-pale);margin-bottom:4px}
+.pack-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .pack-price{font-family:Quicksand,sans-serif;font-size:1.75rem;font-weight:700;color:var(--dark);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .pack-price small{font-size:.85rem;font-weight:500;color:var(--muted)}
 .pack-price .pack-shipping{font-size:.72rem;font-weight:500;color:var(--muted)}
@@ -226,11 +228,27 @@ const DEFAULT_PACKS = [
   { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'44.90', shippingEur:'0.00', totalEur:'44.90' },
 ];
 
-const PACK_PREVIEWS = {
-  duo: 'images/apres-ref.png',
-  famille: 'images/apres-ref.png',
-  grande_famille: 'images/apres-ref.png',
+const PACK_LINEARTS = {
+  duo:            'images/duo-lineart.jpg',
+  famille:        'images/famille4-lineart.jpg',
+  grande_famille: 'images/famille7-lineart.png',
 };
+
+const PACK_PREVIEWS = {
+  duo:            'images/duo.jpg',
+  famille:        'images/famille4.jpg',
+  grande_famille: 'images/famille7.jpg',
+};
+
+function PackPhoto({ packId }) {
+  const src = PACK_LINEARTS[packId];
+  if (!src) return null;
+  return (
+    <div className="pack-photo">
+      <img src={src} alt="" draggable="false"/>
+    </div>
+  );
+}
 
 function getPackDef(packId, packs) {
   const list = packs?.length ? packs : DEFAULT_PACKS;
@@ -279,6 +297,7 @@ function PackCards({ onPackExample }) {
                 </span>
               )}
               <h3 style={{ fontFamily:'Quicksand', color:'var(--dark)', fontSize:'1.15rem' }}>{p.label}</h3>
+              <PackPhoto packId={p.id} />
               <p style={{ fontSize:'.85rem', color:'var(--muted)' }}>
                 {p.faceCount} personnage{p.faceCount > 1 ? 's' : ''}
               </p>
@@ -309,8 +328,8 @@ function PackCards({ onPackExample }) {
 /* ─── ASSETS ──────────────────────────────────────────────────── */
 const IMG = {
   hero:      'images/hero.webp',
-  before:    'images/avant.webp',
-  after:     'images/apres-ref.png',
+  before:    'images/famille4.jpg',
+  after:     'images/famille4-lineart.jpg',
   upload:    'images/famille7.jpg',
   lifestyle: 'images/af5dfcad-37bc-4917-99fd-c47c7d53d8a2.jpg',
   atelier:   'images/apres-ref.png',

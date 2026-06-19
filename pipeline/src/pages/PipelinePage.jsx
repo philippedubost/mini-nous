@@ -51,10 +51,11 @@ export default function PipelinePage() {
     let generationId = null
     const traceSettings = loadTraceSettings()
     const effectiveFaceCount = orderInfo?.faceCount ?? faceCount
+    const [cfg1, cfg2] = settings.steps
+    const fmt1 = falStepFormat(cfg1, settings)
+    const fmt2 = falStepFormat(cfg2, settings)
 
     try {
-      const fmt1 = falStepFormat(cfg1, settings)
-      const fmt2 = falStepFormat(cfg2, settings)
 
       try {
         const generation = await createGeneration({
@@ -85,7 +86,6 @@ export default function PipelinePage() {
 
       const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
       let url1, url2
-      const [cfg1, cfg2] = settings.steps
 
       patchStep(0, { status: 'running' })
       await markStepRunning(generationId, 'step1')
