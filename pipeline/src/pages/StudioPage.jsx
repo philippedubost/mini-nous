@@ -126,7 +126,7 @@ export default function StudioPage() {
   }, [order, orderToken, bearerToken, settings, reloadOrder])
 
   const handleRegen = async () => {
-    if (!order?.regenRemaining) return
+    if (order?.regenRemaining != null && order.regenRemaining <= 0) return
     setError(null)
     try {
       await orderAction(orderToken, 'regen', bearerToken)
@@ -194,7 +194,7 @@ export default function StudioPage() {
           <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
         )}
 
-        {phase === 'upload' && order?.editable && !busy && (
+        {phase === 'upload' && (order?.editable || order?.isAdminView) && !busy && (
           <Upload
             onReady={runGeneration}
             initialFaceCount={order.faceCount}
@@ -216,8 +216,11 @@ export default function StudioPage() {
               <img src={lineartUrl} alt="Tracé lineart" className="w-full object-contain max-h-96"/>
             </div>
 
-            {order?.editable && order.workflowStatus !== 'approved' && order.workflowStatus !== 'revision_requested' && (
+            {(order?.editable || order?.isAdminView)
+              && (order.isAdminView || (order.workflowStatus !== 'approved' && order.workflowStatus !== 'revision_requested'))
+              && (
               <div className="space-y-3">
+                {!order.isAdminView && order.workflowStatus !== 'approved' && (
                 <button
                   type="button"
                   onClick={handleValidate}
@@ -226,17 +229,21 @@ export default function StudioPage() {
                 >
                   Valider mon design → impression
                 </button>
+                )}
 
-                {order.regenRemaining > 0 && (
+                {(order.regenRemaining == null || order.regenRemaining > 0) && (
                   <button
                     type="button"
                     onClick={handleRegen}
                     className="w-full py-2.5 rounded-xl border border-stone-600 text-stone-300 text-sm hover:border-stone-400"
                   >
-                    Regénérer le tracé ({order.regenRemaining} restante{order.regenRemaining > 1 ? 's' : ''})
+                    {order.regenRemaining == null
+                      ? 'Regénérer le tracé (illimité)'
+                      : `Regénérer le tracé (${order.regenRemaining} restante${order.regenRemaining > 1 ? 's' : ''})`}
                   </button>
                 )}
 
+                {!order.isAdminView && (
                 <RevisionPanel
                   token={orderToken}
                   faceCount={order.faceCount}
@@ -244,10 +251,17 @@ export default function StudioPage() {
                   disabled={busy}
                   onSubmitted={reloadOrder}
                 />
+                )}
               </div>
             )}
 
-            {order?.workflowStatus === 'approved' && (
+            {order?.isAdminView && order.workflowStatus === 'approved' && (
+              <p className="text-xs text-stone-500 text-center">
+                Mode admin — vous pouvez regénérer même après validation.
+              </p>
+            )}
+
+            {!order?.isAdminView && order?.workflowStatus === 'approved' && (
               <p className="text-sm text-emerald-300 text-center">
                 Design validé — votre commande est en file d&apos;impression.
               </p>
@@ -261,7 +275,7 @@ export default function StudioPage() {
           </div>
         )}
 
-        {!order?.editable && order && !lineartUrl && (
+        {!order?.editable && !order?.isAdminView && order && !lineartUrl && (
           <p className="text-sm text-stone-500 text-center">
             Cette commande n&apos;est plus modifiable (fabrication lancée).
           </p>

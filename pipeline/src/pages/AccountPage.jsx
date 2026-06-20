@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { fetchMyOrders } from '../lib/storage'
+import { createAdminOrder, fetchMyOrders } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
 
 function formatShip(iso) {
@@ -12,19 +12,46 @@ function formatShip(iso) {
 }
 
 export default function AccountPage() {
+  const navigate = useNavigate()
   const { user, loading, signOut, accessToken } = useAuth()
   const [orders, setOrders] = useState([])
+  const [isAdmin, setIsAdmin] = useState(false)
   const [err, setErr] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [creatingId, setCreatingId] = useState(null)
 
-  useEffect(() => {
+  const loadOrders = () => {
     if (!accessToken) return
     setBusy(true)
     fetchMyOrders(accessToken)
-      .then(({ orders: list }) => setOrders(list ?? []))
+      .then(({ orders: list, user: me }) => {
+        setOrders(list ?? [])
+        setIsAdmin(!!me?.isAdmin)
+      })
       .catch(e => setErr(e.message))
       .finally(() => setBusy(false))
+  }
+
+  useEffect(() => {
+    loadOrders()
   }, [accessToken])
+
+  const handleNewOrder = async (fromOrder) => {
+    if (!accessToken) return
+    setCreatingId(fromOrder?.id ?? 'new')
+    setErr(null)
+    try {
+      const { accessToken: token } = await createAdminOrder(accessToken, {
+        faceCount: fromOrder?.faceCount,
+        fromOrderId: fromOrder?.id,
+      })
+      navigate(`/studio?order=${encodeURIComponent(token)}`)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setCreatingId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -53,12 +80,35 @@ export default function AccountPage() {
       title="Mon compte"
       subtitle={user.email}
       navRight={(
-        <button type="button" onClick={signOut} className="customer-link text-xs bg-transparent border-0 cursor-pointer">
-          Déconnexion
-        </button>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Link to="/admin" className="customer-badge customer-badge-green text-[10px]">
+              Admin
+            </Link>
+          )}
+          <button type="button" onClick={signOut} className="customer-link text-xs bg-transparent border-0 cursor-pointer">
+            Déconnexion
+          </button>
+        </div>
       )}
     >
-      <h2 className="text-lg font-semibold">Mes commandes</h2>
+      {isAdmin && (
+        <div className="customer-card-muted flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#2C1F14]">
+            Mode admin — toutes les commandes, studio ouvert, régénérations illimitées.
+          </p>
+          <button
+            type="button"
+            disabled={creatingId === 'new'}
+            onClick={() => handleNewOrder(null)}
+            className="customer-btn-clay !py-2 !px-4 !text-xs"
+          >
+            {creatingId === 'new' ? 'Création…' : '+ Nouvelle commande'}
+          </button>
+        </div>
+      )}
+
+      <h2 className="text-lg font-semibold">{isAdmin ? 'Toutes les commandes' : 'Mes commandes'}</h2>
 
       {busy && <p className="customer-muted text-sm">Chargement…</p>}
       {err && <p className="text-sm text-red-600">{err}</p>}
@@ -79,6 +129,7 @@ export default function AccountPage() {
                 <p className="text-sm customer-muted">
                   {o.faceCount} figurine{o.faceCount > 1 ? 's' : ''}
                   {o.amountEur ? ` · ${o.amountEur} €` : ''}
+                  {o.email && isAdmin ? ` · ${o.email}` : ''}
                 </p>
               </div>
               <span className="customer-badge">{o.workflowLabel}</span>
@@ -98,13 +149,23 @@ export default function AccountPage() {
                   >
                     Suivre
                   </Link>
-                  {o.editable && (
+                  {(isAdmin || o.editable) && (
                     <Link
                       to={`/studio?order=${encodeURIComponent(o.accessToken)}`}
                       className="customer-btn-clay !py-2 !px-4 !text-xs"
                     >
                       Studio
                     </Link>
+                  )}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      disabled={creatingId === o.id}
+                      onClick={() => handleNewOrder(o)}
+                      className="customer-btn-ghost"
+                    >
+                      {creatingId === o.id ? 'Création…' : 'Nouvelle commande'}
+                    </button>
                   )}
                 </>
               )}
@@ -113,7 +174,10 @@ export default function AccountPage() {
         ))}
       </div>
 
-      <a href="/" className="customer-link block text-center pt-2">← Boutique</a>
+      <div className="flex flex-wrap justify-center gap-4 pt-2">
+        <a href="/" className="customer-link">← Boutique</a>
+        {isAdmin && <Link to="/admin" className="customer-link">Pipeline admin →</Link>}
+      </div>
     </CustomerLayout>
   )
 }

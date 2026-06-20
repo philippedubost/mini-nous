@@ -205,7 +205,12 @@ input{font-family:inherit}
 .size-banner img{width:100%;display:block}
 
 /* Micro-animations landing */
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastExpire{from{width:100%}to{width:0%}}
+.detect-toast{margin-bottom:14px;padding:10px 12px;background:var(--forest-pale);border:1.5px solid rgba(74,138,82,.28);border-radius:10px;animation:fadeUp .3s ease both}
+.detect-toast p{font-family:Quicksand,sans-serif;font-weight:600;font-size:.82rem;color:var(--forest);line-height:1.45;margin:0}
+.detect-toast-bar{height:3px;background:rgba(74,138,82,.18);border-radius:100px;margin-top:8px;overflow:hidden}
+.detect-toast-fill{height:100%;background:var(--forest);border-radius:100px;width:100%;animation:toastExpire linear forwards}
+
 @keyframes gentleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes softPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 .anim-in{animation:fadeUp .65s cubic-bezier(.4,0,.2,1) both}
@@ -1477,10 +1482,56 @@ function CounterRow({ label, value, min, max, onChange, hint }) {
   );
 }
 
+function DetectionToast({ count, durationMs = 5000, onExpired }) {
+  useEffect(() => {
+    const t = setTimeout(onExpired, durationMs);
+    return () => clearTimeout(t);
+  }, [count, durationMs, onExpired]);
+
+  return (
+    <div className="detect-toast">
+      <p>
+        {count} personne{count > 1 ? 's' : ''} repérée{count > 1 ? 's' : ''} dans votre image
+      </p>
+      <div className="detect-toast-bar">
+        <div className="detect-toast-fill" style={{ animationDuration: `${durationMs}ms` }}/>
+      </div>
+    </div>
+  );
+}
+
 function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onChange, photoUrl }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
+  const initialRef = useRef(null);
+  const [hintMode, setHintMode] = useState('none');
+
+  useEffect(() => {
+    if (detected != null && detected > 0) {
+      initialRef.current = { total, children };
+      setHintMode('banner');
+    } else {
+      initialRef.current = null;
+      setHintMode('none');
+    }
+  }, [detected]);
+
+  useEffect(() => {
+    if (hintMode !== 'banner' || !(detected > 0)) return;
+    const t = setTimeout(() => setHintMode('toast'), 10000);
+    return () => clearTimeout(t);
+  }, [hintMode, detected]);
+
+  useEffect(() => {
+    if (hintMode !== 'banner' || !(detected > 0) || !initialRef.current) return;
+    const init = initialRef.current;
+    if (total !== init.total || children !== init.children) {
+      setHintMode('toast');
+    }
+  }, [total, children, hintMode, detected]);
+
+  const dismissToast = useCallback(() => setHintMode('none'), []);
 
   const setAdults = (na) => {
     const nextAdults = Math.max(0, Math.min(max - children, na));
@@ -1501,12 +1552,19 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
           </div>
         )}
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
-            color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
-            {detected != null && detected > 0
-              ? <>Nous avons repéré <span style={{ color:'var(--clay)' }}>{detected} visage{detected > 1 ? 's' : ''}</span> — confirmez la composition :</>
-              : 'Combien de personnages sur votre photo ?'}
-          </p>
+          {hintMode === 'banner' && detected > 0 ? (
+            <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
+              color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
+              Nous avons repéré <span style={{ color:'var(--clay)' }}>{detected} visage{detected > 1 ? 's' : ''}</span> — confirmez la composition :
+            </p>
+          ) : hintMode === 'toast' && detected > 0 ? (
+            <DetectionToast count={detected} onExpired={dismissToast}/>
+          ) : (
+            <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
+              color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
+              Combien de personnages sur votre photo ?
+            </p>
+          )}
           <CounterRow label="Adultes" value={adults} min={children === 0 ? 1 : 0} max={max - children}
             onChange={setAdults}/>
           <CounterRow label="Enfants" value={children} min={0} max={max - adults}
@@ -1518,11 +1576,6 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
               {total}
             </span>
           </div>
-          {detected != null && detected !== total && (
-            <p style={{ fontSize:'.75rem', color:'var(--clay)', marginTop:10, lineHeight:1.5 }}>
-              Détection auto : {detected} — ajustez si besoin.
-            </p>
-          )}
         </div>
       </div>
     </div>

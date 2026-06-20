@@ -54,6 +54,18 @@ export async function claimMyOrders(bearerToken) {
   })
 }
 
+export async function createAdminOrder(bearerToken, { faceCount, fromOrderId } = {}) {
+  return apiJson('/api/me', {
+    method: 'POST',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({
+      action: 'create_order',
+      faceCount,
+      fromOrderId,
+    }),
+  })
+}
+
 export async function fetchRevisions(token, bearerToken) {
   return apiJson(`/api/revisions?token=${encodeURIComponent(token)}`, {
     headers: authHeaders(bearerToken),
