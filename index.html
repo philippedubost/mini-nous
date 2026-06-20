@@ -1663,6 +1663,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
     try {
       await checkoutByFaces(quote.faceCount, {
         accessToken: session.orderToken || undefined,
+        photoBase64: session.photoBase64 || undefined,
         childCount: session.childCount ?? 0,
         fridayDelivery,
         ...(giftMode ? {
@@ -2386,8 +2387,13 @@ function App() {
         });
         orderToken = draft.accessToken;
         orderStatusUrl = draft.links?.status ?? null;
+        if (!draft.sourcePhotoUrl) {
+          console.warn('[order-start] pas de sourcePhotoUrl dans la réponse');
+        }
       } catch (err) {
         console.warn('[order-start]', err);
+        alert('La photo n\'a pas pu être enregistrée sur le serveur. Réessayez ou vérifiez votre connexion avant de payer.');
+        return;
       }
 
       setSelectedPack('famille');
