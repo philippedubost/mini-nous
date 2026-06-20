@@ -1,0 +1,29 @@
+---
+description: Admin pipeline, générations, paramètres, production
+globs: pipeline/src/pages/Admin*.jsx,pipeline/src/components/Admin*.jsx,pipeline/src/lib/adminAuth.js,lib/server/admin.js,lib/api/handlers/me.js,lib/api/handlers/generations.js,lib/api/handlers/production-weeks.js
+alwaysApply: false
+---
+
+# Admin pipeline
+
+## Auth
+
+- Mot de passe : header `X-MiniNous-Admin` (`pipeline/src/lib/adminAuth.js`)
+- Serveur : `hasAdminAccess()` dans `lib/server/admin.js`
+- Layout gate : `AdminLayout.jsx`
+
+## Paramètres globaux
+
+- UI : `AdminSettingsPage.jsx` + `AdminSettingsForm.jsx`
+- API : `PUT/POST /api/pipeline-settings` (prompts, ref line art R2)
+- **Pas** localStorage pour prompts
+
+## Générations
+
+- Liste : `AdminGenerationsPage.jsx`
+- Détail + rerun FAL : `AdminGenerationPage.jsx`
+- API : `/api/generations`
+
+## Production hebdo
+
+- `lib/api/handlers/production-weeks.js` + `lib/server/batch.js`

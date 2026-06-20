@@ -169,6 +169,17 @@ input{font-family:inherit}
 .triptych-step-contain img.crop-top{object-position:center !important}
 .paywall-photo-thumb{width:80px;height:60px;border-radius:8px;border:2px solid var(--bark-light);flex-shrink:0;background:var(--bark-pale);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .paywall-photo-thumb img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
+.paywall-composition-card{padding:0 !important;overflow:hidden}
+.paywall-composition-card .paywall-card-body{padding:14px 16px}
+.paywall-card-photo-header{padding:12px 14px 10px;background:var(--bark-pale);border-bottom:1.5px solid var(--bark-light);min-height:120px;display:flex;align-items:flex-start;justify-content:flex-start}
+.paywall-card-photo-header img{max-height:168px;max-width:min(100%,320px);width:auto;height:auto;object-fit:contain;object-position:left top;display:block}
+.paywall-shipping-note{font-size:.72rem;color:var(--muted);margin-top:8px;text-align:right;line-height:1.5}
+.triptych-dual{grid-template-columns:1fr auto 1fr !important;max-width:640px}
+.triptych-vertical.triptych-dual{max-width:100%}
+.paywall-delivery-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--bark-light);cursor:pointer;background:#fff;transition:border-color .2s,background .2s}
+.paywall-delivery-opt:hover{border-color:var(--clay-light)}
+.paywall-delivery-opt.selected{border-color:var(--clay);background:var(--clay-pale)}
+.paywall-delivery-opt input{margin-top:3px;accent-color:var(--clay)}
 .triptych-ratio-square .triptych-step img{aspect-ratio:1/1}
 .triptych-ratio-landscape .triptych-step img{aspect-ratio:16/10}
 .triptych.triptych-vertical.triptych-ratio-landscape{max-width:100%;gap:6px}
@@ -320,7 +331,30 @@ async function patchOrderDraft({ accessToken, faceCount, childCount, photoBase64
 
 const EXTRA_PERSON_EUR = 4.5;
 const EXTRA_PERSON_EUR_TRIO = 2;
+const FRIDAY_DELIVERY_EUR = 4;
 const MAX_FACES = 8;
+
+function addDaysYmd(ymd, days) {
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString('en-CA');
+}
+
+function formatFrDateYmd(ymd) {
+  if (!ymd) return null;
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
+}
+
+function paywallDeliveryDates(status) {
+  const ship = status?.shipDate;
+  if (!ship) return { tuesday: 'mardi suivant', friday: 'vendredi' };
+  return {
+    tuesday: formatFrDateYmd(addDaysYmd(ship, 4)),
+    friday: formatFrDateYmd(ship),
+  };
+}
 
 function extraUnitEur(faceCount, extraCount, defaultEur = EXTRA_PERSON_EUR) {
   if (Number(faceCount) === 3 && extraCount > 0) return EXTRA_PERSON_EUR_TRIO;
@@ -332,7 +366,7 @@ function computeDynamicQuote(faceCount, packs, extraPersonEur = EXTRA_PERSON_EUR
   if (!Number.isFinite(n) || n < 1) return { ok: false, reason: 'invalid' };
   if (n > MAX_FACES) return { ok: false, reason: 'too_many', faceCount: n, maxFaces: MAX_FACES };
 
-  const list = packs?.length ? packs : DEFAULT_PACKS;
+  const list = packsForQuote(packs);
   const sorted = [...list].sort((a, b) => a.faceCount - b.faceCount);
   let basePack = sorted[0];
   for (const p of sorted) {
@@ -408,11 +442,25 @@ function FomoBar() {
   );
 }
 
+const SOLO_PACK = {
+  id: 'solo', label: 'Mode Solo', faceCount: 1,
+  priceEur: '13.90', shippingEur: '7.00', totalEur: '20.90',
+};
+
 const DEFAULT_PACKS = [
+  SOLO_PACK,
   { id:'duo', label:'Pack Duo', faceCount:2, priceEur:'19.90', shippingEur:'7.00', totalEur:'26.90' },
   { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'29.90', shippingEur:'0.00', totalEur:'29.90' },
   { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'44.90', shippingEur:'0.00', totalEur:'44.90' },
 ];
+
+const CATALOG_PACKS = DEFAULT_PACKS.filter(p => p.id !== 'solo');
+
+function packsForQuote(packs) {
+  const list = packs?.length ? [...packs] : [...DEFAULT_PACKS];
+  if (!list.some(p => p.id === 'solo')) list.unshift(SOLO_PACK);
+  return list;
+}
 
 /** Visuels atelier par nombre de personnages (photo · tracé · figurines). */
 const FAMILY_SHOWCASE = {
@@ -528,7 +576,7 @@ function PackPhoto({ faceCount }) {
 }
 
 function getPackDef(packId, packs) {
-  const list = packs?.length ? packs : DEFAULT_PACKS;
+  const list = packsForQuote(packs);
   const base = list.find(p => p.id === packId) || list[0];
   const showcase = getShowcaseForCount(base.faceCount);
   return { ...base, preview: showcase.objet, showcase };
@@ -570,12 +618,14 @@ const PIPELINE = {
 function packIdForFaceCount(faceCount) {
   const n = Number(faceCount);
   if (!n || n < 1) return 'famille';
+  if (n === 1) return 'solo';
   if (n <= 2) return 'duo';
   if (n <= 4) return 'famille';
   return 'grande_famille';
 }
 
 const PACK_CTA = {
+  solo: 'Mode Solo →',
   duo: 'Pack Duo →',
   famille: 'Pack Famille →',
   grande_famille: 'Grande Famille →',
@@ -584,7 +634,7 @@ const PACK_CTA = {
 function PackCards({ onPackExample }) {
   const { status } = useWeekStatus();
 
-  const packs = status?.packs ?? DEFAULT_PACKS;
+  const packs = status?.packs ?? CATALOG_PACKS;
   const soldOut = status && status.remaining <= 0;
 
   return (
@@ -770,18 +820,19 @@ function TryMyPhotoButton({ onFile }) {
 }
 
 /* ─── TRIPTYQUE Photo → Tracé → Déco ──────────────────────────── */
-function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain }) {
+function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain, hidePhoto, stepLabels }) {
   const ratioClass = ratio === 'square' ? ' triptych-ratio-square'
     : ratio === 'landscape' ? ' triptych-ratio-landscape' : '';
   const landingClass = wideLineart && !vertical ? ' triptych-landing' : '';
   const steps = [
-    { src: showcase.photo, label: 'Photo' },
-    { src: showcase.lineart, label: 'Tracé', wide: wideLineart },
-    { src: showcase.objet, label: 'A la maison' },
+    ...(hidePhoto ? [] : [{ src: showcase.photo, label: stepLabels?.photo ?? 'Photo' }]),
+    { src: showcase.lineart, label: stepLabels?.lineart ?? 'Tracé', wide: wideLineart },
+    { src: showcase.objet, label: stepLabels?.objet ?? 'A la maison' },
   ];
+  const dual = hidePhoto && steps.length === 2;
   const arrow = vertical ? '↓' : '→';
   return (
-    <div className={`triptych${vertical ? ' triptych-vertical' : ''}${ratioClass}${landingClass}`}>
+    <div className={`triptych${vertical ? ' triptych-vertical' : ''}${ratioClass}${landingClass}${dual ? ' triptych-dual' : ''}`}>
       {steps.map((s, i) => (
         <React.Fragment key={s.label}>
           {i > 0 && <div className="triptych-arrow" aria-hidden="true">{arrow}</div>}
@@ -1528,7 +1579,7 @@ function DetectionToast({ count, durationMs = 5000, onExpired }) {
   );
 }
 
-function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onChange, photoUrl }) {
+function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onChange, photoUrl, photoHeader }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
@@ -1571,15 +1622,19 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
   };
 
   return (
-    <div style={{ padding:'14px 16px', background:'#fff', border:'1.5px solid var(--bark-light)',
-      borderRadius:14, textAlign:'left' }}>
-      <div style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
-        {photoUrl && (
-          <div className="paywall-photo-thumb">
-            <img src={photoUrl} alt="Votre photo"/>
+    <div className="paywall-composition-card"
+      style={{ background:'#fff', border:'1.5px solid var(--bark-light)', borderRadius:14, textAlign:'left' }}>
+      {photoHeader && photoUrl && (
+        <div className="paywall-card-photo-header">
+          <img src={photoUrl} alt=""/>
+        </div>
+      )}
+      <div className="paywall-card-body">
+        {photoUrl && !photoHeader && (
+          <div className="paywall-photo-thumb" style={{ marginBottom:12 }}>
+            <img src={photoUrl} alt=""/>
           </div>
         )}
-        <div style={{ flex:1, minWidth:0 }}>
           {hintMode === 'banner' && detected > 0 ? (
             <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
               color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
@@ -1604,7 +1659,6 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
               {total}
             </span>
           </div>
-        </div>
       </div>
     </div>
   );
@@ -1616,8 +1670,10 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
   const [error, setError] = useState(null);
   const [giftMode, setGiftMode] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
+  const [fridayDelivery, setFridayDelivery] = useState(false);
   const soldOut = status && status.remaining <= 0;
   const extraEur = Number(status?.extraPersonEur) || EXTRA_PERSON_EUR;
+  const deliveryDates = paywallDeliveryDates(status);
 
   const faceCountForQuote = session?.enterVia === 'upload'
     ? (session.faceCount ?? session.detectedFaces ?? 2)
@@ -1625,19 +1681,24 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
   const quote = computeDynamicQuote(faceCountForQuote, packs, extraEur);
   const tooManyFaces = !quote?.ok && quote?.reason === 'too_many';
   const hasQuote = quote?.ok;
+  const isSoloOffer = hasQuote && quote.faceCount === 1 && quote.basePack?.id === 'solo';
   const showComposition = session?.enterVia === 'upload' && session?.photoBase64;
   const isPackOnly = session?.enterVia === 'pack' && !session?.photoBase64;
   const showcaseCount = session?.showcaseCount ?? session?.faceCount
     ?? (hasQuote ? quote.faceCount : packDef?.faceCount);
   const showcase = getShowcaseForCount(showcaseCount);
-  const triptyqueShowcase = showComposition && session?.photoUrl
-    ? { ...showcase, photo: session.photoUrl }
-    : showcase;
   const exampleCount = showcaseCount;
   const productEur = hasQuote
     ? (Number(quote.basePriceEur) + quote.extraCount * Number(quote.extraPersonEur)).toFixed(2)
     : null;
-  const hasShipping = hasQuote && Number(quote.shippingEur) > 0;
+  const portEur = hasQuote ? Number(quote.shippingEur) || 0 : 0;
+  const expressEur = fridayDelivery ? FRIDAY_DELIVERY_EUR : 0;
+  const figurinesTtc = hasQuote
+    ? (Number(productEur) + expressEur).toFixed(2)
+    : null;
+  const deliveryLabel = fridayDelivery
+    ? `Réception ${deliveryDates.friday}`
+    : `Réception ${deliveryDates.tuesday}`;
 
   const pay = async () => {
     if (!hasQuote || tooManyFaces) return;
@@ -1647,6 +1708,7 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
       await checkoutPack(quote.basePack.id, quote.faceCount, {
         accessToken: session.orderToken || undefined,
         childCount: session.childCount ?? 0,
+        fridayDelivery,
         ...(giftMode ? {
           giftDelivery: true,
           giftMessage: giftMessage.trim() || undefined,
@@ -1657,6 +1719,10 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
       setBusy(false);
     }
   };
+
+  const ctaTransform = hasQuote && quote.faceCount === 1
+    ? 'Commander et transformer la photo en figurine →'
+    : 'Commander et transformer la photo en figurines →';
 
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
@@ -1693,6 +1759,7 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
                 max={MAX_FACES}
                 onChange={onFaceCountChange}
                 photoUrl={session.photoUrl}
+                photoHeader
               />
             </div>
           )}
@@ -1711,19 +1778,29 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
           {isPackOnly && !tooManyFaces && (
             <div style={{ marginBottom:18 }}>
               <PhotoUploadZone compact onFile={onPhotoUpload} onDemo={onDemoPhoto}
-                label="Ajouter ma photo de groupe" hint="2 à 8 personnages" />
+                label="Ajouter ma photo de groupe" hint="1 à 8 personnages" />
             </div>
           )}
 
           <p style={{ color:'var(--muted)', marginBottom:10, lineHeight:1.7, fontSize:'.92rem' }}>
-            De votre photo aux figurines posées chez vous — voici les trois étapes.
+            {showComposition
+              ? 'De votre photo aux figurines posées chez vous — voici à quoi ressemblera le rendu.'
+              : 'De votre photo aux figurines posées chez vous — voici les trois étapes.'}
           </p>
-          <p style={{ fontFamily:'Quicksand', fontWeight:700, color:'var(--dark)',
-            marginBottom:16, fontSize:'1rem' }}>
-            Exemple avec un groupe de {exampleCount} personne{exampleCount > 1 ? 's' : ''}
-          </p>
+          {!showComposition && (
+            <p style={{ fontFamily:'Quicksand', fontWeight:700, color:'var(--dark)',
+              marginBottom:16, fontSize:'1rem' }}>
+              Exemple avec un groupe de {exampleCount} personne{exampleCount > 1 ? 's' : ''}
+            </p>
+          )}
 
-          <Triptyque showcase={triptyqueShowcase} vertical ratio="landscape" photoContain/>
+          <Triptyque
+            showcase={showcase}
+            vertical
+            ratio="landscape"
+            hidePhoto={showComposition}
+            stepLabels={{ lineart: 'Exemple de tracé', objet: 'Exemple à la maison' }}
+          />
           <SizeReminder/>
         </div>
 
@@ -1733,8 +1810,13 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
             {hasQuote ? (
               <>
                 <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem' }}>{quote.label}</h3>
+                {isSoloOffer && (
+                  <p style={{ fontSize:'.82rem', color:'var(--forest)', marginBottom:8, lineHeight:1.5 }}>
+                    Photo individuelle — 1 figurine à votre effigie
+                  </p>
+                )}
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
-                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · échelle 1/10 · Nantes · livraison vendredi
+                  {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} · échelle 1/10 · Nantes · {deliveryLabel}
                 </p>
               </>
             ) : (
@@ -1763,9 +1845,47 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
                     </span>
                   </div>
                 )}
-                {!hasShipping && (
+                {portEur === 0 && (
                   <div style={{ fontSize:'.82rem', color:'var(--forest)' }}>🎁 Port offert</div>
                 )}
+                {expressEur > 0 && (
+                  <div style={{ display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>Livraison vendredi</span>
+                    <span style={{ fontWeight:700 }}>+ {expressEur.toFixed(2)} €</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hasQuote && (
+              <div style={{ marginBottom:20, display:'flex', flexDirection:'column', gap:8 }}>
+                <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.88rem', color:'var(--dark)', marginBottom:4 }}>
+                  Quand recevoir vos figurines ?
+                </p>
+                <label className={`paywall-delivery-opt${!fridayDelivery ? ' selected' : ''}`}>
+                  <input type="radio" name="delivery" checked={!fridayDelivery}
+                    onChange={() => setFridayDelivery(false)}/>
+                  <div>
+                    <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
+                      {deliveryDates.tuesday}
+                    </div>
+                    <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                      Réception le mardi suivant · inclus
+                    </div>
+                  </div>
+                </label>
+                <label className={`paywall-delivery-opt${fridayDelivery ? ' selected' : ''}`}>
+                  <input type="radio" name="delivery" checked={fridayDelivery}
+                    onChange={() => setFridayDelivery(true)}/>
+                  <div>
+                    <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
+                      Recevoir vendredi · +{FRIDAY_DELIVERY_EUR} €
+                    </div>
+                    <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                      {deliveryDates.friday}
+                    </div>
+                  </div>
+                </label>
               </div>
             )}
 
@@ -1791,15 +1911,15 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
             <div style={{ marginBottom:22 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12 }}>
                 <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem', color:'var(--dark)' }}>
-                  {hasShipping ? 'Figurines TTC' : 'Total TTC'}
+                  Total TTC
                 </span>
                 <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)', lineHeight:1 }}>
-                  {hasQuote ? `${productEur} €` : '—'}
+                  {hasQuote ? `${figurinesTtc} €` : '—'}
                 </span>
               </div>
-              {hasShipping && (
-                <p style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:8, textAlign:'right', lineHeight:1.5 }}>
-                  + {Number(quote.shippingEur).toFixed(0)} € de port · détaillé sur la page de paiement
+              {hasQuote && portEur > 0 && (
+                <p className="paywall-shipping-note">
+                  + {portEur.toFixed(0)} € de frais de port · détaillés sur la page de paiement Stripe
                 </p>
               )}
             </div>
@@ -1814,14 +1934,20 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
                 : soldOut ? 'Complet cette semaine'
                 : busy ? 'Redirection…'
                 : giftMode ? 'Commander ce cadeau →'
-                : 'Commander et Accéder au Studio →'}
+                : ctaTransform}
             </button>
 
-            <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:14, textAlign:'center', lineHeight:1.55 }}>
-              Paiement sécurisé · Studio inclus
+            <p style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:12, textAlign:'center', lineHeight:1.55 }}>
+              Vous accéderez ensuite au Studio MiniNous qui permet de valider le design et faire quelques ajustements.
+            </p>
+
+            <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:10, textAlign:'center', lineHeight:1.55 }}>
+              Paiement sécurisé
               {quote?.faceCount === 3
                 ? ' · 3 pers. : +2 € pour la 3e figurine'
-                : ` · +${extraEur.toFixed(2)} € / pers. supplémentaire`}
+                : quote?.faceCount > 1
+                ? ` · +${extraEur.toFixed(2)} € / pers. supplémentaire`
+                : ''}
             </p>
             {session?.orderStatusUrl && (
               <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:10, textAlign:'center', lineHeight:1.55 }}>
@@ -2222,7 +2348,7 @@ function App() {
   });
   const [tick, setTick] = useState(0);
   const { status } = useWeekStatus();
-  const packs = status?.packs ?? DEFAULT_PACKS;
+  const packs = status?.packs ?? CATALOG_PACKS;
   const packDef = getPackDef(selectedPack || 'famille', packs);
 
   const go = useCallback(next => {
@@ -2232,7 +2358,7 @@ function App() {
   }, []);
 
   const startPackRoute = useCallback((packId) => {
-    const p = packs.find(x => x.id === packId) || DEFAULT_PACKS.find(x => x.id === packId);
+    const p = packs.find(x => x.id === packId) || packsForQuote(packs).find(x => x.id === packId);
     setSelectedPack(packId);
     setSession({
       enterVia: 'pack',

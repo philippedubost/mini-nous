@@ -1,0 +1,32 @@
+---
+description: Prompts pipeline, settings Supabase, référence line art
+globs: lib/server/pipeline-settings.js,lib/api/handlers/pipeline-settings.js,pipeline/src/lib/settings.js,pipeline/src/context/SettingsContext.jsx,pipeline/src/components/AdminSettingsForm.jsx,supabase/migrations/*pipeline_settings*
+alwaysApply: false
+---
+
+# Settings pipeline (prompts FAL)
+
+## Persistance
+
+- Table : `mini_nous_pipeline_settings` (ligne `id = global`)
+- Serveur : `lib/server/pipeline-settings.js`
+- API : `GET /api/pipeline-settings` (public), `PUT/POST` (admin)
+- Client : `SettingsContext.jsx` + `useSettings()`
+
+## Defaults
+
+Dupliqués aujourd’hui dans `lib/server/pipeline-settings.js` et `pipeline/src/lib/settings.js` — **modifier les deux** ou fusionner vers JSON partagé.
+
+## Prompt étape 1
+
+Placeholder `ces personnes` → remplacé par `ces N personnes` via `buildPrompt1()`.
+
+## Référence line art
+
+- Champ : `referenceLineUrl` dans settings JSON
+- Upload admin : `POST /api/pipeline-settings` (base64) → R2 `mini-nous/global/reference-line-art.*`
+- Consommation : `getReferenceLineUrl(settings)` / `fetchReferenceBlob()`
+
+## Format fixe
+
+2K · 16:9 — non éditables UI (normalisés serveur)

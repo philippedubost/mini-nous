@@ -1,0 +1,32 @@
+---
+description: Studio client, commandes, parcours post-paiement
+globs: pipeline/src/pages/StudioPage.jsx,pipeline/src/pages/OrderStatusPage.jsx,pipeline/src/pages/PaymentSuccessPage.jsx,pipeline/src/pages/NewOrderPage.jsx,pipeline/src/components/CustomerLayout.jsx,pipeline/src/components/RevisionPanel.jsx
+alwaysApply: false
+---
+
+# Pipeline client
+
+## Page principale
+
+**`StudioPage.jsx`** — flux post-paiement canonique (`/pipeline/studio?order=`).
+
+## Autres pages
+
+- `OrderStatusPage.jsx` — suivi commande par token
+- `PaymentSuccessPage.jsx` — redirect après Stripe (legacy path)
+- `NewOrderPage.jsx` — nouvelle commande (admin/tests)
+- `PipelinePage.jsx` — **legacy** `/legacy` — ne pas étendre
+
+## Settings & FAL
+
+- Prompts : `useSettings()` depuis `SettingsContext.jsx` (Supabase)
+- FAL : `pipeline/src/lib/fal.js` — modèle `fal-ai/nano-banana-pro/edit`
+- Référence line art : `settings.referenceLineUrl` ou fallback bundle
+
+## API client
+
+`pipeline/src/lib/storage.js` — préférer n’y toucher que pour les endpoints concernés.
+
+## Checkout confirm
+
+Au load studio avec `session_id` : `confirmCheckout()` dans `storage.js`

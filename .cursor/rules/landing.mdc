@@ -1,0 +1,33 @@
+---
+description: Landing marketing et paywall (index.html)
+globs: index.html
+alwaysApply: false
+---
+
+# Landing (`index.html`)
+
+Monolithe ~2500 lignes : CSS + React inline (Babel CDN). Minimiser le diff — extraire seulement si demandé.
+
+## Responsabilités
+
+- Marketing, upload photo, paywall, appel API checkout
+- **Pas** le pipeline FAL réel post-paiement
+
+## API utilisées
+
+- `GET /api/week-status` — packs, places, dates livraison
+- `POST /api/order-start` — brouillon commande + photo R2
+- `PATCH /api/order-start` — maj faceCount
+- `POST /api/checkout` — session Stripe
+
+## Pièges
+
+- `Editor`, `Success`, `PEOPLE` = **démo UI**, non branchés à `/api/generations`
+- Flux réel post-paiement : `/pipeline/studio?order=TOKEN`
+- Face detection : face-api.js CDN (landing) ≠ MediaPipe (`pipeline/src/lib/faceDetect.js`)
+
+## Paywall (composant `Paywall`)
+
+- Composition : `FamilyCompositionQuestion` + carte pricing à droite
+- Photo uploadée : header carte composition (`photoHeader`), pas de triptyque photo
+- Prix affiché : figurines TTC sans port ; port en note discrète (Stripe)

@@ -96,7 +96,7 @@ async function main() {
 
   await waitForVite(VITE_PORT)
 
-  await startGateway({ port: PORT, vitePort: VITE_PORT, apiRoutes })
+  await startGateway({ port: PORT, vitePort: VITE_PORT, apiRoutes, devReload: true })
 
   console.log('')
   console.log(`  Mini-Nous → http://localhost:${PORT}`)

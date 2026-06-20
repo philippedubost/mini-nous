@@ -1,0 +1,29 @@
+---
+description: Tarifs, packs, checkout Stripe, commandes paywall
+globs: lib/server/packs.js,lib/server/orders.js,lib/server/paywall-order.js,lib/server/checkout-fulfill.js,lib/api/handlers/checkout.js,lib/api/handlers/checkout-confirm.js,lib/api/handlers/order-start.js,lib/api/handlers/week-status.js
+alwaysApply: false
+---
+
+# Commerce & checkout
+
+## Source de vérité
+
+- Packs et devis : `lib/server/packs.js` (`PACKS`, `computeQuote`, `FRIDAY_DELIVERY_CENTS`, `packTypeForDatabase`)
+- Commande pending : `lib/server/orders.js` + `lib/server/paywall-order.js`
+- Stripe session : `lib/api/handlers/checkout.js`
+- Confirmation retour : `lib/api/handlers/checkout-confirm.js`
+
+## Landing (`index.html`)
+
+- Afficher les prix depuis `/api/week-status` (`packs`, `extraPersonEur`)
+- Éviter d’ajouter de la logique tarifaire client (`computeDynamicQuote`) — préférer enrichir l’API
+- Checkout : `POST /api/checkout` avec `pack`, `faceCount`, `accessToken`, `fridayDelivery`
+
+## pack_type DB
+
+Valeurs : `solo`, `duo`, `famille`, `grande_famille`. Utiliser `packTypeForDatabase()` à l’insert.
+Metadata : `base_pack` garde l’id réel (ex. `solo`).
+
+## Stripe URLs
+
+`lib/server/stripe-client.js` → prod = `https://mininous.app`

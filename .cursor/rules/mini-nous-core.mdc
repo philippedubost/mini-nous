@@ -1,0 +1,26 @@
+---
+description: Carte MiniNous — toujours lire avant un changement multi-fichiers
+alwaysApply: true
+---
+
+# MiniNous — scope agent
+
+Lire `AGENTS.md` à la racine pour la carte complète.
+
+## Couches (ne pas mélanger)
+
+- **Landing** : `index.html` — marketing + paywall uniquement
+- **Pipeline** : `pipeline/src/` — React Vite, studio réel
+- **Serveur** : `lib/server/` — vérité métier
+- **API** : `lib/api/handlers/` — HTTP mince
+
+## Interdits fréquents
+
+- Dupliquer tarifs dans `index.html` → utiliser `/api/week-status` + `lib/server/packs.js`
+- Traiter `Editor`/`Success` (landing) comme le studio production → c’est `StudioPage.jsx`
+- Modifier prompts sans passer par `pipeline-settings` (Supabase)
+- Ajouter des routes Vercel sans vérifier la limite (~12 fonctions)
+
+## Dev
+
+`npm run dev` → port 3333. API rechargée à chaque requête en dev (`scripts/gateway.mjs`).

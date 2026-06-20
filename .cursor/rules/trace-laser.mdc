@@ -1,0 +1,25 @@
+---
+description: Trace lab, SVG laser, vision — algo lourd
+globs: pipeline/src/pages/TraceLabPage.jsx,pipeline/src/lib/centerlineTrace.js,pipeline/src/lib/outline.js,pipeline/src/lib/traceSettings.js,pipeline/src/lib/laserPipeline.js,pipeline/src/lib/laserSvg.js,pipeline/src/components/LaserStudioPanel.jsx,lib/server/batch*.js
+alwaysApply: false
+---
+
+# Trace & laser
+
+Zone **isolée** — ne pas mélanger avec commerce/paywall.
+
+## Client
+
+- UI lab : `TraceLabPage.jsx`
+- Algo trace : `centerlineTrace.js`, `outline.js`
+- Params : `traceSettings.js` (localStorage + metadata génération)
+- SVG laser : `laserPipeline.js`, `laserSvg.js`
+- Preview admin : `LaserStudioPanel.jsx`
+
+## Serveur batch
+
+- `lib/server/batch.js`, `batchPaths.js` — production hebdo SVG
+
+## Piège
+
+Modifs trace ≠ modifs prompts FAL (`pipeline-settings`). Sessions agent séparées.

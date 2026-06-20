@@ -1,0 +1,45 @@
+---
+description: Handlers API Vercel et modules serveur
+globs: lib/api/**/*.js,lib/server/**/*.js,api/**/*.js
+alwaysApply: false
+---
+
+# API & serveur
+
+## Pattern
+
+```
+lib/api/handlers/<name>.js   → handler HTTP (CORS, parse body)
+lib/server/<domain>.js       → logique métier, Supabase, R2
+lib/api/router.js            → enregistrement routes
+api/index.js                 → dispatch Vercel
+```
+
+Handlers restent **minces** : pas de logique métier lourde inline.
+
+## Conventions
+
+- Body JSON : `getJsonBody(req)` depuis `lib/api/prepare-req.js`
+- Supabase : `getSupabase()` — service role côté serveur uniquement
+- Env : `.env` racine (pas `pipeline/.env`)
+
+## Dev local
+
+`scripts/gateway.mjs` recharge `lib/api/router.js` à chaque requête API.
+
+## Nouvelle route
+
+1. Créer `lib/api/handlers/foo.js`
+2. Ajouter clé dans `lib/api/router.js` → `routes`
+3. Compter les fonctions Vercel (limite ~12)
+
+## Modules serveur clés
+
+| Module | Rôle |
+|--------|------|
+| `packs.js` | Tarifs |
+| `orders.js` | CRUD commandes |
+| `paywall-order.js` | Brouillon landing |
+| `pipeline-settings.js` | Prompts globaux |
+| `r2.js` | Upload assets |
+| `stripe-client.js` | Stripe + SITE_URL |

@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, join, extname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { request as httpRequest } from 'node:http'
 import { createServer } from 'node:http'
 import { handleApiRequest } from './lib/vercel-req.mjs'
@@ -54,13 +54,23 @@ function serveStatic(req, res) {
   res.end(readFileSync(filePath))
 }
 
-export function startGateway({ port, vitePort, apiRoutes }) {
+export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
+  async function resolveHandler(name) {
+    if (devReload) {
+      const { routes } = await import(
+        `${pathToFileURL(join(root, 'lib/api/router.js')).href}?r=${Date.now()}`
+      )
+      return routes[name]
+    }
+    return apiRoutes[name]
+  }
+
   const server = createServer(async (req, res) => {
     const path = req.url?.split('?')[0] || ''
     if (path.startsWith('/api/')) {
       try {
         const match = path.match(/^\/api\/([^/?]+)/)
-        const handler = match ? apiRoutes[match[1]] : null
+        const handler = match ? await resolveHandler(match[1]) : null
         if (!handler) {
           res.writeHead(404, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: `Unknown API: ${match?.[1] ?? path}` }))
