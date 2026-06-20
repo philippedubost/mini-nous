@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { parse as parseUrl } from 'node:url'
+import { prepareRequest } from '../../lib/api/prepare-req.js'
 
 export function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -59,6 +60,7 @@ export async function handleApiRequest(nodeReq, nodeRes, handler) {
     rawBody,
   }
   const res = createVercelRes(nodeRes)
+  await prepareRequest(req)
   await handler(req, res)
 }
 
