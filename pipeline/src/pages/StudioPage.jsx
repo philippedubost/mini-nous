@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import RevisionPanel from '../components/RevisionPanel'
@@ -12,9 +12,23 @@ import {
 
 const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
+async function fileFromImageUrl(url, name = 'photo.jpg') {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Impossible de charger votre photo')
+  const blob = await res.blob()
+  return new File([blob], name, { type: blob.type || 'image/jpeg' })
+}
+
+function phaseForOrder(order) {
+  if (!order.isPaid) return 'awaiting_payment'
+  if (order.previewUrl) return 'review'
+  return 'upload'
+}
+
 export default function StudioPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
+  const autoStart = searchParams.get('auto') === '1'
   const { accessToken: bearerToken } = useAuth()
   const [settings] = useState(loadSettings)
   const [order, setOrder] = useState(null)
@@ -24,12 +38,14 @@ export default function StudioPage() {
   const [lineartUrl, setLineartUrl] = useState(null)
   const [statusMsg, setStatusMsg] = useState(null)
   const [error, setError] = useState(null)
+  const autoStarted = useRef(false)
 
   const reloadOrder = useCallback(async () => {
-    if (!orderToken) return
+    if (!orderToken) return null
     const { order: o } = await fetchOrderByToken(orderToken, bearerToken)
     setOrder(o)
     if (o.previewUrl) setLineartUrl(o.previewUrl)
+    setPhase(phaseForOrder(o))
     return o
   }, [orderToken, bearerToken])
 
@@ -42,14 +58,8 @@ export default function StudioPage() {
     fetchOrderByToken(orderToken, bearerToken)
       .then(({ order: o }) => {
         setOrder(o)
-        if (o.previewUrl) {
-          setLineartUrl(o.previewUrl)
-          setPhase(['pending_validation', 'revision_requested', 'approved'].includes(o.workflowStatus) ? 'review' : 'review')
-        } else if (o.workflowStatus === 'awaiting_photo') {
-          setPhase('upload')
-        } else {
-          setPhase('upload')
-        }
+        if (o.previewUrl) setLineartUrl(o.previewUrl)
+        setPhase(phaseForOrder(o))
       })
       .catch(err => {
         setOrderError(err.message)
@@ -57,27 +67,62 @@ export default function StudioPage() {
       })
   }, [orderToken, bearerToken])
 
-  const runGeneration = useCallback(async (file) => {
-    if (!order) return
+  useEffect(() => {
+    if (!orderToken || order?.isPaid) return undefined
+    let cancelled = false
+    const poll = () => {
+      fetchOrderByToken(orderToken, bearerToken)
+        .then(({ order: o }) => {
+          if (cancelled) return
+          setOrder(o)
+          if (o.isPaid) {
+            setPhase(o.previewUrl ? 'review' : 'upload')
+          }
+        })
+        .catch(() => {})
+    }
+    const t = setInterval(poll, 2000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [orderToken, bearerToken, order?.isPaid])
+
+  const runPipeline = useCallback(async (file) => {
+    if (!order?.isPaid) return
     setBusy(true)
     setError(null)
     setStatusMsg('Préparation de votre photo…')
-    let generationId = null
+    let generationId = order.generationId ?? null
 
     try {
-      const generation = await createGeneration({
-        faceCount: order.faceCount,
-        resolution: settings.resolution,
-        aspectRatio: settings.aspectRatio,
-        settings,
-        falModel: FAL_MODEL,
-        orderId: order.id,
-      })
-      generationId = generation.id
-      await linkOrderGeneration(orderToken, generationId, bearerToken)
+      if (!generationId) {
+        const generation = await createGeneration({
+          faceCount: order.faceCount,
+          resolution: settings.resolution,
+          aspectRatio: settings.aspectRatio,
+          settings,
+          falModel: FAL_MODEL,
+          orderId: order.id,
+        })
+        generationId = generation.id
+        await linkOrderGeneration(orderToken, generationId, bearerToken)
+      } else {
+        await updateGeneration(generationId, { status: 'running' }).catch(() => {})
+      }
 
-      const userUrl = await uploadToFal(file)
-      await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
+      let userUrl
+      if (file) {
+        userUrl = await uploadToFal(file)
+        await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
+      } else if (order.sourcePhotoUrl) {
+        setStatusMsg('Chargement de votre photo du paywall…')
+        const photoFile = await fileFromImageUrl(order.sourcePhotoUrl)
+        userUrl = await uploadToFal(photoFile)
+        await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
+      } else {
+        throw new Error('Aucune photo disponible — uploadez votre photo de groupe.')
+      }
 
       const refResp = await fetch(REFERENCE_LINE_URL)
       const refBlob = await refResp.blob()
@@ -125,6 +170,14 @@ export default function StudioPage() {
     }
   }, [order, orderToken, bearerToken, settings, reloadOrder])
 
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || busy || !order?.isPaid) return
+    if (order.previewUrl || phase !== 'upload') return
+    if (!order.sourcePhotoUrl && !order.hasPaywallPhoto) return
+    autoStarted.current = true
+    runPipeline(null)
+  }, [autoStart, busy, order, phase, runPipeline])
+
   const handleRegen = async () => {
     if (order?.regenRemaining != null && order.regenRemaining <= 0) return
     setError(null)
@@ -132,6 +185,7 @@ export default function StudioPage() {
       await orderAction(orderToken, 'regen', bearerToken)
       setPhase('upload')
       setLineartUrl(null)
+      autoStarted.current = false
       await reloadOrder()
     } catch (e) {
       setError(e.message)
@@ -158,6 +212,8 @@ export default function StudioPage() {
     })
     : null
 
+  const canUpload = order?.isPaid && (order?.editable || order?.isAdminView)
+
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
@@ -177,13 +233,27 @@ export default function StudioPage() {
         {order && (
           <div className="rounded-xl border border-stone-800 bg-stone-900/40 p-4 text-sm space-y-1">
             <p><strong>{order.packLabel}</strong> · {order.faceCount} figurine{order.faceCount > 1 ? 's' : ''}</p>
-            <p className="text-stone-500">{order.workflowLabel}</p>
+            <p className="text-stone-500">{order.isPaid ? order.workflowLabel : 'En attente de paiement'}</p>
             {shipLabel && <p className="text-stone-500 text-xs">Livraison {shipLabel}</p>}
           </div>
         )}
 
         {orderError && (
           <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{orderError}</div>
+        )}
+
+        {phase === 'awaiting_payment' && (
+          <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-6 text-center space-y-3">
+            <div className="w-10 h-10 border-2 border-stone-700 border-t-amber-500 rounded-full animate-spin mx-auto"/>
+            <p className="text-sm text-amber-100">Confirmation du paiement Stripe…</p>
+            <p className="text-xs text-stone-500">Votre photo est déjà enregistrée — le studio démarrera automatiquement.</p>
+            <Link
+              to={`/commande?order=${encodeURIComponent(orderToken)}`}
+              className="inline-block text-xs text-stone-400 hover:text-stone-200"
+            >
+              Voir ma commande →
+            </Link>
+          </div>
         )}
 
         {statusMsg && (
@@ -194,9 +264,16 @@ export default function StudioPage() {
           <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
         )}
 
-        {phase === 'upload' && (order?.editable || order?.isAdminView) && !busy && (
+        {order?.sourcePhotoUrl && phase === 'upload' && canUpload && !busy && !autoStart && (
+          <div className="rounded-xl border border-stone-800 overflow-hidden bg-stone-900/50">
+            <p className="text-xs text-stone-500 px-4 pt-3">Votre photo du paywall</p>
+            <img src={order.sourcePhotoUrl} alt="Photo source" className="w-full object-contain max-h-48"/>
+          </div>
+        )}
+
+        {phase === 'upload' && canUpload && !busy && (
           <Upload
-            onReady={runGeneration}
+            onReady={runPipeline}
             initialFaceCount={order.faceCount}
             lockedCount
           />
@@ -275,7 +352,7 @@ export default function StudioPage() {
           </div>
         )}
 
-        {!order?.editable && !order?.isAdminView && order && !lineartUrl && (
+        {!order?.editable && !order?.isAdminView && order?.isPaid && order && !lineartUrl && (
           <p className="text-sm text-stone-500 text-center">
             Cette commande n&apos;est plus modifiable (fabrication lancée).
           </p>

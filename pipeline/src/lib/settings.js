@@ -1,11 +1,16 @@
 export const STEP_LABELS = ['Détection', 'Mise en scène', 'Line Art', 'SVG laser']
 
-export const RESOLUTIONS = ['1K', '2K', '4K']
+export const RESOLUTIONS = ['2K']
 
 /** Résolutions fal.ai pour mise en scène et line art. */
-export const FAL_STEP_RESOLUTIONS = ['1K', '2K']
+export const FAL_STEP_RESOLUTIONS = ['2K']
 
 export const DEFAULT_FAL_STEP_RESOLUTION = '2K'
+
+export function normalizeResolution(value) {
+  if (!value || value === '1K') return DEFAULT_FAL_STEP_RESOLUTION
+  return FAL_STEP_RESOLUTIONS.includes(value) ? value : DEFAULT_FAL_STEP_RESOLUTION
+}
 
 export const ASPECT_RATIOS = ['16:9', '4:3', '1:1', '3:4', '9:16']
 
@@ -73,12 +78,16 @@ export function loadSettings() {
       const parsed = JSON.parse(stored)
       // Merge with defaults to handle new fields gracefully
       return {
-        resolution: parsed.resolution ?? DEFAULT_SETTINGS.resolution,
+        resolution: normalizeResolution(parsed.resolution ?? DEFAULT_SETTINGS.resolution),
         aspectRatio: parsed.aspectRatio ?? DEFAULT_SETTINGS.aspectRatio,
-        steps: DEFAULT_SETTINGS.steps.map((def, i) => ({
-          ...def,
-          ...(parsed.steps?.[i] ?? {}),
-        })),
+        steps: DEFAULT_SETTINGS.steps.map((def, i) => {
+          const step = parsed.steps?.[i] ?? {}
+          return {
+            ...def,
+            ...step,
+            resolution: normalizeResolution(step.resolution ?? def.resolution),
+          }
+        }),
       }
     }
   } catch {}
@@ -86,7 +95,15 @@ export function loadSettings() {
 }
 
 export function saveSettings(settings) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  const normalized = {
+    ...settings,
+    resolution: normalizeResolution(settings.resolution),
+    steps: settings.steps.map((step) => ({
+      ...step,
+      resolution: normalizeResolution(step.resolution),
+    })),
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
 }
 
 export function resetSettings() {
@@ -114,7 +131,7 @@ export function resolveImageUrls(imageInputs, urlMap) {
 /** Format fal.ai pour une étape (résolution propre à l'étape ou repli global). */
 export function falStepFormat(step, globalSettings = {}) {
   return {
-    resolution: step?.resolution ?? globalSettings.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
+    resolution: normalizeResolution(step?.resolution ?? globalSettings.resolution),
     aspectRatio: step?.aspectRatio
       ?? globalSettings.aspectRatio
       ?? globalSettings.aspect_ratio

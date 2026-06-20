@@ -1,23 +1,17 @@
 import { useState } from 'react'
 import {
   loadSettings, saveSettings, resetSettings,
-  RESOLUTIONS, ASPECT_RATIOS, IMAGE_INPUT_OPTIONS, STEP_LABELS,
+  ASPECT_RATIOS, IMAGE_INPUT_OPTIONS, STEP_LABELS, DEFAULT_FAL_STEP_RESOLUTION,
 } from '../lib/settings'
 
-function GlobalFormatFields({ resolution, aspectRatio, onChange }) {
+function GlobalFormatFields({ aspectRatio, onChange }) {
   return (
     <div className="rounded-lg border border-amber-700/40 bg-stone-950/50 p-3 space-y-3">
       <p className="text-xs font-semibold text-amber-500/80 uppercase tracking-wide">Format — toutes les étapes</p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Résolution</label>
-          <select
-            className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2"
-            value={resolution}
-            onChange={e => onChange('resolution', e.target.value)}
-          >
-            {RESOLUTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+          <p className="text-sm text-stone-300 px-1">{DEFAULT_FAL_STEP_RESOLUTION}</p>
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Format</label>
@@ -66,7 +60,6 @@ function StepSection({ index, step, onChange, globalFormat }) {
         <div className="p-4 space-y-4 bg-stone-900">
           {globalFormat && (
             <GlobalFormatFields
-              resolution={globalFormat.resolution}
               aspectRatio={globalFormat.aspectRatio}
               onChange={globalFormat.onChange}
             />
@@ -136,7 +129,6 @@ export default function AdminSettingsForm() {
           step={step}
           onChange={s => updateStep(i, s)}
           globalFormat={i === 0 ? {
-            resolution: local.resolution,
             aspectRatio: local.aspectRatio,
             onChange: updateGlobal,
           } : null}

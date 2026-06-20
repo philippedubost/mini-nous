@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchOrderByToken } from '../lib/storage'
+import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
 
 const STEPS = [
@@ -31,6 +31,7 @@ export default function OrderStatusPage() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
 
   const load = useCallback(async () => {
     if (!orderToken) {
@@ -51,9 +52,9 @@ export default function OrderStatusPage() {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 30000)
+    const t = setInterval(load, order?.isPaid === false ? 5000 : 30000)
     return () => clearInterval(t)
-  }, [load])
+  }, [load, order?.isPaid])
 
   const currentStep = order ? stepIndex(order.workflowStatus) : 0
   const shipLabel = order?.shipDate
@@ -81,6 +82,38 @@ export default function OrderStatusPage() {
 
       {order && !loading && (
         <>
+          {!order.isPaid && (
+            <div className="customer-card space-y-3">
+              <p className="font-semibold text-[#C0684A]">Paiement en attente</p>
+              <p className="text-sm customer-muted">
+                Votre photo est enregistrée. Finalisez le paiement pour lancer le studio — sans connexion requise.
+              </p>
+              {order.sourcePhotoUrl && (
+                <img src={order.sourcePhotoUrl} alt="Votre photo" className="customer-preview max-h-40"/>
+              )}
+              <button
+                type="button"
+                disabled={checkoutBusy}
+                onClick={async () => {
+                  setCheckoutBusy(true)
+                  try {
+                    const { url } = await resumeCheckout(orderToken, {
+                      pack: order.packType,
+                      faceCount: order.faceCount,
+                    })
+                    window.location.href = url
+                  } catch (e) {
+                    setError(e.message)
+                    setCheckoutBusy(false)
+                  }
+                }}
+                className="customer-btn-clay w-full"
+              >
+                {checkoutBusy ? 'Redirection…' : 'Finaliser le paiement →'}
+              </button>
+            </div>
+          )}
+
           <div className="customer-card">
             <div className="flex justify-between gap-2 mb-6">
               {STEPS.map((s, i) => (
@@ -136,7 +169,7 @@ export default function OrderStatusPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {order.editable && order.workflowStatus === 'awaiting_photo' && (
+            {order.isPaid && order.editable && order.workflowStatus === 'awaiting_photo' && (
               <Link
                 to={`/studio?order=${encodeURIComponent(orderToken)}`}
                 className="customer-btn-clay flex-1 text-center"
@@ -144,7 +177,7 @@ export default function OrderStatusPage() {
                 Envoyer ma photo →
               </Link>
             )}
-            {order.editable && order.workflowStatus !== 'awaiting_photo' && (
+            {order.isPaid && order.editable && order.workflowStatus !== 'awaiting_photo' && (
               <Link
                 to={`/studio?order=${encodeURIComponent(orderToken)}`}
                 className="customer-btn-clay flex-1 text-center"

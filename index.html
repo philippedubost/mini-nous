@@ -287,7 +287,35 @@ async function checkoutPack(packId, faceCount, gift = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Erreur paiement');
+  if (data.accessToken) {
+    try { localStorage.setItem('mn_order_token', data.accessToken); } catch {}
+  }
   window.location.href = data.url;
+}
+
+async function startOrderDraft({ faceCount, packType, childCount, photoBase64 }) {
+  const res = await fetch('/api/order-start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ faceCount, packType, childCount, photoBase64 }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Erreur création commande');
+  if (data.accessToken) {
+    try { localStorage.setItem('mn_order_token', data.accessToken); } catch {}
+  }
+  return data;
+}
+
+async function patchOrderDraft({ accessToken, faceCount, childCount, photoBase64 }) {
+  const res = await fetch('/api/order-start', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken, faceCount, childCount, photoBase64 }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Erreur mise à jour commande');
+  return data;
 }
 
 const EXTRA_PERSON_EUR = 4.5;
@@ -1617,6 +1645,7 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
     setError(null);
     try {
       await checkoutPack(quote.basePack.id, quote.faceCount, {
+        accessToken: session.orderToken || undefined,
         childCount: session.childCount ?? 0,
         ...(giftMode ? {
           giftDelivery: true,
@@ -1794,6 +1823,14 @@ function Paywall({ packDef, status, session, packs, onPhotoUpload, onDemoPhoto, 
                 ? ' · 3 pers. : +2 € pour la 3e figurine'
                 : ` · +${extraEur.toFixed(2)} € / pers. supplémentaire`}
             </p>
+            {session?.orderStatusUrl && (
+              <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:10, textAlign:'center', lineHeight:1.55 }}>
+                <a href={session.orderStatusUrl} style={{ color:'var(--clay)', fontWeight:600 }}>
+                  Votre lien de commande
+                </a>
+                {' '}— retrouvez votre studio sans connexion.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -2180,6 +2217,8 @@ function App() {
     showcaseCount: null,
     isDemoExample: false,
     error: null,
+    orderToken: null,
+    orderStatusUrl: null,
   });
   const [tick, setTick] = useState(0);
   const { status } = useWeekStatus();
@@ -2205,6 +2244,8 @@ function App() {
       showcaseCount: p?.faceCount ?? null,
       isDemoExample: false,
       error: null,
+      orderToken: null,
+      orderStatusUrl: null,
     });
     go('pricing');
   }, [go, packs]);
@@ -2221,6 +2262,8 @@ function App() {
       showcaseCount: null,
       isDemoExample: false,
       error: null,
+      orderToken: null,
+      orderStatusUrl: null,
     });
     go('landing');
   }, [go]);
@@ -2248,8 +2291,24 @@ function App() {
       }
 
       const showcaseCount = preset?.showcaseCount ?? initialCount;
+      const packId = packIdForFaceCount(initialCount);
 
-      setSelectedPack(packIdForFaceCount(initialCount));
+      let orderToken = null;
+      let orderStatusUrl = null;
+      try {
+        const draft = await startOrderDraft({
+          faceCount: initialCount,
+          packType: packId,
+          childCount: initialChildren,
+          photoBase64,
+        });
+        orderToken = draft.accessToken;
+        orderStatusUrl = draft.links?.status ?? null;
+      } catch (err) {
+        console.warn('[order-start]', err);
+      }
+
+      setSelectedPack(packId);
       setSession({
         enterVia,
         photoUrl,
@@ -2260,6 +2319,8 @@ function App() {
         showcaseCount,
         isDemoExample: !!demoPreset,
         error: null,
+        orderToken,
+        orderStatusUrl,
       });
       setTick(t => t + 1);
       go('pricing');
@@ -2291,13 +2352,18 @@ function App() {
     const n = Math.max(1, Math.min(MAX_FACES, faceCount));
     const kids = Math.max(0, Math.min(n, childCount ?? 0));
     setSelectedPack(packIdForFaceCount(n));
-    setSession(s => ({
-      ...s,
-      faceCount: n,
-      childCount: kids,
-      showcaseCount: n,
-      error: null,
-    }));
+    setSession(s => {
+      if (s.orderToken) {
+        patchOrderDraft({ accessToken: s.orderToken, faceCount: n, childCount: kids }).catch(() => {});
+      }
+      return {
+        ...s,
+        faceCount: n,
+        childCount: kids,
+        showcaseCount: n,
+        error: null,
+      };
+    });
   }, []);
 
   const idx = NAV_STEPS.findIndex(s => s.id === state);

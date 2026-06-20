@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import VersionGallery from '../components/VersionGallery'
 import { ImageWithZoom } from '../components/ImageLightbox'
 import LaserStudioPanel from '../components/LaserStudioPanel'
-import { buildPrompt1, resolveImageUrls, STEP_LABELS, FAL_STEP_RESOLUTIONS, DEFAULT_FAL_STEP_RESOLUTION, falStepFormat, loadSettings } from '../lib/settings'
+import { buildPrompt1, resolveImageUrls, STEP_LABELS, DEFAULT_FAL_STEP_RESOLUTION, normalizeResolution, falStepFormat, loadSettings } from '../lib/settings'
 import Spinner, { SpinnerBlock } from '../components/Spinner'
 import { loadTraceSettings } from '../lib/traceSettings'
 import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
@@ -118,8 +118,8 @@ export default function AdminGenerationPage() {
           step2: settings.steps[1]?.prompt ?? '',
         })
         setResolutions({
-          step1: settings.steps[0]?.resolution ?? result.generation.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
-          step2: settings.steps[1]?.resolution ?? result.generation.resolution ?? DEFAULT_FAL_STEP_RESOLUTION,
+          step1: normalizeResolution(settings.steps[0]?.resolution ?? result.generation.resolution),
+          step2: normalizeResolution(settings.steps[1]?.resolution ?? result.generation.resolution),
         })
       }
     } catch (err) {
@@ -186,8 +186,8 @@ export default function AdminGenerationPage() {
       data.generation.face_count > 0 ? `ces ${data.generation.face_count} personnes` : 'ces personnes',
       'ces personnes',
     )
-    base.steps[0] = { ...base.steps[0], prompt: step0Prompt, resolution: resolutions.step1 }
-    base.steps[1] = { ...base.steps[1], prompt: prompts.step2, resolution: resolutions.step2 }
+    base.steps[0] = { ...base.steps[0], prompt: step0Prompt, resolution: normalizeResolution(resolutions.step1) }
+    base.steps[1] = { ...base.steps[1], prompt: prompts.step2, resolution: normalizeResolution(resolutions.step2) }
     return base
   }, [data, prompts, resolutions])
 
@@ -220,7 +220,7 @@ export default function AdminGenerationPage() {
 
       const urlMap = urlMapFromSteps(data.steps)
       const prompt = assetType === 'step1' ? prompts.step1 : prompts.step2
-      const resolution = resolutions[assetType] ?? DEFAULT_FAL_STEP_RESOLUTION
+      const resolution = normalizeResolution(resolutions[assetType])
       const fmt = { ...falStepFormat({ resolution }, gen), resolution }
       const imgs = resolveImageUrls(stepCfg.imageInputs, urlMap)
       if (!imgs.length) throw new Error('Images sources manquantes pour cette étape')
@@ -535,16 +535,7 @@ export default function AdminGenerationPage() {
               )}
               <div className="space-y-1.5 max-w-xs">
                 <label className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Résolution</label>
-                <select
-                  className="w-full rounded-lg bg-stone-800 border border-stone-700 text-stone-100 text-sm px-3 py-2 focus:outline-none focus:border-amber-500"
-                  value={resolutions[section.types[0]]}
-                  disabled={!!busy}
-                  onChange={e => setResolutions(r => ({ ...r, [section.types[0]]: e.target.value }))}
-                >
-                  {FAL_STEP_RESOLUTIONS.map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                <p className="text-sm text-stone-300 px-1">{DEFAULT_FAL_STEP_RESOLUTION}</p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-stone-500 uppercase tracking-wide">Prompt</label>

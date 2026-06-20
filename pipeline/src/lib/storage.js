@@ -50,6 +50,13 @@ export async function updateOrderFaceCount(token, faceCount, bearerToken) {
   })
 }
 
+export async function resumeCheckout(accessToken, { pack, faceCount, childCount } = {}) {
+  return apiJson('/api/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ accessToken, pack, faceCount, childCount }),
+  })
+}
+
 export async function fetchMyOrders(bearerToken) {
   return apiJson('/api/me', { headers: authHeaders(bearerToken) })
 }
