@@ -175,4 +175,49 @@ body {
     @apply w-full max-h-40 object-contain rounded-xl;
     background: #F5EDE0;
   }
+
+  .customer-dropzone {
+    @apply rounded-2xl p-4 text-center cursor-pointer transition-colors;
+    border: 2px dashed rgba(196, 168, 130, 0.55);
+    background: linear-gradient(135deg, #F5EDE0 0%, #FAF7F2 100%);
+  }
+
+  .customer-dropzone:hover {
+    border-color: #C0684A;
+    background: linear-gradient(135deg, #FAF0EB 0%, #FAF7F2 100%);
+  }
+
+  .customer-upload-panel {
+    @apply rounded-xl px-4 py-3 space-y-3;
+    background: #fff;
+    border: 1.5px solid rgba(196, 168, 130, 0.35);
+  }
+
+  .customer-step-card {
+    @apply rounded-xl overflow-hidden transition-colors duration-500;
+    background: #fff;
+    border: 1.5px solid rgba(196, 168, 130, 0.35);
+  }
+
+  .customer-step-card.is-running {
+    border-color: rgba(192, 104, 74, 0.55);
+  }
+
+  .customer-step-card.is-done {
+    border-color: rgba(74, 138, 82, 0.45);
+  }
+
+  .customer-step-card.is-error {
+    border-color: rgba(192, 104, 74, 0.65);
+  }
+
+  .customer-progress-track {
+    @apply h-1.5 rounded-full overflow-hidden;
+    background: #F5EDE0;
+  }
+
+  .customer-progress-fill {
+    @apply h-full rounded-full relative overflow-hidden transition-all duration-1000 ease-out;
+    background: linear-gradient(90deg, #C0684A, #E8A088);
+  }
 }

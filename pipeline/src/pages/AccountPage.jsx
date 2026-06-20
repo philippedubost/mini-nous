@@ -45,7 +45,7 @@ export default function AccountPage() {
         faceCount: fromOrder?.faceCount,
         fromOrderId: fromOrder?.id,
       })
-      navigate(`/studio?order=${encodeURIComponent(token)}`)
+      navigate(`/nouvelle-commande?order=${encodeURIComponent(token)}`)
     } catch (e) {
       setErr(e.message)
     } finally {

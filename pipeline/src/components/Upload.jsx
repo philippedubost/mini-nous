@@ -4,7 +4,8 @@ import { compressImageFile } from '../lib/compressImage'
 
 const THRESHOLD_DEFAULT = 0.4
 
-export default function Upload({ onReady, initialFaceCount, lockedCount = false }) {
+export default function Upload({ onReady, initialFaceCount, lockedCount = false, theme = 'dark' }) {
+  const light = theme === 'light'
   const [preview, setPreview] = useState(null)
   const [file, setFile] = useState(null)
   const [fileError, setFileError] = useState(null)
@@ -60,7 +61,6 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
     }
   }, [threshold, runDetection])
 
-  // Re-run detection when threshold slider changes (debounced 400ms)
   useEffect(() => {
     if (!file) return
     clearTimeout(debounceRef.current)
@@ -81,11 +81,18 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
   const inc = () => { if (!lockedCount) setCount(n => Math.min(10, n + 1)) }
   const busy = preparing || detecting
 
+  const dropClass = light
+    ? 'customer-dropzone'
+    : 'border-2 border-dashed border-stone-600 rounded-xl p-4 text-center cursor-pointer hover:border-amber-500 transition-colors'
+
+  const panelClass = light
+    ? 'customer-upload-panel'
+    : 'bg-stone-900 border border-stone-700 rounded-xl px-4 py-3 space-y-3'
+
   return (
     <div className="space-y-4">
-      {/* Drop zone */}
       <div
-        className="border-2 border-dashed border-stone-600 rounded-xl p-4 text-center cursor-pointer hover:border-amber-500 transition-colors"
+        className={dropClass}
         onClick={() => !preparing && inputRef.current?.click()}
         onDrop={onDrop}
         onDragOver={e => e.preventDefault()}
@@ -106,10 +113,12 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
             />
           </div>
         ) : (
-          <div className="py-8 text-stone-400">
+          <div className={`py-8 ${light ? 'customer-muted' : 'text-stone-400'}`}>
             <div className="text-4xl mb-2">{preparing ? '⏳' : '📷'}</div>
             <p>{preparing ? 'Compression de la photo…' : 'Déposer une photo de groupe'}</p>
-            <p className="text-sm mt-1 text-stone-500">ou cliquer pour choisir · compressé auto si &gt; 3 Mo</p>
+            <p className={`text-sm mt-1 ${light ? 'customer-muted' : 'text-stone-500'}`}>
+              ou cliquer pour choisir · compressé auto si &gt; 3 Mo
+            </p>
           </div>
         )}
         <input ref={inputRef} type="file" accept="image/*" className="hidden" disabled={preparing}
@@ -117,40 +126,42 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
       </div>
 
       {fileError && (
-        <p className="text-sm text-red-400 text-center">{fileError}</p>
+        <p className={`text-sm text-center ${light ? 'text-red-600' : 'text-red-400'}`}>{fileError}</p>
       )}
 
-      {/* Person counter */}
-      <div className="bg-stone-900 border border-stone-700 rounded-xl px-4 py-3 space-y-3">
+      <div className={panelClass}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-stone-300">Personnes</span>
+            <span className={`text-sm ${light ? 'text-[#2C1F14]' : 'text-stone-300'}`}>Personnes</span>
             {(detecting || preparing) && (
-              <span className="text-[10px] text-amber-400/70 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />
+              <span className={`text-[10px] flex items-center gap-1 ${light ? 'text-[#C0684A]' : 'text-amber-400/70'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse inline-block ${light ? 'bg-[#C0684A]' : 'bg-amber-400'}`} />
                 {preparing ? 'compression…' : 'détection…'}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={dec} disabled={lockedCount}
-              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center disabled:opacity-40">
+            <button type="button" onClick={dec} disabled={lockedCount}
+              className={`w-8 h-8 rounded-lg font-bold text-lg flex items-center justify-center disabled:opacity-40 ${
+                light ? 'bg-[#F5EDE0] hover:bg-[#FAF0EB] text-[#2C1F14]' : 'bg-stone-800 hover:bg-stone-700 text-stone-200'
+              }`}>
               −
             </button>
-            <span className="text-xl font-bold text-amber-400 tabular-nums w-6 text-center">{count}</span>
-            <button onClick={inc} disabled={lockedCount}
-              className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-lg flex items-center justify-center disabled:opacity-40">
+            <span className={`text-xl font-bold tabular-nums w-6 text-center ${light ? 'text-[#C0684A]' : 'text-amber-400'}`}>{count}</span>
+            <button type="button" onClick={inc} disabled={lockedCount}
+              className={`w-8 h-8 rounded-lg font-bold text-lg flex items-center justify-center disabled:opacity-40 ${
+                light ? 'bg-[#F5EDE0] hover:bg-[#FAF0EB] text-[#2C1F14]' : 'bg-stone-800 hover:bg-stone-700 text-stone-200'
+              }`}>
               +
             </button>
           </div>
         </div>
 
-        {/* Sensitivity slider — only shown once a file is loaded */}
         {file && (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-stone-500">
+            <div className={`flex items-center justify-between text-xs ${light ? 'customer-muted' : 'text-stone-500'}`}>
               <span>Sensibilité détection</span>
-              <span className="tabular-nums text-stone-400">{Math.round(threshold * 100)}%</span>
+              <span className="tabular-nums">{Math.round(threshold * 100)}%</span>
             </div>
             <input
               type="range"
@@ -159,9 +170,9 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
               step="0.05"
               value={threshold}
               onChange={e => setThreshold(parseFloat(e.target.value))}
-              className="w-full accent-amber-500 cursor-pointer"
+              className={`w-full cursor-pointer ${light ? 'accent-[#C0684A]' : 'accent-amber-500'}`}
             />
-            <div className="flex justify-between text-[10px] text-stone-600">
+            <div className={`flex justify-between text-[10px] ${light ? 'customer-muted' : 'text-stone-600'}`}>
               <span>Large (+ faux positifs)</span>
               <span>Strict (− détections)</span>
             </div>
@@ -170,16 +181,20 @@ export default function Upload({ onReady, initialFaceCount, lockedCount = false 
       </div>
 
       {preview && (
-        <button className="text-xs text-stone-500 hover:text-stone-300 underline w-full text-center"
+        <button type="button"
+          className={`text-xs underline w-full text-center ${light ? 'customer-link' : 'text-stone-500 hover:text-stone-300'}`}
           onClick={e => { e.stopPropagation(); inputRef.current?.click() }}>
           Changer la photo
         </button>
       )}
 
       <button
+        type="button"
         disabled={!file || busy}
         onClick={() => onReady(file, count)}
-        className="w-full py-3 rounded-xl font-semibold transition-colors bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed text-stone-950"
+        className={light
+          ? 'customer-btn-clay w-full disabled:opacity-50'
+          : 'w-full py-3 rounded-xl font-semibold transition-colors bg-amber-500 hover:bg-amber-400 disabled:bg-stone-700 disabled:text-stone-500 disabled:cursor-not-allowed text-stone-950'}
       >
         Lancer la génération
       </button>

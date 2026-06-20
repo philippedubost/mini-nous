@@ -42,6 +42,14 @@ export async function orderAction(token, action, bearerToken) {
   })
 }
 
+export async function updateOrderFaceCount(token, faceCount, bearerToken) {
+  return apiJson('/api/orders', {
+    method: 'PATCH',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ token, action: 'update_face_count', faceCount }),
+  })
+}
+
 export async function fetchMyOrders(bearerToken) {
   return apiJson('/api/me', { headers: authHeaders(bearerToken) })
 }
