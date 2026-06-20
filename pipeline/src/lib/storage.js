@@ -1,6 +1,8 @@
+import { adminHeaders } from './adminAuth.js'
+
 async function apiJson(path, options = {}) {
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders(), ...options.headers },
     ...options,
   })
   const data = await res.json().catch(() => ({}))
@@ -48,6 +50,37 @@ export async function updateOrderFaceCount(token, faceCount, bearerToken) {
     headers: authHeaders(bearerToken),
     body: JSON.stringify({ token, action: 'update_face_count', faceCount }),
   })
+}
+
+export async function fetchPipelineSettings() {
+  return apiJson('/api/pipeline-settings')
+}
+
+export async function savePipelineSettings(settings) {
+  return apiJson('/api/pipeline-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ settings }),
+  })
+}
+
+export async function resetPipelineSettings() {
+  return apiJson('/api/pipeline-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ reset: true }),
+  })
+}
+
+export async function uploadReferenceLineArt(base64) {
+  return apiJson('/api/pipeline-settings', {
+    method: 'POST',
+    body: JSON.stringify({ base64 }),
+  })
+}
+
+export async function confirmCheckout(sessionId, orderToken) {
+  return apiJson(
+    `/api/checkout-confirm?session_id=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(orderToken)}`,
+  )
 }
 
 export async function resumeCheckout(accessToken, { pack, faceCount, childCount } = {}) {

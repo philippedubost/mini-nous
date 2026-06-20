@@ -2,15 +2,15 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import RevisionPanel from '../components/RevisionPanel'
+import CustomerLayout from '../components/CustomerLayout'
 import { useAuth } from '../context/AuthContext'
-import { loadSettings, buildPrompt1, resolveImageUrls, falStepFormat } from '../lib/settings'
+import { useSettings } from '../context/SettingsContext'
+import { buildPrompt1, resolveImageUrls, falStepFormat, fetchReferenceBlob } from '../lib/settings'
 import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
 import {
   createGeneration, updateGeneration, persistAsset, markStepRunning,
-  fetchOrderByToken, linkOrderGeneration, orderAction,
+  fetchOrderByToken, linkOrderGeneration, orderAction, confirmCheckout,
 } from '../lib/storage'
-
-const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
 async function fileFromImageUrl(url, name = 'photo.jpg') {
   const res = await fetch(url)
@@ -28,9 +28,10 @@ function phaseForOrder(order) {
 export default function StudioPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
+  const stripeSessionId = searchParams.get('session_id')
   const autoStart = searchParams.get('auto') === '1'
   const { accessToken: bearerToken } = useAuth()
-  const [settings] = useState(loadSettings)
+  const { settings } = useSettings()
   const [order, setOrder] = useState(null)
   const [orderError, setOrderError] = useState(null)
   const [phase, setPhase] = useState('loading')
@@ -39,15 +40,20 @@ export default function StudioPage() {
   const [statusMsg, setStatusMsg] = useState(null)
   const [error, setError] = useState(null)
   const autoStarted = useRef(false)
+  const confirmTried = useRef(false)
 
-  const reloadOrder = useCallback(async () => {
-    if (!orderToken) return null
-    const { order: o } = await fetchOrderByToken(orderToken, bearerToken)
+  const applyOrder = useCallback((o) => {
     setOrder(o)
     if (o.previewUrl) setLineartUrl(o.previewUrl)
     setPhase(phaseForOrder(o))
     return o
-  }, [orderToken, bearerToken])
+  }, [])
+
+  const reloadOrder = useCallback(async () => {
+    if (!orderToken) return null
+    const { order: o } = await fetchOrderByToken(orderToken, bearerToken)
+    return applyOrder(o)
+  }, [orderToken, bearerToken, applyOrder])
 
   useEffect(() => {
     if (!orderToken) {
@@ -56,28 +62,33 @@ export default function StudioPage() {
       return
     }
     fetchOrderByToken(orderToken, bearerToken)
-      .then(({ order: o }) => {
-        setOrder(o)
-        if (o.previewUrl) setLineartUrl(o.previewUrl)
-        setPhase(phaseForOrder(o))
-      })
+      .then(({ order: o }) => applyOrder(o))
       .catch(err => {
         setOrderError(err.message)
         setPhase('error')
       })
-  }, [orderToken, bearerToken])
+  }, [orderToken, bearerToken, applyOrder])
+
+  useEffect(() => {
+    if (!orderToken || !stripeSessionId || confirmTried.current) return
+    confirmTried.current = true
+    confirmCheckout(stripeSessionId, orderToken)
+      .then(({ order: o, paid }) => {
+        if (o) applyOrder(o)
+        else if (paid === false) setStatusMsg('Paiement en cours de validation…')
+      })
+      .catch(() => {})
+  }, [orderToken, stripeSessionId, applyOrder])
 
   useEffect(() => {
     if (!orderToken || order?.isPaid) return undefined
     let cancelled = false
     const poll = () => {
+      if (stripeSessionId && !confirmTried.current) return
       fetchOrderByToken(orderToken, bearerToken)
         .then(({ order: o }) => {
           if (cancelled) return
-          setOrder(o)
-          if (o.isPaid) {
-            setPhase(o.previewUrl ? 'review' : 'upload')
-          }
+          applyOrder(o)
         })
         .catch(() => {})
     }
@@ -86,7 +97,7 @@ export default function StudioPage() {
       cancelled = true
       clearInterval(t)
     }
-  }, [orderToken, bearerToken, order?.isPaid])
+  }, [orderToken, bearerToken, order?.isPaid, stripeSessionId, applyOrder])
 
   const runPipeline = useCallback(async (file) => {
     if (!order?.isPaid) return
@@ -116,7 +127,7 @@ export default function StudioPage() {
         userUrl = await uploadToFal(file)
         await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
       } else if (order.sourcePhotoUrl) {
-        setStatusMsg('Chargement de votre photo du paywall…')
+        setStatusMsg('Chargement de votre photo…')
         const photoFile = await fileFromImageUrl(order.sourcePhotoUrl)
         userUrl = await uploadToFal(photoFile)
         await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
@@ -124,9 +135,8 @@ export default function StudioPage() {
         throw new Error('Aucune photo disponible — uploadez votre photo de groupe.')
       }
 
-      const refResp = await fetch(REFERENCE_LINE_URL)
-      const refBlob = await refResp.blob()
-      const refUrl = await uploadToFal(new File([refBlob], 'referenceLine2.png', { type: 'image/png' }))
+      const refBlob = await fetchReferenceBlob(settings)
+      const refUrl = await uploadToFal(new File([refBlob], 'reference-line.png', { type: refBlob.type || 'image/png' }))
       await persistAsset(generationId, 'ref', { falUrl: refUrl, url: refUrl, status: 'done' })
 
       const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
@@ -215,149 +225,129 @@ export default function StudioPage() {
   const canUpload = order?.isPaid && (order?.editable || order?.isAdminView)
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 px-4 py-8">
-      <div className="max-w-lg mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Link to={orderToken ? `/commande?order=${encodeURIComponent(orderToken)}` : '/compte'} className="text-xs text-stone-600 hover:text-stone-400">
-              ← Ma commande
-            </Link>
-            <h1 className="text-xl font-bold mt-1">Studio MiniNous</h1>
-            <p className="text-sm text-stone-500">Tracé atelier · validation avant impression</p>
-          </div>
-          <Link to="/compte" className="text-xs border border-stone-700 rounded-lg px-3 py-1.5 text-stone-400 hover:text-stone-200">
-            Compte
-          </Link>
+    <CustomerLayout
+      title="Studio MiniNous"
+      subtitle="Tracé atelier · validation avant impression"
+      navRight={(
+        <Link
+          to={orderToken ? `/commande?order=${encodeURIComponent(orderToken)}` : '/compte'}
+          className="customer-link text-xs"
+        >
+          Ma commande
+        </Link>
+      )}
+    >
+      {phase === 'loading' && (
+        <p className="customer-muted text-sm text-center py-8">Chargement…</p>
+      )}
+
+      {orderError && (
+        <div className="customer-alert-warn">{orderError}</div>
+      )}
+
+      {order && phase !== 'loading' && (
+        <div className="customer-card space-y-1 text-sm">
+          <p className="font-semibold text-[#2C1F14]">{order.packLabel} · {order.faceCount} figurine{order.faceCount > 1 ? 's' : ''}</p>
+          <p className="customer-muted">{order.isPaid ? order.workflowLabel : 'En attente de paiement'}</p>
+          {shipLabel && <p className="customer-muted text-xs">Livraison {shipLabel}</p>}
         </div>
+      )}
 
-        {order && (
-          <div className="rounded-xl border border-stone-800 bg-stone-900/40 p-4 text-sm space-y-1">
-            <p><strong>{order.packLabel}</strong> · {order.faceCount} figurine{order.faceCount > 1 ? 's' : ''}</p>
-            <p className="text-stone-500">{order.isPaid ? order.workflowLabel : 'En attente de paiement'}</p>
-            {shipLabel && <p className="text-stone-500 text-xs">Livraison {shipLabel}</p>}
+      {order?.sourcePhotoUrl && (
+        <div className="customer-card overflow-hidden !p-0">
+          <p className="text-xs customer-muted px-4 pt-3">Votre photo originale</p>
+          <img src={order.sourcePhotoUrl} alt="Photo de groupe" className="w-full object-contain max-h-56 bg-[#F5EDE0]"/>
+        </div>
+      )}
+
+      {phase === 'awaiting_payment' && (
+        <div className="customer-card text-center space-y-3 py-8">
+          <div className="customer-spinner mx-auto" aria-hidden />
+          <p className="text-sm font-medium text-[#C0684A]">Confirmation du paiement Stripe…</p>
+          <p className="text-xs customer-muted">Votre photo est enregistrée — le studio démarrera automatiquement.</p>
+        </div>
+      )}
+
+      {statusMsg && (
+        <div className="customer-alert-ok">{statusMsg}</div>
+      )}
+
+      {error && (
+        <div className="customer-alert-warn">{error}</div>
+      )}
+
+      {phase === 'upload' && canUpload && !busy && !autoStart && (
+        <Upload
+          theme="light"
+          onReady={runPipeline}
+          initialFaceCount={order.faceCount}
+          lockedCount
+        />
+      )}
+
+      {busy && (
+        <div className="customer-card text-center space-y-3 py-8">
+          <div className="customer-spinner mx-auto" aria-hidden />
+          <p className="text-sm customer-muted">{statusMsg || 'Génération en cours…'}</p>
+        </div>
+      )}
+
+      {lineartUrl && (phase === 'review' || !order?.editable) && (
+        <div className="space-y-4">
+          <div className="customer-card overflow-hidden !p-0">
+            <p className="text-xs customer-muted px-4 pt-3">Votre tracé atelier</p>
+            <img src={lineartUrl} alt="Tracé lineart" className="w-full object-contain max-h-96 bg-[#F5EDE0]"/>
           </div>
-        )}
 
-        {orderError && (
-          <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{orderError}</div>
-        )}
+          {(order?.editable || order?.isAdminView)
+            && (order.isAdminView || (order.workflowStatus !== 'approved' && order.workflowStatus !== 'revision_requested'))
+            && (
+            <div className="space-y-3">
+              {!order.isAdminView && order.workflowStatus !== 'approved' && (
+              <button type="button" onClick={handleValidate} disabled={busy} className="customer-btn-clay w-full">
+                Valider mon design → impression
+              </button>
+              )}
 
-        {phase === 'awaiting_payment' && (
-          <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-6 text-center space-y-3">
-            <div className="w-10 h-10 border-2 border-stone-700 border-t-amber-500 rounded-full animate-spin mx-auto"/>
-            <p className="text-sm text-amber-100">Confirmation du paiement Stripe…</p>
-            <p className="text-xs text-stone-500">Votre photo est déjà enregistrée — le studio démarrera automatiquement.</p>
-            <Link
-              to={`/commande?order=${encodeURIComponent(orderToken)}`}
-              className="inline-block text-xs text-stone-400 hover:text-stone-200"
-            >
-              Voir ma commande →
-            </Link>
-          </div>
-        )}
-
-        {statusMsg && (
-          <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4 text-sm text-amber-100">{statusMsg}</div>
-        )}
-
-        {error && (
-          <div className="rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">{error}</div>
-        )}
-
-        {order?.sourcePhotoUrl && phase === 'upload' && canUpload && !busy && !autoStart && (
-          <div className="rounded-xl border border-stone-800 overflow-hidden bg-stone-900/50">
-            <p className="text-xs text-stone-500 px-4 pt-3">Votre photo du paywall</p>
-            <img src={order.sourcePhotoUrl} alt="Photo source" className="w-full object-contain max-h-48"/>
-          </div>
-        )}
-
-        {phase === 'upload' && canUpload && !busy && (
-          <Upload
-            onReady={runPipeline}
-            initialFaceCount={order.faceCount}
-            lockedCount
-          />
-        )}
-
-        {busy && (
-          <div className="rounded-xl border border-stone-800 p-8 text-center space-y-3">
-            <div className="w-10 h-10 border-2 border-stone-700 border-t-amber-500 rounded-full animate-spin mx-auto"/>
-            <p className="text-sm text-stone-400">{statusMsg || 'Génération en cours…'}</p>
-          </div>
-        )}
-
-        {lineartUrl && (phase === 'review' || !order?.editable) && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-stone-800 overflow-hidden bg-stone-900/50">
-              <p className="text-xs text-stone-500 px-4 pt-3">Votre tracé atelier</p>
-              <img src={lineartUrl} alt="Tracé lineart" className="w-full object-contain max-h-96"/>
-            </div>
-
-            {(order?.editable || order?.isAdminView)
-              && (order.isAdminView || (order.workflowStatus !== 'approved' && order.workflowStatus !== 'revision_requested'))
-              && (
-              <div className="space-y-3">
-                {!order.isAdminView && order.workflowStatus !== 'approved' && (
-                <button
-                  type="button"
-                  onClick={handleValidate}
-                  disabled={busy}
-                  className="w-full py-3.5 rounded-xl font-semibold bg-emerald-500 hover:bg-emerald-400 text-stone-950 disabled:opacity-50"
-                >
-                  Valider mon design → impression
+              {(order.regenRemaining == null || order.regenRemaining > 0) && (
+                <button type="button" onClick={handleRegen} className="customer-btn-ghost w-full">
+                  {order.regenRemaining == null
+                    ? 'Regénérer le tracé (illimité)'
+                    : `Regénérer le tracé (${order.regenRemaining} restante${order.regenRemaining > 1 ? 's' : ''})`}
                 </button>
-                )}
+              )}
 
-                {(order.regenRemaining == null || order.regenRemaining > 0) && (
-                  <button
-                    type="button"
-                    onClick={handleRegen}
-                    className="w-full py-2.5 rounded-xl border border-stone-600 text-stone-300 text-sm hover:border-stone-400"
-                  >
-                    {order.regenRemaining == null
-                      ? 'Regénérer le tracé (illimité)'
-                      : `Regénérer le tracé (${order.regenRemaining} restante${order.regenRemaining > 1 ? 's' : ''})`}
-                  </button>
-                )}
+              {!order.isAdminView && (
+              <RevisionPanel
+                token={orderToken}
+                faceCount={order.faceCount}
+                bearerToken={bearerToken}
+                disabled={busy}
+                onSubmitted={reloadOrder}
+              />
+              )}
+            </div>
+          )}
 
-                {!order.isAdminView && (
-                <RevisionPanel
-                  token={orderToken}
-                  faceCount={order.faceCount}
-                  bearerToken={bearerToken}
-                  disabled={busy}
-                  onSubmitted={reloadOrder}
-                />
-                )}
-              </div>
-            )}
+          {!order?.isAdminView && order?.workflowStatus === 'approved' && (
+            <p className="text-sm text-center text-[#4A8A52]">
+              Design validé — votre commande est en file d&apos;impression.
+            </p>
+          )}
 
-            {order?.isAdminView && order.workflowStatus === 'approved' && (
-              <p className="text-xs text-stone-500 text-center">
-                Mode admin — vous pouvez regénérer même après validation.
-              </p>
-            )}
+          {order?.workflowStatus === 'revision_requested' && (
+            <p className="text-sm text-center text-[#C0684A]">
+              Révision en cours chez nos équipes — nous vous recontactons.
+            </p>
+          )}
+        </div>
+      )}
 
-            {!order?.isAdminView && order?.workflowStatus === 'approved' && (
-              <p className="text-sm text-emerald-300 text-center">
-                Design validé — votre commande est en file d&apos;impression.
-              </p>
-            )}
-
-            {order?.workflowStatus === 'revision_requested' && (
-              <p className="text-sm text-amber-200 text-center">
-                Révision en cours chez nos équipes — nous vous recontactons.
-              </p>
-            )}
-          </div>
-        )}
-
-        {!order?.editable && !order?.isAdminView && order?.isPaid && order && !lineartUrl && (
-          <p className="text-sm text-stone-500 text-center">
-            Cette commande n&apos;est plus modifiable (fabrication lancée).
-          </p>
-        )}
-      </div>
-    </div>
+      {!order?.editable && !order?.isAdminView && order?.isPaid && order && !lineartUrl && (
+        <p className="text-sm customer-muted text-center">
+          Cette commande n&apos;est plus modifiable (fabrication lancée).
+        </p>
+      )}
+    </CustomerLayout>
   )
 }

@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import VersionGallery from '../components/VersionGallery'
 import { ImageWithZoom } from '../components/ImageLightbox'
 import LaserStudioPanel from '../components/LaserStudioPanel'
-import { buildPrompt1, resolveImageUrls, STEP_LABELS, DEFAULT_FAL_STEP_RESOLUTION, normalizeResolution, falStepFormat, loadSettings } from '../lib/settings'
+import { buildPrompt1, resolveImageUrls, STEP_LABELS, DEFAULT_FAL_STEP_RESOLUTION, normalizeResolution, falStepFormat, getReferenceLineUrl } from '../lib/settings'
+import { useSettings } from '../context/SettingsContext'
 import Spinner, { SpinnerBlock } from '../components/Spinner'
 import { loadTraceSettings } from '../lib/traceSettings'
 import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
@@ -12,8 +13,6 @@ import { runFalStep } from '../lib/fal'
 import {
   fetchGeneration, selectVersion, deleteVersion, uploadAsset, urlMapFromSteps, updateGeneration,
 } from '../lib/storage'
-
-const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
 const STATUS_STYLES = {
   running: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
@@ -95,6 +94,7 @@ function formatDate(iso) {
 
 export default function AdminGenerationPage() {
   const { id } = useParams()
+  const { settings: pipelineDefaults } = useSettings()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -177,7 +177,7 @@ export default function AdminGenerationPage() {
   }
 
   const buildSettingsPayload = useCallback(() => {
-    const defaults = loadSettings()
+    const defaults = pipelineDefaults
     const base = structuredClone(data?.generation?.settings ?? defaults)
     if (!Array.isArray(base.steps)) base.steps = structuredClone(defaults.steps)
     while (base.steps.length < 3) base.steps.push(structuredClone(defaults.steps[base.steps.length] ?? {}))
@@ -189,7 +189,7 @@ export default function AdminGenerationPage() {
     base.steps[0] = { ...base.steps[0], prompt: step0Prompt, resolution: normalizeResolution(resolutions.step1) }
     base.steps[1] = { ...base.steps[1], prompt: prompts.step2, resolution: normalizeResolution(resolutions.step2) }
     return base
-  }, [data, prompts, resolutions])
+  }, [data, prompts, resolutions, pipelineDefaults])
 
   const persistGenerationSettings = useCallback(async () => {
     if (!data?.generation) return null
@@ -202,7 +202,7 @@ export default function AdminGenerationPage() {
   const runFalRerun = async (assetType, settingsIndex) => {
     if (!data) return
     const gen = data.generation
-    const defaults = loadSettings()
+    const defaults = pipelineDefaults
     const settings = gen.settings ?? defaults
     const stepCfg = settings.steps?.[settingsIndex] ?? defaults.steps?.[settingsIndex]
     if (!stepCfg) return
@@ -355,7 +355,7 @@ export default function AdminGenerationPage() {
   const fabrication = data.fabrication ?? gen.fabrication ?? null
   const versionsByType = data.versionsByType ?? {}
   const activeStep = Object.fromEntries((data.steps ?? []).map(s => [s.asset_type, s]))
-  const refImageUrl = activeStep.ref?.image_url ?? REFERENCE_LINE_URL
+  const refImageUrl = activeStep.ref?.image_url ?? getReferenceLineUrl(pipelineDefaults)
 
   return (
     <div className="space-y-6 relative">

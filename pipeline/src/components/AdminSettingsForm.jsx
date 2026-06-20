@@ -1,34 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  loadSettings, saveSettings, resetSettings,
-  ASPECT_RATIOS, IMAGE_INPUT_OPTIONS, STEP_LABELS, DEFAULT_FAL_STEP_RESOLUTION,
+  IMAGE_INPUT_OPTIONS, STEP_LABELS, getReferenceLineUrl,
 } from '../lib/settings'
+import { useSettings } from '../context/SettingsContext'
 
-function GlobalFormatFields({ aspectRatio, onChange }) {
+function ReferenceLineArtSection({ settings, onUpload, uploading, uploadError }) {
+  const inputRef = useRef(null)
+  const previewUrl = getReferenceLineUrl(settings)
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        await onUpload(reader.result)
+      } catch {
+        /* parent shows error */
+      }
+      if (inputRef.current) inputRef.current.value = ''
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
-    <div className="rounded-lg border border-amber-700/40 bg-stone-950/50 p-3 space-y-3">
-      <p className="text-xs font-semibold text-amber-500/80 uppercase tracking-wide">Format — toutes les étapes</p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Résolution</label>
-          <p className="text-sm text-stone-300 px-1">{DEFAULT_FAL_STEP_RESOLUTION}</p>
+    <div className="rounded-xl border border-stone-700 bg-stone-900 p-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-stone-200">Référence line art</p>
+        <p className="text-xs text-stone-500 mt-1">
+          Image de style utilisée à l&apos;étape 2 (line art). Stockée sur R2, partagée pour toutes les générations.
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-4 items-start">
+        <div className="w-full sm:w-48 aspect-[4/3] rounded-lg border border-stone-700 bg-white flex items-center justify-center overflow-hidden shrink-0">
+          <img
+            src={previewUrl}
+            alt="Référence line art"
+            className="max-w-full max-h-full object-contain"
+          />
         </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Format</label>
-          <select
-            className="w-full rounded-lg bg-stone-800 border border-stone-600 text-stone-100 text-sm px-3 py-2"
-            value={aspectRatio}
-            onChange={e => onChange('aspectRatio', e.target.value)}
+        <div className="space-y-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            className="px-4 py-2 rounded-lg bg-stone-700 hover:bg-stone-600 disabled:opacity-60 text-stone-100 text-sm font-medium"
           >
-            {ASPECT_RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
+            {uploading ? 'Envoi en cours…' : 'Changer l\'image'}
+          </button>
+          {settings.referenceLineUrl && (
+            <p className="text-[11px] text-stone-500 break-all max-w-xs">
+              {settings.referenceLineUrl}
+            </p>
+          )}
+          {uploadError && (
+            <p className="text-sm text-red-400">{uploadError}</p>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-function StepSection({ index, step, onChange, globalFormat }) {
+function StepSection({ index, step, onChange }) {
   const [open, setOpen] = useState(index === 0)
   const label = STEP_LABELS[index + 1]
   const set = (key, val) => onChange({ ...step, [key]: val })
@@ -58,12 +99,6 @@ function StepSection({ index, step, onChange, globalFormat }) {
       </button>
       {open && (
         <div className="p-4 space-y-4 bg-stone-900">
-          {globalFormat && (
-            <GlobalFormatFields
-              aspectRatio={globalFormat.aspectRatio}
-              onChange={globalFormat.onChange}
-            />
-          )}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Prompt</label>
             <textarea
@@ -100,53 +135,111 @@ function StepSection({ index, step, onChange, globalFormat }) {
 }
 
 export default function AdminSettingsForm() {
-  const [local, setLocal] = useState(() => structuredClone(loadSettings()))
+  const {
+    settings, loading, saveSettings, resetSettings, uploadReferenceLineArt, updatedAt,
+  } = useSettings()
+  const [local, setLocal] = useState(null)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const [refUploading, setRefUploading] = useState(false)
+  const [refUploadError, setRefUploadError] = useState(null)
 
-  const updateGlobal = (key, val) => setLocal(s => ({ ...s, [key]: val }))
+  useEffect(() => {
+    if (!loading) setLocal(structuredClone(settings))
+  }, [settings, loading])
+
   const updateStep = (i, step) => {
     setLocal(s => ({ ...s, steps: s.steps.map((st, idx) => idx === i ? step : st) }))
   }
 
-  const handleSave = () => {
-    saveSettings(local)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await saveSettings(local)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setSaveError(e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleReset = () => {
-    const def = resetSettings()
-    setLocal(def)
-    saveSettings(def)
+  const handleReset = async () => {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const def = await resetSettings()
+      setLocal(structuredClone(def))
+    } catch (e) {
+      setSaveError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRefUpload = async (base64) => {
+    setRefUploading(true)
+    setRefUploadError(null)
+    try {
+      const merged = await uploadReferenceLineArt(base64)
+      setLocal(structuredClone(merged))
+    } catch (e) {
+      setRefUploadError(e.message)
+      throw e
+    } finally {
+      setRefUploading(false)
+    }
+  }
+
+  if (loading || !local) {
+    return <p className="text-stone-400 text-sm">Chargement des paramètres…</p>
   }
 
   return (
     <div className="max-w-2xl space-y-4">
+      {updatedAt && (
+        <p className="text-xs text-stone-500">
+          Dernière mise à jour : {new Date(updatedAt).toLocaleString('fr-FR')}
+        </p>
+      )}
+
+      <ReferenceLineArtSection
+        settings={local}
+        onUpload={handleRefUpload}
+        uploading={refUploading}
+        uploadError={refUploadError}
+      />
+
       {local.steps.map((step, i) => (
         <StepSection
           key={i}
           index={i}
           step={step}
           onChange={s => updateStep(i, s)}
-          globalFormat={i === 0 ? {
-            aspectRatio: local.aspectRatio,
-            onChange: updateGlobal,
-          } : null}
         />
       ))}
+
+      {saveError && (
+        <p className="text-sm text-red-400">{saveError}</p>
+      )}
 
       <div className="flex gap-3">
         <button
           type="button"
           onClick={handleSave}
-          className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold"
+          disabled={saving}
+          className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-stone-950 font-semibold"
         >
-          {saved ? 'Enregistré ✓' : 'Sauvegarder'}
+          {saved ? 'Enregistré ✓' : saving ? 'Enregistrement…' : 'Sauvegarder les prompts'}
         </button>
         <button
           type="button"
           onClick={handleReset}
-          className="px-4 py-2.5 rounded-xl bg-stone-700 hover:bg-stone-600 text-stone-200"
+          disabled={saving}
+          className="px-4 py-2.5 rounded-xl bg-stone-700 hover:bg-stone-600 disabled:opacity-60 text-stone-200"
         >
           Reset
         </button>

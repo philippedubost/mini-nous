@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { SettingsProvider } from './context/SettingsContext'
 import PipelinePage from './pages/PipelinePage'
 import StudioPage from './pages/StudioPage'
 import OrderStatusPage from './pages/OrderStatusPage'
@@ -22,6 +23,7 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
+      <SettingsProvider>
       <BrowserRouter basename="/pipeline">
         <Routes>
           <Route path="/" element={<Navigate to="/compte" replace />} />
@@ -46,6 +48,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="*" element={<Navigate to="/compte" replace />} />
         </Routes>
       </BrowserRouter>
+      </SettingsProvider>
     </AuthProvider>
   </React.StrictMode>,
 )

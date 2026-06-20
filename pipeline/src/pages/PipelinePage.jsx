@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Upload from '../components/Upload'
 import Step from '../components/Step'
 import Preview from '../components/Preview'
-import { loadSettings, buildPrompt1, resolveImageUrls, STEP_LABELS, falStepFormat } from '../lib/settings'
+import { useSettings } from '../context/SettingsContext'
+import { buildPrompt1, resolveImageUrls, STEP_LABELS, falStepFormat, fetchReferenceBlob } from '../lib/settings'
 import { loadTraceSettings } from '../lib/traceSettings'
 import { extractAndBuildLaserSvg, svgToDataUrl } from '../lib/laserPipeline'
 import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
@@ -12,7 +13,6 @@ import {
   fetchOrderByToken, linkOrderGeneration,
 } from '../lib/storage'
 
-const REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
 
 const INITIAL_STEPS = [
   { status: 'idle', image: null, log: null, error: null },
@@ -23,7 +23,7 @@ const INITIAL_STEPS = [
 export default function PipelinePage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
-  const [settings] = useState(loadSettings)
+  const { settings } = useSettings()
   const [orderInfo, setOrderInfo] = useState(null)
   const [orderError, setOrderError] = useState(null)
   const [phase, setPhase] = useState('upload')
@@ -79,9 +79,8 @@ export default function PipelinePage() {
       const userUrl = await uploadToFal(file)
       await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
 
-      const refResp = await fetch(REFERENCE_LINE_URL)
-      const refBlob = await refResp.blob()
-      const refUrl = await uploadToFal(new File([refBlob], 'referenceLine2.png', { type: 'image/png' }))
+      const refBlob = await fetchReferenceBlob(settings)
+      const refUrl = await uploadToFal(new File([refBlob], 'reference-line.png', { type: refBlob.type || 'image/png' }))
       await persistAsset(generationId, 'ref', { falUrl: refUrl, url: refUrl, status: 'done' })
 
       const urlMap = { user: userUrl, ref: refUrl, step1: null, step2: null }
