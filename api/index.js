@@ -1,7 +1,8 @@
 import { dispatch, routes } from '../lib/api/router.js'
 import { prepareRequest } from '../lib/api/prepare-req.js'
 
-export const config = { api: { bodyParser: false } }
+/** JSON auto-parsed by Vercel; stripe-webhook uses its own file with bodyParser: false. */
+export const config = { api: { bodyParser: true } }
 
 function resolveRouteName(req) {
   let name = req.query?.route ?? req.query?.path

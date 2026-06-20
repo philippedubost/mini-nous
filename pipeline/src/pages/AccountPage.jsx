@@ -45,7 +45,7 @@ export default function AccountPage() {
         faceCount: fromOrder?.faceCount,
         fromOrderId: fromOrder?.id,
       })
-      navigate(`/nouvelle-commande?order=${encodeURIComponent(token)}`)
+      navigate(`/studio?order=${encodeURIComponent(token)}`)
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -95,7 +95,7 @@ export default function AccountPage() {
       {isAdmin && (
         <div className="customer-card-muted flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#2C1F14]">
-            Mode admin — toutes les commandes, studio ouvert, régénérations illimitées.
+            Mode admin — créez un MiniNous depuis une photo (studio), régénérations illimitées.
           </p>
           <button
             type="button"
@@ -103,7 +103,7 @@ export default function AccountPage() {
             onClick={() => handleNewOrder(null)}
             className="customer-btn-clay !py-2 !px-4 !text-xs"
           >
-            {creatingId === 'new' ? 'Création…' : '+ Nouvelle commande'}
+            {creatingId === 'new' ? 'Ouverture…' : '+ Nouveau MiniNous'}
           </button>
         </div>
       )}
@@ -164,7 +164,7 @@ export default function AccountPage() {
                       onClick={() => handleNewOrder(o)}
                       className="customer-btn-ghost"
                     >
-                      {creatingId === o.id ? 'Création…' : 'Nouvelle commande'}
+                      {creatingId === o.id ? 'Ouverture…' : 'Nouveau MiniNous'}
                     </button>
                   )}
                 </>
