@@ -28,7 +28,7 @@ Dev local : `npm run dev` → `http://localhost:3333` (gateway + API + proxy Vit
 
 | Domaine | Fichiers autoritaires | Ne pas dupliquer dans |
 |---------|----------------------|------------------------|
-| Tarifs / packs | `lib/server/packs.js` | `index.html` (affichage seulement via `/api/week-status`) |
+| Tarifs / packs | `lib/server/packs.js` | `index.html` paywall via `GET /api/quote` |
 | Prompts pipeline | Supabase `mini_nous_pipeline_settings` + `lib/server/pipeline-settings.js` | `localStorage` prompts |
 | Defaults prompts | `lib/server/pipeline-settings.js` (seed) | Garder aligné avec `pipeline/src/lib/settings.js` jusqu’à fusion JSON |
 | Commandes | `lib/server/orders.js`, `paywall-order.js`, `order-workflow.js` | — |
@@ -70,7 +70,7 @@ Détails par zone : `.cursor/rules/*.mdc`
 
 ## Checklist avant PR
 
-- [ ] Prix modifié → `packs.js` + `/api/week-status` + landing affichage (pas de nouvelle logique client)
+- [ ] Prix modifié → `packs.js` uniquement (paywall lit `/api/quote`)
 - [ ] Prompt modifié → serveur + admin settings (Supabase)
 - [ ] Nouvelle route API → `router.js` + handler + CORS si POST
 - [ ] Pas de commit sauf demande explicite

@@ -37,7 +37,7 @@ Handlers restent **minces** : pas de logique métier lourde inline.
 
 | Module | Rôle |
 |--------|------|
-| `packs.js` | Tarifs |
+| `packs.js` | Tarifs + `formatQuoteForClient` |
 | `orders.js` | CRUD commandes |
 | `paywall-order.js` | Brouillon landing |
 | `pipeline-settings.js` | Prompts globaux |

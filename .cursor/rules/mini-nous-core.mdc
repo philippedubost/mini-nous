@@ -16,7 +16,7 @@ Lire `AGENTS.md` à la racine pour la carte complète.
 
 ## Interdits fréquents
 
-- Dupliquer tarifs dans `index.html` → utiliser `/api/week-status` + `lib/server/packs.js`
+- Dupliquer tarifs dans `index.html` → utiliser `/api/quote?faces=N` + `lib/server/packs.js`
 - Traiter `Editor`/`Success` (landing) comme le studio production → c’est `StudioPage.jsx`
 - Modifier prompts sans passer par `pipeline-settings` (Supabase)
 - Ajouter des routes Vercel sans vérifier la limite (~12 fonctions)

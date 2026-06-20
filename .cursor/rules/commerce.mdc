@@ -15,9 +15,9 @@ alwaysApply: false
 
 ## Landing (`index.html`)
 
-- Afficher les prix depuis `/api/week-status` (`packs`, `extraPersonEur`)
-- Éviter d’ajouter de la logique tarifaire client (`computeDynamicQuote`) — préférer enrichir l’API
-- Checkout : `POST /api/checkout` avec `pack`, `faceCount`, `accessToken`, `fridayDelivery`
+- Catalogue marketing : `/api/week-status` (`packs`)
+- Paywall : `GET /api/quote?faces=N&friday=1` — pas de calcul prix client
+- Checkout : `POST /api/checkout` avec `faceCount` (pack dérivé serveur)
 
 ## pack_type DB
 

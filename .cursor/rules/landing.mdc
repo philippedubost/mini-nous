@@ -15,10 +15,11 @@ Monolithe ~2500 lignes : CSS + React inline (Babel CDN). Minimiser le diff — e
 
 ## API utilisées
 
-- `GET /api/week-status` — packs, places, dates livraison
+- `GET /api/week-status` — packs catalogue, places, dates livraison
+- `GET /api/quote?faces=N` — devis paywall (source de vérité prix)
 - `POST /api/order-start` — brouillon commande + photo R2
 - `PATCH /api/order-start` — maj faceCount
-- `POST /api/checkout` — session Stripe
+- `POST /api/checkout` — session Stripe (`faceCount` requis)
 
 ## Pièges
 
