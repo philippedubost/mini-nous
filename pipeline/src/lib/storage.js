@@ -36,11 +36,11 @@ export async function linkOrderGeneration(token, generationId, bearerToken) {
   })
 }
 
-export async function orderAction(token, action, bearerToken) {
+export async function orderAction(token, action, bearerToken, payload = {}) {
   return apiJson('/api/orders', {
     method: 'PATCH',
     headers: authHeaders(bearerToken),
-    body: JSON.stringify({ token, action }),
+    body: JSON.stringify({ token, action, ...payload }),
   })
 }
 

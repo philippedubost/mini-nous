@@ -2,21 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
-
-const STEPS = [
-  { key: 'awaiting_photo', label: 'Photo' },
-  { key: 'in_studio', label: 'Design' },
-  { key: 'in_production', label: 'Fabrication' },
-  { key: 'shipped', label: 'Livraison' },
-]
-
-function stepIndex(status) {
-  if (status === 'awaiting_photo') return 0
-  if (['in_studio', 'pending_validation', 'revision_requested', 'approved'].includes(status)) return 1
-  if (status === 'in_production') return 2
-  if (status === 'shipped') return 3
-  return 0
-}
+import StudioWorkspace from '../components/StudioWorkspace'
+import OrderTimeline from '../components/OrderTimeline'
 
 function formatDate(iso) {
   if (!iso) return null
@@ -56,18 +43,31 @@ export default function OrderStatusPage() {
     return () => clearInterval(t)
   }, [load, order?.isPaid])
 
-  const currentStep = order ? stepIndex(order.workflowStatus) : 0
   const shipLabel = order?.shipDate
     ? new Date(`${order.shipDate}T12:00:00`).toLocaleDateString('fr-FR', {
       weekday: 'long', day: 'numeric', month: 'long',
     })
     : null
 
+  const lineartVersion = (order?.regenCount ?? 0) + 1
+  const showStudio = order?.sourcePhotoUrl || order?.previewUrl
+
   return (
     <CustomerLayout
       title={order ? 'Votre commande' : undefined}
       subtitle={order ? `${order.packLabel} · ${order.faceCount} figurine${order.faceCount > 1 ? 's' : ''}${order.amountEur ? ` · ${order.amountEur} €` : ''}` : undefined}
-      navRight={<span className="customer-muted text-xs">Suivi commande</span>}
+      navRight={(
+        order?.isPaid && order?.editable ? (
+          <Link
+            to={`/studio?order=${encodeURIComponent(orderToken)}`}
+            className="customer-link text-xs"
+          >
+            Studio →
+          </Link>
+        ) : (
+          <span className="customer-muted text-xs">Suivi commande</span>
+        )
+      )}
     >
       {loading && (
         <p className="customer-muted text-center py-12">Chargement de votre commande…</p>
@@ -86,10 +86,12 @@ export default function OrderStatusPage() {
             <div className="customer-card space-y-3">
               <p className="font-semibold text-[#C0684A]">Paiement en attente</p>
               <p className="text-sm customer-muted">
-                Votre photo est enregistrée. Finalisez le paiement pour lancer le studio — sans connexion requise.
+                Votre photo est enregistrée. Finalisez le paiement pour lancer le studio.
               </p>
               {order.sourcePhotoUrl && (
-                <img src={order.sourcePhotoUrl} alt="Votre photo" className="customer-preview max-h-40"/>
+                <div className="customer-photo-frame max-h-48">
+                  <img src={order.sourcePhotoUrl} alt="Votre photo" />
+                </div>
               )}
               <button
                 type="button"
@@ -114,37 +116,17 @@ export default function OrderStatusPage() {
             </div>
           )}
 
-          <div className="customer-card">
-            <div className="flex justify-between gap-2 mb-6">
-              {STEPS.map((s, i) => (
-                <div key={s.key} className="flex-1 text-center">
-                  <div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 ${
-                    i <= currentStep ? 'customer-step-active' : 'customer-step-idle'
-                  }`}>
-                    {i + 1}
-                  </div>
-                  <span className={`text-[10px] sm:text-xs font-medium ${i <= currentStep ? 'text-[#2C1F14]' : 'customer-muted'}`}>
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+          <OrderTimeline order={order} />
 
-            <div className="customer-status-box">
-              <p className="font-semibold text-[#C0684A]">{order.workflowLabel}</p>
-              <p className="text-sm customer-muted mt-1">{order.workflowHint}</p>
-            </div>
-          </div>
-
-          {order.previewUrl && (
-            <div className="customer-card overflow-hidden !p-0">
-              <p className="text-xs customer-muted px-4 pt-3">Aperçu atelier</p>
-              <img
-                src={order.previewUrl}
-                alt="Aperçu de votre design"
-                className="w-full max-h-80 object-contain bg-[#F5EDE0] p-2"
-              />
-            </div>
+          {showStudio && (
+            <StudioWorkspace
+              sourcePhotoUrl={order.sourcePhotoUrl}
+              lineartUrl={order.previewUrl}
+              busy={order.workflowStatus === 'in_studio' && !order.previewUrl}
+              statusMsg={order.workflowStatus === 'in_studio' ? 'Création en cours dans le studio…' : null}
+              phase={order.isPaid ? 'review' : 'awaiting_payment'}
+              lineartVersion={lineartVersion}
+            />
           )}
 
           <div className="customer-card space-y-3 text-sm">
@@ -169,20 +151,12 @@ export default function OrderStatusPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {order.isPaid && order.editable && order.workflowStatus === 'awaiting_photo' && (
+            {order.isPaid && order.editable && (
               <Link
-                to={`/studio?order=${encodeURIComponent(orderToken)}`}
+                to={`/studio?order=${encodeURIComponent(orderToken)}${order.previewUrl ? '' : '&auto=1'}`}
                 className="customer-btn-clay flex-1 text-center"
               >
-                Envoyer ma photo →
-              </Link>
-            )}
-            {order.isPaid && order.editable && order.workflowStatus !== 'awaiting_photo' && (
-              <Link
-                to={`/studio?order=${encodeURIComponent(orderToken)}`}
-                className="customer-btn-clay flex-1 text-center"
-              >
-                Ouvrir le studio →
+                {order.previewUrl ? 'Valider dans le studio →' : 'Ouvrir le studio →'}
               </Link>
             )}
             {!order.editable && (

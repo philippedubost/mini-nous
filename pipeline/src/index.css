@@ -66,6 +66,43 @@ body {
     color: #9A8F88;
   }
 
+  .customer-photo-frame {
+    @apply flex items-center justify-center overflow-hidden;
+    background: #F5EDE0;
+    border-radius: 16px;
+    min-height: 160px;
+    padding: 12px;
+  }
+
+  .customer-photo-frame img {
+    @apply block max-w-full object-contain;
+    max-height: 280px;
+    border-radius: 12px;
+  }
+
+  .customer-studio-grid {
+    @apply grid gap-4;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 768px) {
+    .customer-studio-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .customer-person-col {
+    @apply rounded-xl p-3 space-y-2 text-left flex-shrink-0;
+    background: #FAF7F2;
+    border: 1.5px solid rgba(196, 168, 130, 0.35);
+    min-width: 140px;
+    flex: 1;
+  }
+
+  .customer-person-row {
+    @apply flex gap-3 overflow-x-auto pb-1;
+  }
+
   .customer-muted {
     color: #9A8F88;
   }
