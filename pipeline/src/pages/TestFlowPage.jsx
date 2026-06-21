@@ -9,7 +9,7 @@ import {
 } from '../lib/adminAuth'
 
 const DEFAULTS = {
-  email: 'pdubost@gmail.com',
+  email: 'philippe@lesfantomes.fr',
   customerName: 'Jean-Test',
   faceCount: 2,
   childCount: 0,
