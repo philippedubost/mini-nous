@@ -15,6 +15,24 @@ body {
   animation: shimmer 1.6s linear infinite;
 }
 
+/* ─── Admin flow diagrams (/admin accueil) ─── */
+.flow-card {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.flow-card:hover {
+  transform: translateY(-1px);
+}
+.flow-panel {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.flow-stepper::-webkit-scrollbar {
+  height: 4px;
+}
+.flow-stepper::-webkit-scrollbar-thumb {
+  background: rgb(68 64 60);
+  border-radius: 4px;
+}
+
 /* ─── Espace client (aligné landing beige) ─── */
 @layer components {
   .customer-page {

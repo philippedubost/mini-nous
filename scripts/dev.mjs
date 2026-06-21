@@ -43,7 +43,7 @@ async function waitForVite(port, timeoutMs = 20000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/pipeline/`)
+      const res = await fetch(`http://127.0.0.1:${port}/`)
       if (res.ok) return
     } catch { /* retry */ }
     await new Promise(r => setTimeout(r, 250))

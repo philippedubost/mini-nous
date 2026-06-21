@@ -54,6 +54,15 @@ function serveStatic(req, res) {
   res.end(readFileSync(filePath))
 }
 
+function isViteDevAsset(path) {
+  if (path === '/index.html' || path === '/admin.html') return true
+  if (path.startsWith('/assets/')) return true
+  if (path.startsWith('/src/')) return true
+  if (path.startsWith('/@')) return true
+  if (path.startsWith('/node_modules/')) return true
+  return false
+}
+
 function proxySpa(req, res, vitePort, { stripPrefix, spaFile }) {
   const raw = req.url?.split('?')[0] || '/'
   const query = req.url?.includes('?') ? `?${req.url.split('?')[1]}` : ''
@@ -104,7 +113,7 @@ export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
     if (path.startsWith('/pipeline')) {
       return proxySpa(req, res, vitePort, { stripPrefix: '/pipeline', spaFile: '/index.html' })
     }
-    if (path.startsWith('/assets/')) {
+    if (isViteDevAsset(path)) {
       return proxy(req, res, vitePort)
     }
     return serveStatic(req, res)
