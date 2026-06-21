@@ -49,7 +49,7 @@ export default function OrderStatusPage() {
     })
     : null
 
-  const lineartVersion = (order?.regenCount ?? 0) + 1
+  const lineartVersion = order?.lineartVersion ?? 1
   const showStudio = order?.sourcePhotoUrl || order?.previewUrl
 
   return (

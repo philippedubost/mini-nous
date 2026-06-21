@@ -70,6 +70,16 @@ export async function detectPersons(imageFile, threshold = 0.4) {
   })
 }
 
+/** Détection depuis une URL (studio post-checkout). */
+export async function detectPersonsFromUrl(imageUrl, threshold = 0.4) {
+  const res = await fetch(imageUrl)
+  if (!res.ok) throw new Error('load failed')
+  const blob = await res.blob()
+  const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' })
+  const { boxes } = await detectPersons(file, threshold)
+  return boxes
+}
+
 export function drawBoxes(canvas, boxes, naturalWidth, naturalHeight, containerWidth, containerHeight) {
   canvas.width = containerWidth
   canvas.height = containerHeight

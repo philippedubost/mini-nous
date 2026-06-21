@@ -4,7 +4,8 @@ import CustomerLayout from '../components/CustomerLayout'
 import { checkAdminPassword, isAdminAuthed, setAdminAuthed } from '../lib/adminAuth'
 
 const NAV = [
-  { to: '/admin', label: 'Générations', end: true },
+  { to: '/admin', label: 'Commandes', end: true },
+  { to: '/admin/generations', label: 'Générations' },
   { to: '/admin/settings', label: 'Paramètres' },
   { to: '/lab/trace', label: 'Labo trace' },
 ]
@@ -74,7 +75,7 @@ export default function AdminLayout() {
           </nav>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 w-full max-w-[1680px] mx-auto px-4 py-6">
         <Outlet />
       </main>
     </div>

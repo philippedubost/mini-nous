@@ -1,3 +1,5 @@
+import LineartPersonOverlay from './LineartPersonOverlay'
+
 export default function StudioWorkspace({
   sourcePhotoUrl,
   lineartUrl,
@@ -7,6 +9,8 @@ export default function StudioWorkspace({
   lineartVersion = 1,
   processingSteps,
   activeStep,
+  faceCount = 0,
+  showPersonNumbers = false,
 }) {
   if (!sourcePhotoUrl) return null
 
@@ -14,7 +18,7 @@ export default function StudioWorkspace({
     <div className="customer-card space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm font-semibold text-[#2C1F14]">Votre studio</p>
-        {busy && <span className="customer-badge">Création en cours…</span>}
+        {busy && <span className="customer-badge">Traitement en cours…</span>}
         {lineartUrl && !busy && (
           <span className="customer-badge customer-badge-green">Tracé v{lineartVersion} prêt</span>
         )}
@@ -30,11 +34,20 @@ export default function StudioWorkspace({
 
         <div>
           <p className="text-xs customer-muted mb-2">
-            {lineartUrl ? `Tracé proposé · v${lineartVersion}` : 'Traitement IA'}
+            {lineartUrl ? `Tracé proposé · v${lineartVersion}` : 'Traitement'}
           </p>
           {lineartUrl ? (
-            <div className="customer-photo-frame">
-              <img src={lineartUrl} alt="Tracé line art" />
+            <div className="customer-photo-frame customer-photo-frame-lineart">
+              {showPersonNumbers && faceCount > 0 ? (
+                <LineartPersonOverlay
+                  src={lineartUrl}
+                  alt="Tracé line art"
+                  faceCount={faceCount}
+                  sourcePhotoUrl={sourcePhotoUrl}
+                />
+              ) : (
+                <img src={lineartUrl} alt="Tracé line art" />
+              )}
             </div>
           ) : phase === 'awaiting_payment' ? (
             <div className="customer-photo-frame flex-col gap-4 py-10">
@@ -45,7 +58,12 @@ export default function StudioWorkspace({
           ) : busy ? (
             <div className="customer-photo-frame flex-col gap-4 py-10">
               <div className="customer-spinner" aria-hidden />
-              <p className="text-sm customer-muted text-center px-4">{statusMsg || 'Génération en cours…'}</p>
+              <p className="text-sm font-medium text-[#C0684A] text-center px-4">
+                {statusMsg || 'Traitement en cours…'}
+              </p>
+              <p className="text-xs customer-muted text-center px-4">
+                Comptez entre 2 et 5 minutes — ne fermez pas cette page.
+              </p>
               {processingSteps?.length > 0 && (
                 <ol className="text-xs customer-muted space-y-1.5 w-full max-w-[220px]">
                   {processingSteps.map((s, i) => (

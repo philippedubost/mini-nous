@@ -265,6 +265,15 @@ input{font-family:inherit}
 .coming-soon-tag{display:inline-block;padding:6px 14px;border-radius:100px;background:rgba(255,255,255,.95);font-family:Quicksand,sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.08em;color:var(--dark);margin-bottom:12px}
 .coming-soon-copy h2{color:#fff;font-size:clamp(1.35rem,3vw,1.75rem);margin-bottom:8px}
 .coming-soon-copy p{color:rgba(255,255,255,.95);font-size:.9rem;line-height:1.65;margin:0}
+@media(max-width:768px){
+  .coming-soon{padding:48px 16px}
+  .coming-soon-inner{display:flex;flex-direction:column;border-radius:20px;overflow:visible;background:transparent}
+  .coming-soon-inner::after{display:none}
+  .coming-soon-img{border-radius:20px;box-shadow:0 16px 40px rgba(44,31,20,.12);filter:none;aspect-ratio:4/3}
+  .coming-soon-copy{position:static;inset:auto;padding:20px 0 0}
+  .coming-soon-copy-box{background:var(--dark);max-width:none;width:100%;border-radius:18px;padding:20px 22px}
+  .coming-soon-copy h2{color:#fff}
+}
 
 /* Hero mobile — avant le fold */
 .hero-mobile-rating{display:none;align-items:center;gap:8px;margin-bottom:8px;font-size:.78rem;color:var(--muted)}
@@ -447,6 +456,13 @@ const FAMILY_SHOWCASE = {
 
 const SHOWCASE_COUNTS = Object.keys(FAMILY_SHOWCASE).map(Number).sort((a, b) => a - b);
 
+/** Version affichage des tracés (évite le flou au downscale des sources pleine résolution). */
+function lineartDisplaySrc(url, { wide = false } = {}) {
+  if (!url || !/-lineart\.webp$/i.test(url)) return url;
+  const suffix = wide ? '-wide-thumb' : '-thumb';
+  return url.replace(/-lineart\.webp$/i, `-lineart${suffix}.webp`);
+}
+
 function getShowcaseForCount(faceCount) {
   const n = Number(faceCount) || 4;
   if (FAMILY_SHOWCASE[n]) return FAMILY_SHOWCASE[n];
@@ -481,7 +497,7 @@ function BrandLogo({ onClick, compact }) {
 function HeroMobilePeek({ showcase }) {
   const steps = [
     { src: showcase.photo, label: 'Photo', crop: true },
-    { src: showcase.lineart, label: 'Tracé', wide: true },
+    { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé', wide: true },
     { src: showcase.objet, label: 'Bois' },
   ];
   return (
@@ -538,7 +554,7 @@ function SizeReminder() {
 }
 
 function PackPhoto({ faceCount }) {
-  const src = getShowcaseForCount(faceCount).lineart;
+  const src = lineartDisplaySrc(getShowcaseForCount(faceCount).lineart);
   if (!src) return null;
   return (
     <div className="pack-photo">
@@ -787,7 +803,7 @@ function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, phot
   const landingClass = wideLineart && !vertical ? ' triptych-landing' : '';
   const steps = [
     ...(hidePhoto ? [] : [{ src: showcase.photo, label: stepLabels?.photo ?? 'Photo' }]),
-    { src: showcase.lineart, label: stepLabels?.lineart ?? 'Tracé', wide: wideLineart },
+    { src: lineartDisplaySrc(showcase.lineart, { wide: wideLineart }), label: stepLabels?.lineart ?? 'Tracé', wide: wideLineart },
     { src: showcase.objet, label: stepLabels?.objet ?? 'A la maison' },
   ];
   const dual = hidePhoto && steps.length === 2;

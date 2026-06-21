@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
+import LineartVersionPicker from './LineartVersionPicker'
 
-const DEFAULT_ISSUES = ['cheveux', 'visage', 'vetements', 'posture', 'proportions', 'accessoires']
-
-const ISSUE_LABELS = {
-  cheveux: 'Cheveux',
-  visage: 'Visage',
-  vetements: 'Vêtements',
-  posture: 'Posture',
-  proportions: 'Proportions',
-  accessoires: 'Accessoires',
-}
+const ADJUSTMENT_ISSUES = [
+  { id: 'cheveux', label: 'Cheveux' },
+  { id: 'habits', label: 'Habits' },
+  { id: 'expression', label: 'Expression du visage' },
+  { id: 'age_jeune', label: 'Trop jeune' },
+  { id: 'age_vieux', label: 'Trop âgé' },
+  { id: 'proportions', label: 'Proportions' },
+  { id: 'posture', label: 'Posture' },
+]
 
 function emptyChars(faceCount) {
   return Array.from({ length: faceCount }, (_, i) => ({
@@ -22,21 +22,28 @@ function emptyChars(faceCount) {
 
 export default function CharacterReviewPanel({
   faceCount,
+  lineartVersion = 1,
+  studio = {},
+  lineartVersions = [],
+  selectedVersionId,
   disabled,
-  regenRemaining,
-  onRegen,
-  personOk,
-  onPersonOkChange,
+  onAutoAdjust,
+  onManualRevision,
+  onSelectVersion,
   onValidate,
-  validateDisabled,
   validateBusy,
 }) {
+  const [mode, setMode] = useState('choice')
   const [chars, setChars] = useState(() => emptyChars(faceCount))
-  const [regenError, setRegenError] = useState(null)
+  const [submitError, setSubmitError] = useState(null)
+
+  const { canAutoAdjust, canManualAdjust, showVersionPicker } = studio
 
   useEffect(() => {
     setChars(emptyChars(faceCount))
-  }, [faceCount])
+    setMode('choice')
+    setSubmitError(null)
+  }, [faceCount, lineartVersion])
 
   const toggleIssue = (ci, issue) => {
     setChars(prev => prev.map((c, i) => {
@@ -47,124 +54,150 @@ export default function CharacterReviewPanel({
   }
 
   const filledFeedback = chars.filter(c => c.issues.length || c.freeText.trim())
-  const allValidated = faceCount > 0 && Array.from({ length: faceCount }, (_, i) => personOk[i]).every(Boolean)
 
-  const handleRegen = () => {
+  const submitAdjust = () => {
     if (!filledFeedback.length) {
-      setRegenError('Cochez ou commentez au moins un personnage à corriger.')
+      setSubmitError('Cochez au moins un point à revoir ou précisez une remarque.')
       return
     }
-    setRegenError(null)
-    onRegen?.(chars)
+    setSubmitError(null)
+    if (canManualAdjust) onManualRevision?.(chars)
+    else onAutoAdjust?.(chars)
   }
 
-  const issueBtn = (active) => active
-    ? 'text-[10px] px-2 py-1 rounded-full border bg-[#FAF0EB] border-[#C0684A] text-[#A85238] font-semibold'
-    : 'text-[10px] px-2 py-1 rounded-full border border-[#C4A882] text-[#9A8F88] hover:border-[#7A5C38]'
+  const versionHint = lineartVersion === 1
+    ? 'Première version — ajustement automatique possible une fois pour générer le tracé v2.'
+    : lineartVersion === 2
+      ? 'Deuxième version — un dernier ajustement possible, repris à la main par notre équipe (24 h).'
+      : 'Troisième version — choisissez la version préférée parmi v1, v2 et v3.'
 
-  return (
-    <div className="space-y-4">
-      <div className="customer-card-muted !p-4 space-y-3">
-        <p className="text-sm font-semibold text-[#2C1F14]">Valider personnage par personnage</p>
-        <p className="text-xs customer-muted">Cochez chaque figurine de gauche à droite avant de valider le tracé.</p>
-        <div className="flex flex-wrap gap-2">
-          {Array.from({ length: faceCount }, (_, i) => (
-            <label
-              key={i}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold cursor-pointer border transition-colors ${
-                personOk[i]
-                  ? 'bg-[#EBF4EC] border-[#4A8A52] text-[#2d5a34]'
-                  : 'bg-white border-[#C4A882] text-[#7A5C38]'
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="accent-[#4A8A52]"
-                checked={!!personOk[i]}
-                disabled={disabled}
-                onChange={e => onPersonOkChange(i, e.target.checked)}
-              />
-              Pers. {i + 1} validé ✓
-            </label>
-          ))}
-        </div>
-        {!allValidated && (
-          <p className="text-xs text-[#9A8F88]">
-            {Object.values(personOk).filter(Boolean).length}/{faceCount} personnage{faceCount > 1 ? 's' : ''} validé{faceCount > 1 ? 's' : ''}
+  if (mode === 'choice') {
+    return (
+      <div className="customer-card-muted !p-5 space-y-4">
+        <div className="text-center space-y-2">
+          <p className="text-sm font-semibold text-[#2C1F14]">
+            Tracé v{lineartVersion} prêt
           </p>
+          <p className="text-xs customer-muted">{versionHint}</p>
+          {lineartVersion >= 1 && (
+            <p className="text-xs customer-muted">
+              Personnages numérotés de gauche à droite sur l&apos;image ci-dessus.
+            </p>
+          )}
+        </div>
+
+        {showVersionPicker && lineartVersions.length > 0 && (
+          <LineartVersionPicker
+            versions={lineartVersions}
+            selectedVersionId={selectedVersionId}
+            onSelect={onSelectVersion}
+            disabled={disabled || validateBusy}
+          />
         )}
-        {onValidate && (
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onValidate}
-            disabled={validateDisabled || validateBusy || !allValidated}
+            disabled={disabled || validateBusy || (showVersionPicker && !selectedVersionId)}
             className="customer-btn-clay w-full"
           >
-            {validateBusy ? 'Validation…' : '✓ Valider ce tracé → impression'}
+            {validateBusy ? 'Validation…' : '✓ Valider'}
           </button>
-        )}
-      </div>
-
-      <div className="customer-card-muted !p-4 space-y-4">
-        <div>
-          <h3 className="font-semibold text-sm text-[#2C1F14]">Retours pour regénérer (v2, v3…)</h3>
-          <p className="text-xs customer-muted mt-1">
-            De gauche à droite — ces retours sont envoyés à l&apos;IA pour la prochaine version.
-          </p>
+          {(canAutoAdjust || canManualAdjust) && (
+            <button
+              type="button"
+              onClick={() => setMode('adjust')}
+              disabled={disabled || validateBusy}
+              className="customer-btn-ghost w-full"
+            >
+              Ajuster
+            </button>
+          )}
         </div>
 
-        <div className="customer-person-row">
-          {chars.map((c, ci) => (
-            <div key={c.index} className="customer-person-col">
-              <p className="text-xs font-bold text-[#C0684A]">{ci + 1} · gauche → droite</p>
-              <input
-                type="text"
-                value={c.label}
-                disabled={disabled}
-                onChange={e => setChars(prev => prev.map((x, i) => i === ci ? { ...x, label: e.target.value } : x))}
-                className="w-full text-xs font-semibold bg-transparent border-b border-[#C4A882] pb-1 text-[#2C1F14] outline-none focus:border-[#C0684A]"
-                placeholder={`Pers. ${ci + 1}`}
-              />
-              <div className="flex flex-wrap gap-1">
-                {DEFAULT_ISSUES.map(issue => (
-                  <button
-                    key={issue}
-                    type="button"
+        {canManualAdjust && (
+          <p className="text-xs customer-muted text-center">
+            Dernier ajustement — reprise manuelle par l&apos;équipe MiniNous sous 24 h.
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="customer-card-muted !p-4 space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-semibold text-sm text-[#2C1F14]">
+            {canManualAdjust ? 'Dernier ajustement — révision équipe' : 'Ajuster le tracé v1'}
+          </h3>
+          <p className="text-xs customer-muted mt-1">
+            {canManualAdjust
+              ? 'Cochez ce qui doit être revu. Notre équipe reprendra le tracé à la main (tracé v3 sous 24 h).'
+              : 'Vos retours seront compilés pour regénérer automatiquement le tracé v2.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => { setMode('choice'); setSubmitError(null) }}
+          className="text-xs customer-link shrink-0"
+        >
+          ← Retour
+        </button>
+      </div>
+
+      <div className="customer-person-row customer-adjust-table">
+        {chars.map((c, ci) => (
+          <div key={c.index} className="customer-person-col">
+            <p className="text-xs font-bold text-[#C0684A] text-center">{ci + 1}</p>
+            <p className="text-[10px] customer-muted text-center mb-2">Pers. {ci + 1}</p>
+            <p className="text-[10px] font-semibold text-[#7A5C38] mb-1.5">À revoir…</p>
+            <div className="space-y-1.5">
+              {ADJUSTMENT_ISSUES.map(({ id, label }) => (
+                <label
+                  key={id}
+                  className="flex items-start gap-2 text-[11px] text-[#2C1F14] cursor-pointer leading-tight"
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-[#C0684A] mt-0.5 shrink-0"
+                    checked={c.issues.includes(id)}
                     disabled={disabled}
-                    onClick={() => toggleIssue(ci, issue)}
-                    className={issueBtn(c.issues.includes(issue))}
-                  >
-                    {ISSUE_LABELS[issue]}
-                  </button>
-                ))}
-              </div>
+                    onChange={() => toggleIssue(ci, id)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+            <label className="block mt-3">
+              <span className="text-[10px] font-semibold text-[#7A5C38]">Autre remarque</span>
               <textarea
                 value={c.freeText}
                 disabled={disabled}
                 onChange={e => setChars(prev => prev.map((x, i) => i === ci ? { ...x, freeText: e.target.value } : x))}
                 rows={2}
-                placeholder="Commentaire…"
-                className="customer-input text-xs !py-2 resize-none"
+                placeholder="Précisez si besoin…"
+                className="customer-input text-xs !py-2 resize-none mt-1 w-full"
               />
-            </div>
-          ))}
-        </div>
-
-        {regenError && <p className="text-xs text-[#8A4030]">{regenError}</p>}
-
-        {(regenRemaining == null || regenRemaining > 0) && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={handleRegen}
-            className="customer-btn-ghost w-full"
-          >
-            {regenRemaining == null
-              ? '↻ Regénérer avec mes retours'
-              : `↻ Regénérer avec mes retours (${regenRemaining} restante${regenRemaining > 1 ? 's' : ''})`}
-          </button>
-        )}
+            </label>
+          </div>
+        ))}
       </div>
+
+      {submitError && <p className="text-xs text-[#8A4030]">{submitError}</p>}
+
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={submitAdjust}
+        className="customer-btn-clay w-full"
+      >
+        {canManualAdjust
+          ? '↻ Envoyer à l\'équipe MiniNous (24 h)'
+          : '↻ Regénérer le tracé v2'}
+      </button>
     </div>
   )
 }

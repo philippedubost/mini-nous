@@ -128,6 +128,17 @@ export async function submitRevision(token, characters, bearerToken) {
   })
 }
 
+export async function selectLineartVersion(token, versionId, bearerToken) {
+  return orderAction(token, 'select_lineart', bearerToken, { versionId })
+}
+
+export async function publishTeamLineart(generationId) {
+  return apiJson('/api/generations', {
+    method: 'PATCH',
+    body: JSON.stringify({ id: generationId, action: 'publish_team_lineart' }),
+  })
+}
+
 export async function updateGeneration(id, { status, errorMessage, settings } = {}) {
   const { generation } = await apiJson('/api/generations', {
     method: 'PATCH',
@@ -169,6 +180,17 @@ export async function uploadAsset(generationId, assetType, payload = {}) {
 export async function fetchGenerations() {
   const { generations } = await apiJson('/api/generations')
   return generations
+}
+
+export async function fetchAdminBoard() {
+  return apiJson('/api/admin-board')
+}
+
+export async function updateAdminWorkflow(orderId, workflowStatus) {
+  return apiJson('/api/admin-board', {
+    method: 'PATCH',
+    body: JSON.stringify({ orderId, workflowStatus }),
+  })
 }
 
 export async function fetchProductionWeeks() {

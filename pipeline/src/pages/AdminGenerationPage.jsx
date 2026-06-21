@@ -12,6 +12,7 @@ import { regenerateLaserSvg } from '../lib/regenerateLaser'
 import { runFalStep } from '../lib/fal'
 import {
   fetchGeneration, selectVersion, deleteVersion, uploadAsset, urlMapFromSteps, updateGeneration,
+  publishTeamLineart,
 } from '../lib/storage'
 
 const STATUS_STYLES = {
@@ -43,6 +44,7 @@ function busyLabel(busy) {
   if (busy === 'extraction') return 'Extraction des contours…'
   if (busy === 'laser_svg') return 'Génération SVG laser…'
   if (busy === 'select') return 'Changement de version…'
+  if (busy === 'publish') return 'Publication client…'
   if (busy === 'delete') return 'Suppression…'
   return 'Traitement…'
 }
@@ -130,6 +132,20 @@ export default function AdminGenerationPage() {
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  const handlePublishTeamLineart = async () => {
+    if (busy) return
+    setBusy('publish')
+    setError(null)
+    try {
+      await publishTeamLineart(id)
+      await load({ silent: true })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const handleSelectVersion = async (versionId) => {
     if (busy) return
@@ -428,6 +444,25 @@ export default function AdminGenerationPage() {
       </div>
 
       <GenerationHero steps={data.steps} />
+
+      {gen.order_id && (versionsByType.step2?.length ?? 0) >= 3 && (
+        <div className="rounded-xl border border-emerald-800/40 bg-emerald-950/20 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-emerald-200">Publication client · tracé v3</p>
+            <p className="text-xs text-stone-500">
+              Envoie l&apos;e-mail de choix entre v1, v2 et v3, puis rouvre le studio client.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={handlePublishTeamLineart}
+            className="rounded-lg bg-emerald-700/80 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+          >
+            {busy === 'publish' ? 'Publication…' : 'Publier v3 au client'}
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">{error}</div>

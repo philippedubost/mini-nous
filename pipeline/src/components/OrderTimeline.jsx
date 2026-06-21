@@ -1,7 +1,7 @@
 const STEPS = [
   { key: 'paid', label: 'Payé' },
   { key: 'lineart', label: 'Tracé' },
-  { key: 'approved', label: 'Validé' },
+  { key: 'approved', label: 'Prêt à fabriquer' },
   { key: 'shipped', label: 'Expédié' },
 ]
 
