@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const dist = join(root, 'dist')
+const pipelineDist = join(root, 'pipeline', 'dist')
 
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
@@ -15,6 +16,14 @@ if (existsSync(join(root, 'images'))) {
 }
 
 execSync('npm run build', { cwd: join(root, 'pipeline'), stdio: 'inherit', shell: true })
-cpSync(join(root, 'pipeline', 'dist'), join(dist, 'pipeline'), { recursive: true })
 
-console.log('✓ dist/ prêt (landing + pipeline)')
+mkdirSync(join(dist, 'pipeline'), { recursive: true })
+mkdirSync(join(dist, 'admin'), { recursive: true })
+
+if (existsSync(join(pipelineDist, 'assets'))) {
+  cpSync(join(pipelineDist, 'assets'), join(dist, 'assets'), { recursive: true })
+}
+cpSync(join(pipelineDist, 'index.html'), join(dist, 'pipeline', 'index.html'))
+cpSync(join(pipelineDist, 'admin.html'), join(dist, 'admin', 'index.html'))
+
+console.log('✓ dist/ prêt (landing + pipeline + admin)')

@@ -101,7 +101,8 @@ async function main() {
   console.log('')
   console.log(`  Mini-Nous → http://localhost:${PORT}`)
   console.log(`    /              landing`)
-  console.log(`    /pipeline/     générateur + labo + admin`)
+  console.log(`    /pipeline/     studio client + compte`)
+  console.log(`    /admin/        admin + carte produit`)
   console.log('')
 
   const shutdown = () => { vite.kill(); process.exit(0) }

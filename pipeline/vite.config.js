@@ -1,13 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'node:path'
 
 const DEV_PORT = Number(process.env.VITE_PORT) || 3400
 const API_PORT = Number(process.env.MINI_NOUS_API_PORT) || 3333
 
 export default defineConfig({
-  base: '/pipeline/',
+  base: '/',
   plugins: [react()],
   logLevel: 'error',
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html'),
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: DEV_PORT,

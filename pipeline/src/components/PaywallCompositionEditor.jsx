@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { updatePaywallOrder } from '../lib/storage'
+import { updatePaywallOrder, updateOrderComposition } from '../lib/storage'
 
 function CounterRow({ label, value, min, max, onChange, hint, disabled }) {
   return (
@@ -35,12 +35,16 @@ function CounterRow({ label, value, min, max, onChange, hint, disabled }) {
 
 export default function PaywallCompositionEditor({
   orderToken,
+  bearerToken = null,
   faceCount,
   childCount = 0,
   maxFaces = 8,
   amountEur,
   onUpdated,
+  variant = 'paywall',
+  disabled = false,
 }) {
+  const isStudio = variant === 'studio'
   const max = maxFaces
   const [localFaceCount, setLocalFaceCount] = useState(faceCount)
   const [localChildCount, setLocalChildCount] = useState(childCount)
@@ -58,23 +62,29 @@ export default function PaywallCompositionEditor({
   const adults = total - children
 
   const persist = useCallback((nextFaceCount, nextChildCount) => {
+    if (disabled) return
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setBusy(true)
       setError(null)
       try {
-        const { order } = await updatePaywallOrder(orderToken, {
-          faceCount: nextFaceCount,
-          childCount: nextChildCount,
-        })
-        onUpdated?.(order)
+        const result = isStudio
+          ? await updateOrderComposition(orderToken, {
+            faceCount: nextFaceCount,
+            childCount: nextChildCount,
+          }, bearerToken)
+          : await updatePaywallOrder(orderToken, {
+            faceCount: nextFaceCount,
+            childCount: nextChildCount,
+          })
+        onUpdated?.(result.order)
       } catch (e) {
         setError(e.message)
       } finally {
         setBusy(false)
       }
     }, 350)
-  }, [orderToken, onUpdated])
+  }, [orderToken, bearerToken, onUpdated, isStudio, disabled])
 
   useEffect(() => () => clearTimeout(debounceRef.current), [])
 
@@ -96,9 +106,13 @@ export default function PaywallCompositionEditor({
   return (
     <div className="customer-card-muted !p-4 space-y-3">
       <div>
-        <p className="text-sm font-semibold text-[#2C1F14]">Composition de la commande</p>
+        <p className="text-sm font-semibold text-[#2C1F14]">
+          {isStudio ? 'Composition de votre photo' : 'Composition de la commande'}
+        </p>
         <p className="text-xs customer-muted mt-1">
-          Ajustez le nombre de figurines avant de payer.
+          {isStudio
+            ? 'Ajustez adultes et enfants si besoin — avant validation du tracé.'
+            : 'Ajustez le nombre de figurines avant de payer.'}
         </p>
       </div>
 
@@ -108,7 +122,7 @@ export default function PaywallCompositionEditor({
         min={children === 0 ? 1 : 0}
         max={max - children}
         onChange={setAdults}
-        disabled={busy}
+        disabled={busy || disabled}
       />
       <CounterRow
         label="Enfants"
@@ -117,7 +131,7 @@ export default function PaywallCompositionEditor({
         max={max - adults}
         hint="Moins de 12 ans"
         onChange={setChildren}
-        disabled={busy}
+        disabled={busy || disabled}
       />
 
       <div className="flex justify-between items-center gap-3 pt-2 px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#E8DCC8]">
@@ -125,7 +139,7 @@ export default function PaywallCompositionEditor({
         <span className="text-lg font-bold text-[#C0684A]">{total}</span>
       </div>
 
-      {amountEur != null && (
+      {amountEur != null && !isStudio && (
         <p className="text-xs customer-muted text-center">
           Montant actuel : <strong className="text-[#2C1F14]">{amountEur} €</strong>
           {busy ? ' · mise à jour…' : ''}

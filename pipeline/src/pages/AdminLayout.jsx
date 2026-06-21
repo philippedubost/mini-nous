@@ -4,9 +4,10 @@ import CustomerLayout from '../components/CustomerLayout'
 import { checkAdminPassword, isAdminAuthed, setAdminAuthed } from '../lib/adminAuth'
 
 const NAV = [
-  { to: '/admin', label: 'Commandes', end: true },
-  { to: '/admin/generations', label: 'Générations' },
-  { to: '/admin/settings', label: 'Paramètres' },
+  { to: '/', label: 'Accueil', end: true },
+  { to: '/commandes', label: 'Commandes' },
+  { to: '/generations', label: 'Générations' },
+  { to: '/settings', label: 'Paramètres' },
   { to: '/lab/trace', label: 'Labo trace' },
 ]
 
@@ -15,7 +16,7 @@ function AdminLogin() {
   const [error, setError] = useState(null)
 
   return (
-    <CustomerLayout center title="Admin MiniNous" subtitle="Accès pipeline interne">
+    <CustomerLayout center title="Admin MiniNous" subtitle="Carte produit · production · labo">
       <form
         className="customer-card w-full max-w-sm space-y-4"
         onSubmit={(e) => {

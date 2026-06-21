@@ -149,7 +149,7 @@ export default function TestFlowPage() {
     <CustomerLayout
       title="Test E2E MiniNous"
       subtitle="Upload placeholder → Stripe test → tracé → validation → expédition"
-      navRight={<Link to="/admin" className="customer-link text-xs">Admin →</Link>}
+      navRight={<a href="/admin" className="customer-link text-xs">Admin →</a>}
     >
       <div className="space-y-4 max-w-lg mx-auto">
         <div className="customer-card-muted !p-4 text-sm space-y-2">

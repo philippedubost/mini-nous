@@ -637,12 +637,12 @@ export default function TraceLabPage() {
               </p>
             )}
             {generationId && (
-              <Link
-                to={`/admin/g/${generationId}`}
+              <a
+                href={`/admin/g/${generationId}`}
                 className="block text-xs text-stone-500 hover:text-stone-300"
               >
                 Ouvrir dans l&apos;admin →
-              </Link>
+              </a>
             )}
           </div>
 

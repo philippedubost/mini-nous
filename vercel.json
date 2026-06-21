@@ -3,9 +3,16 @@
   "installCommand": "npm install && cd pipeline && npm install",
   "outputDirectory": "dist",
   "framework": null,
+  "redirects": [
+    { "source": "/pipeline/admin", "destination": "/admin", "permanent": true },
+    { "source": "/pipeline/admin/:path*", "destination": "/admin/:path*", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/:route((?!stripe-webhook)[^/]+)", "destination": "/api/index?route=:route" },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/:path*", "destination": "/admin/index.html" },
     { "source": "/pipeline", "destination": "/pipeline/index.html" },
-    { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" }
+    { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" },
+    { "source": "/assets/:path*", "destination": "/assets/:path*" }
   ]
 }

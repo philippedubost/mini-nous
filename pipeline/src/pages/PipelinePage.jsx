@@ -182,12 +182,12 @@ export default function PipelinePage() {
           >
             Labo trace
           </Link>
-          <Link
-            to="/admin"
+          <a
+            href="/admin"
             className="text-xs text-stone-500 hover:text-stone-300 border border-stone-700 rounded-lg px-3 py-1.5"
           >
             Admin
-          </Link>
+          </a>
         </div>
 
         {phase === 'upload' && (

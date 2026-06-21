@@ -9,11 +9,6 @@ import OrderStatusPage from './pages/OrderStatusPage'
 import AccountPage from './pages/AccountPage'
 import AccountLoginPage from './pages/AccountLoginPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
-import AdminLayout from './pages/AdminLayout'
-import AdminKanbanPage from './pages/AdminKanbanPage'
-import AdminGenerationsPage from './pages/AdminGenerationsPage'
-import AdminSettingsPage from './pages/AdminSettingsPage'
-import AdminGenerationPage from './pages/AdminGenerationPage'
 import TraceLabPage from './pages/TraceLabPage'
 import LabLayout from './pages/LabLayout'
 import NewOrderPage from './pages/NewOrderPage'
@@ -43,12 +38,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/paiement/reussi" element={<PaymentSuccessPage />} />
           <Route path="/paiement/annule" element={<PaymentCancelPage />} />
           <Route path="/test" element={<TestFlowPage />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminKanbanPage />} />
-            <Route path="generations" element={<AdminGenerationsPage />} />
-            <Route path="settings" element={<AdminSettingsPage />} />
-            <Route path="g/:id" element={<AdminGenerationPage />} />
-          </Route>
           <Route path="*" element={<Navigate to="/compte" replace />} />
         </Routes>
       </BrowserRouter>

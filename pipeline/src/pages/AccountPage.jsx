@@ -82,9 +82,9 @@ export default function AccountPage() {
       navRight={(
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <Link to="/admin" className="customer-badge customer-badge-green text-[10px]">
+            <a href="/admin" className="customer-badge customer-badge-green text-[10px]">
               Admin
-            </Link>
+            </a>
           )}
           <button type="button" onClick={signOut} className="customer-link text-xs bg-transparent border-0 cursor-pointer">
             Déconnexion
@@ -176,7 +176,7 @@ export default function AccountPage() {
 
       <div className="flex flex-wrap justify-center gap-4 pt-2">
         <a href="/" className="customer-link">← Boutique</a>
-        {isAdmin && <Link to="/admin" className="customer-link">Pipeline admin →</Link>}
+        {isAdmin && <a href="/admin" className="customer-link">Admin →</a>}
       </div>
     </CustomerLayout>
   )

@@ -243,9 +243,9 @@ export default function NewOrderPage() {
                   Suivre la commande
                 </Link>
                 {order?.generationId && (
-                  <Link to={`/admin/g/${order.generationId}`} className="customer-btn-clay !py-2 !px-4 !text-xs">
+                  <a href={`/admin/g/${order.generationId}`} className="customer-btn-clay !py-2 !px-4 !text-xs">
                     Ouvrir dans l&apos;admin
-                  </Link>
+                  </a>
                 )}
               </div>
             </>

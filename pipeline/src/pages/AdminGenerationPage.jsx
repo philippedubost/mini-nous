@@ -361,7 +361,7 @@ export default function AdminGenerationPage() {
   if (error && !data) {
     return (
       <div className="space-y-4">
-        <Link to="/admin" className="text-sm text-stone-500 hover:text-stone-300">← Générations</Link>
+        <Link to="/generations" className="text-sm text-stone-500 hover:text-stone-300">← Générations</Link>
         <p className="text-red-400">{error}</p>
       </div>
     )
@@ -382,7 +382,7 @@ export default function AdminGenerationPage() {
       )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/admin" className="text-sm text-stone-500 hover:text-stone-300">← Générations</Link>
+          <Link to="/generations" className="text-sm text-stone-500 hover:text-stone-300">← Générations</Link>
           <h2 className="text-xl font-bold text-stone-100 mt-1">{formatDate(gen.created_at)}</h2>
           <p className="text-sm text-stone-500 mt-1">
             {gen.face_count != null ? `${gen.face_count} visages · ` : ''}

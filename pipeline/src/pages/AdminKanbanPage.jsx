@@ -79,7 +79,7 @@ function OrderCard({ order, dragging, onDragStart, onDragEnd }) {
 
       <div className="flex flex-wrap gap-2 pt-1">
         {order.generationId && (
-          <Link to={`/admin/g/${order.generationId}`} className="text-[11px] font-semibold text-amber-400 hover:text-amber-300" onClick={e => e.stopPropagation()}>
+          <Link to={`/g/${order.generationId}`} className="text-[11px] font-semibold text-amber-400 hover:text-amber-300" onClick={e => e.stopPropagation()}>
             Pipeline →
           </Link>
         )}
@@ -371,7 +371,7 @@ export default function AdminKanbanPage() {
             </>
           )}
           <span>·</span>
-          <Link to="/admin/generations" className="text-amber-400 hover:underline">Générations & batch →</Link>
+          <Link to="/generations" className="text-amber-400 hover:underline">Générations & batch →</Link>
         </div>
       )}
 

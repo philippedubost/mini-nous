@@ -3,6 +3,7 @@ import Upload from './Upload'
 import StudioWorkspace from './StudioWorkspace'
 import StudioFlowSteps from './StudioFlowSteps'
 import CharacterReviewPanel from './CharacterReviewPanel'
+import PaywallCompositionEditor from './PaywallCompositionEditor'
 import { useSettings } from '../context/SettingsContext'
 import { buildPrompt1, resolveImageUrls, falStepFormat, fetchReferenceBlob } from '../lib/settings'
 import { buildMegaRegenPrompt } from '../lib/regenPrompt'
@@ -315,8 +316,23 @@ export default function StudioCustomerFlow({
 
   if (!order) return null
 
+  const showCompositionEditor = order?.isPaid && order?.editable && !order?.isAdminView
+
   return (
     <div className="space-y-4">
+      {showCompositionEditor && (
+        <PaywallCompositionEditor
+          variant="studio"
+          orderToken={orderToken}
+          bearerToken={bearerToken}
+          faceCount={order.faceCount}
+          childCount={order.childCount ?? 0}
+          maxFaces={order.maxFaces ?? 8}
+          onUpdated={applyOrder}
+          disabled={busy}
+        />
+      )}
+
       <StudioFlowSteps order={order} lineartUrl={lineartUrl} busy={busy} phase={phase} />
 
       <StudioWorkspace

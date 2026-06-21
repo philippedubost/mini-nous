@@ -94,6 +94,10 @@ export async function replacePaywallPhoto(accessToken, photoBase64) {
   return updatePaywallOrder(accessToken, { photoBase64 })
 }
 
+export async function updateOrderComposition(token, { faceCount, childCount }, bearerToken) {
+  return orderAction(token, 'update_composition', bearerToken, { faceCount, childCount })
+}
+
 export async function updatePaywallOrder(accessToken, { faceCount, childCount, photoBase64 } = {}) {
   return apiJson('/api/order-start', {
     method: 'PATCH',

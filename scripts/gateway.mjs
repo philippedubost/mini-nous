@@ -54,6 +54,18 @@ function serveStatic(req, res) {
   res.end(readFileSync(filePath))
 }
 
+function proxySpa(req, res, vitePort, { stripPrefix, spaFile }) {
+  const raw = req.url?.split('?')[0] || '/'
+  const query = req.url?.includes('?') ? `?${req.url.split('?')[1]}` : ''
+  let rest = raw
+  if (stripPrefix && raw.startsWith(stripPrefix)) {
+    rest = raw.slice(stripPrefix.length) || '/'
+  }
+  const hasExt = extname(rest) && extname(rest) !== ''
+  req.url = hasExt ? `${rest}${query}` : `${spaFile}${query}`
+  return proxy(req, res, vitePort)
+}
+
 export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
   async function resolveHandler(name) {
     if (devReload) {
@@ -86,7 +98,15 @@ export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
       }
       return
     }
-    if (path.startsWith('/pipeline')) return proxy(req, res, vitePort)
+    if (path.startsWith('/admin')) {
+      return proxySpa(req, res, vitePort, { stripPrefix: '/admin', spaFile: '/admin.html' })
+    }
+    if (path.startsWith('/pipeline')) {
+      return proxySpa(req, res, vitePort, { stripPrefix: '/pipeline', spaFile: '/index.html' })
+    }
+    if (path.startsWith('/assets/')) {
+      return proxy(req, res, vitePort)
+    }
     return serveStatic(req, res)
   })
 

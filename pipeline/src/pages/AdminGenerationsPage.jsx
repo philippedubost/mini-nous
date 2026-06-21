@@ -247,7 +247,7 @@ function WeekEditionPanel({ weekKey, onWeekChange, onWeekUpdated }) {
                           {assignBusyId === gen.id ? '…' : 'Ajouter'}
                         </button>
                         <Link
-                          to={`/admin/g/${gen.id}`}
+                          to={`/g/${gen.id}`}
                           className="text-[10px] text-center text-amber-500/90 hover:text-amber-400"
                         >
                           Ouvrir
@@ -285,7 +285,7 @@ function WeekEditionPanel({ weekKey, onWeekChange, onWeekUpdated }) {
                       <td className="py-2 pr-3">{o.hasLaserSvg ? '✓' : '—'}</td>
                       <td className="py-2 pr-3">
                         {o.generationId
-                          ? <Link to={`/admin/g/${o.generationId}`} className="text-amber-500 hover:text-amber-400">Ouvrir</Link>
+                          ? <Link to={`/g/${o.generationId}`} className="text-amber-500 hover:text-amber-400">Ouvrir</Link>
                           : '—'}
                       </td>
                       <td className="py-2">
@@ -627,7 +627,7 @@ export default function AdminGenerationsPage() {
                   placeholder batch
                 </span>
               )}
-              <Link to={`/admin/g/${gen.id}`} className="block w-full h-full">
+              <Link to={`/g/${gen.id}`} className="block w-full h-full">
                 {thumbFor(gen)
                   ? (
                     <ImageWithZoom
@@ -644,7 +644,7 @@ export default function AdminGenerationsPage() {
             <div className={`space-y-1.5 ${thumbSize === 'small' ? 'p-2' : 'p-3'}`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <Link
-                  to={`/admin/g/${gen.id}`}
+                  to={`/g/${gen.id}`}
                   className={`font-medium text-stone-200 hover:text-stone-100 ${thumbSize === 'small' ? 'text-xs' : 'text-sm'}`}
                 >
                   {formatDate(gen.created_at)}
