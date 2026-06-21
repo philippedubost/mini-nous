@@ -172,6 +172,14 @@ input{font-family:inherit}
 .paywall-composition-card{padding:0 !important;overflow:hidden}
 .paywall-composition-card .paywall-card-body{padding:14px 16px}
 .paywall-card-photo-header{padding:16px;background:var(--bark-pale);border-bottom:1.5px solid var(--bark-light);min-height:140px;display:flex;align-items:center;justify-content:center}
+.paywall-photo-overlay{position:relative;display:inline-block;max-width:min(100%,360px);border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(44,31,20,.08);line-height:0}
+.paywall-photo-overlay img{max-height:200px;width:100%;height:auto;object-fit:contain;display:block;vertical-align:middle}
+.paywall-face-boxes{position:absolute;inset:0;pointer-events:none;border-radius:16px;overflow:hidden}
+.paywall-face-boxes::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 10px,rgba(192,104,74,.028) 10px,rgba(192,104,74,.028) 11px);pointer-events:none;opacity:.85}
+.paywall-face-box{position:absolute;border:1.5px dashed rgba(192,104,74,.52);border-radius:10px;background:rgba(250,247,242,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);animation:paywallBoxIn .45s cubic-bezier(.4,0,.2,1) both}
+.paywall-face-box:nth-child(2){animation-delay:.07s}.paywall-face-box:nth-child(3){animation-delay:.14s}.paywall-face-box:nth-child(4){animation-delay:.21s}
+.paywall-face-box:nth-child(5){animation-delay:.28s}.paywall-face-box:nth-child(6){animation-delay:.35s}.paywall-face-box:nth-child(7){animation-delay:.42s}.paywall-face-box:nth-child(8){animation-delay:.49s}
+@keyframes paywallBoxIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 .paywall-card-photo-header img{max-height:200px;max-width:min(100%,360px);width:auto;height:auto;object-fit:contain;display:block;border-radius:16px;box-shadow:0 4px 16px rgba(44,31,20,.08)}
 .paywall-shipping-note{font-size:.72rem;color:var(--muted);margin-top:8px;text-align:right;line-height:1.5}
 .triptych-dual{grid-template-columns:1fr auto 1fr !important;max-width:640px}
@@ -201,7 +209,8 @@ input{font-family:inherit}
 .social-row{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:28px}
 .social-link{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid var(--bark-light);color:var(--dark);transition:all var(--t);box-shadow:0 4px 16px rgba(44,31,20,.08)}
 .social-link:hover{border-color:var(--clay);color:var(--clay);transform:translateY(-2px);box-shadow:0 8px 24px rgba(192,104,74,.18)}
-.social-link svg{width:22px;height:22px;fill:currentColor}
+.social-link svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.social-link svg .icon-fill{fill:currentColor;stroke:none}
 
 /* Démo photos + échelle */
 .demo-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px}
@@ -272,6 +281,17 @@ input{font-family:inherit}
 
 /* Hero mobile — avant le fold */
 .hero-mobile-rating{display:none;align-items:center;gap:8px;margin-bottom:8px;font-size:.78rem;color:var(--muted)}
+.hero-cta-meta{margin-top:14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:420px}
+.hero-price-hint{margin:0;font-size:.82rem;color:var(--muted);line-height:1.55}
+.hero-price-hint strong{color:var(--dark);font-weight:700}
+.hero-insta-link{display:inline-flex;align-items:center;gap:7px;font-size:.8rem;font-weight:600;color:var(--clay);text-decoration:none;transition:opacity .15s ease}
+.hero-insta-link:hover{opacity:.82;text-decoration:underline}
+.hero-insta-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.hero-insta-link .icon-fill{fill:currentColor;stroke:none}
+@media(max-width:768px){
+  .hero-cta-meta{margin-top:10px;align-items:center;text-align:center;max-width:none}
+  .hero-insta-link{justify-content:center}
+}
 .hero-mobile-rating .stars{color:#F5C518;font-size:.72rem}
 .hero-mobile-peek{display:none;margin-top:2px}
 .hero-peek-label{font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:8px}
@@ -490,10 +510,28 @@ function BrandLogo({ onClick, compact }) {
   );
 }
 
+function HeroCtaMeta() {
+  return (
+    <div className="hero-cta-meta anim-in">
+      <p className="hero-price-hint">
+        <strong>dès 19,90 €</strong> · personnalisation gratuite (adultes / enfants) · tracé validé après paiement
+      </p>
+      <a className="hero-insta-link" href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/>
+          <circle cx="12" cy="12" r="4.2"/>
+          <circle className="icon-fill" cx="17.2" cy="6.8" r="1.1"/>
+        </svg>
+        @atelier.mininous sur Instagram →
+      </a>
+    </div>
+  );
+}
+
 function HeroMobilePeek({ showcase }) {
   const steps = [
     { src: showcase.photo, label: 'Photo', crop: true },
-    { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé', wide: true },
+    { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé auto (studio en ligne)', wide: true },
     { src: showcase.objet, label: 'Bois' },
   ];
   return (
@@ -826,12 +864,14 @@ function SocialLinks() {
       <a className="social-link" href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer"
         aria-label="Instagram Les MiniNous">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.97.24 2.427.403a4.92 4.92 0 0 1 1.775 1.153 4.92 4.92 0 0 1 1.153 1.775c.163.457.349 1.257.403 2.427.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.054 1.17-.24 1.97-.403 2.427a4.92 4.92 0 0 1-1.153 1.775 4.92 4.92 0 0 1-1.775 1.153c-.457.163-1.257.349-2.427.403-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.054-1.97-.24-2.427-.403a4.92 4.92 0 0 1-1.775-1.153 4.92 4.92 0 0 1-1.153-1.775c-.163-.457-.349-1.257-.403-2.427C2.175 15.747 2.163 15.367 2.163 12s.012-3.584.07-4.85c.054-1.17.24-1.97.403-2.427a4.92 4.92 0 0 1 1.153-1.775 4.92 4.92 0 0 1 1.775-1.153c.457-.163 1.257-.349 2.427-.403C8.416 2.175 8.796 2.163 12 2.163zm0 1.622c-3.16 0-3.533.012-4.773.068-1.002.046-1.548.218-1.91.363a3.32 3.32 0 0 0-1.198.781 3.32 3.32 0 0 0-.781 1.198c-.145.362-.317.908-.363 1.91-.056 1.24-.068 1.613-.068 4.773s.012 3.533.068 4.773c.046 1.002.218 1.548.363 1.91.17.428.4.804.781 1.198.394.381.77.611 1.198.781.362.145.908.317 1.91.363 1.24.056 1.613.068 4.773.068s3.533-.012 4.773-.068c1.002-.046 1.548-.218 1.91-.363a3.32 3.32 0 0 0 1.198-.781 3.32 3.32 0 0 0 .781-1.198c.145-.362.317-.908.363-1.91.056-1.24.068-1.613.068-4.773s-.012-3.533-.068-4.773c-.046-1.002-.218-1.548-.363-1.91a3.32 3.32 0 0 0-.781-1.198 3.32 3.32 0 0 0-1.198-.781c-.362-.145-.908-.317-1.91-.363-1.24-.056-1.613-.068-4.773-.068zM12 7.378a4.622 4.622 0 1 1 0 9.244 4.622 4.622 0 0 1 0-9.244zm0 1.622a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm5.804-3.13a1.08 1.08 0 1 1-2.16 0 1.08 1.08 0 0 1 2.16 0z"/>
+          <rect x="3" y="3" width="18" height="18" rx="5"/>
+          <circle cx="12" cy="12" r="4.2"/>
+          <circle className="icon-fill" cx="17.2" cy="6.8" r="1.1"/>
         </svg>
       </a>
       <a className="social-link" href={SOCIAL_LINKS.tiktok} target="_blank" rel="noopener noreferrer"
         aria-label="TikTok Les MiniNous">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" stroke="none">
           <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.11V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
         </svg>
       </a>
@@ -856,9 +896,15 @@ function UgcFeed() {
 
 function SizeScaleBanner() {
   return (
-    <div className="size-banner" style={{ marginTop: 0 }}>
-      <img src={IMG.size} alt="Figurines MiniNous — échelle 1/10 environ, 18 cm pour 1 m 80"/>
-    </div>
+    <>
+      <p style={{ fontSize:'.92rem', color:'var(--muted)', textAlign:'center', lineHeight:1.75, marginBottom:16 }}>
+        Découpe laser en contreplaqué pin <strong style={{ color:'var(--dark)' }}>5 mm</strong> d&apos;épaisseur.
+        {' '}Échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ — 18 cm pour 1 m 80.
+      </p>
+      <div className="size-banner" style={{ marginTop: 0 }}>
+        <img src={IMG.size} alt="Figurines MiniNous — échelle 1/10 environ, 18 cm pour 1 m 80"/>
+      </div>
+    </>
   );
 }
 
@@ -928,21 +974,49 @@ async function loadFaceApi() {
   faceApiReady = true;
 }
 
-async function detectFaceCount(dataUrl) {
+async function detectFaces(dataUrl) {
   try {
     await loadFaceApi();
     const img = new Image();
     img.src = dataUrl;
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    const imgW = img.naturalWidth || img.width;
+    const imgH = img.naturalHeight || img.height;
     const detections = await window.faceapi.detectAllFaces(
       img,
       new window.faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.32 }),
     );
-    return detections.length;
+    const sorted = [...detections].sort((a, b) => a.box.x - b.box.x);
+    const boxes = sorted.map(d => {
+      const b = d.box;
+      const padX = b.width * 0.4;
+      const padTop = b.height * 0.2;
+      const bodyH = b.height * 2.4;
+      let x = b.x - padX;
+      let y = b.y - padTop;
+      let w = b.width + padX * 2;
+      let h = b.height + padTop + bodyH;
+      x = Math.max(0, x);
+      y = Math.max(0, y);
+      w = Math.min(imgW - x, w);
+      h = Math.min(imgH - y, h);
+      return {
+        left: (x / imgW) * 100,
+        top: (y / imgH) * 100,
+        width: (w / imgW) * 100,
+        height: (h / imgH) * 100,
+      };
+    });
+    return { count: detections.length, boxes };
   } catch (err) {
     console.warn('[face-api] détection impossible:', err?.message || err);
-    return 0;
+    return { count: 0, boxes: [] };
   }
+}
+
+async function detectFaceCount(dataUrl) {
+  const { count } = await detectFaces(dataUrl);
+  return count;
 }
 
 function isImageFile(file) {
@@ -1199,7 +1273,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
               Fabriqué à Nantes
             </div>
             <h1 style={{ color:'var(--dark)', marginBottom:22,
-              fontSize:'clamp(2.1rem, 4.5vw, 3.8rem)', lineHeight:1.12 }}>
+              fontSize:'clamp(2.1rem, 4.5vw, 3.4rem)', lineHeight:1.12 }}>
               Vos personnages,<br/>
               <span style={{ color:'var(--clay)' }}>taillés dans le bois.</span>
             </h1>
@@ -1223,6 +1297,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
                 Édition limitée · 100 persos / semaine
               </span>
             </div>
+            <HeroCtaMeta />
           </div>
           <div className="hero-img anim-in anim-d2" style={{ position:'relative' }}>
             <div className="hero-photo-wrap">
@@ -1271,7 +1346,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
           <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
             Votre souvenir devient une figurine en bois — taillée, posée, prête à décorer votre intérieur.
           </p>
-          <Triptyque showcase={IMG.triptych} ratio="square" wideLineart/>
+          <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
+            stepLabels={{ lineart: 'Tracé auto (studio en ligne)' }}/>
         </div>
       </section>
 
@@ -1534,7 +1610,33 @@ function CounterRow({ label, value, min, max, onChange, hint }) {
   );
 }
 
-function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photoUrl, photoHeader }) {
+function PaywallPhotoOverlay({ photoUrl, faceBoxes }) {
+  if (!photoUrl) return null;
+  const boxes = faceBoxes?.length ? faceBoxes : null;
+  return (
+    <div className="paywall-photo-overlay">
+      <img src={photoUrl} alt="Votre photo de groupe"/>
+      {boxes && (
+        <div className="paywall-face-boxes" aria-hidden="true">
+          {boxes.map((b, i) => (
+            <div
+              key={i}
+              className="paywall-face-box"
+              style={{
+                left: `${b.left}%`,
+                top: `${b.top}%`,
+                width: `${b.width}%`,
+                height: `${b.height}%`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photoUrl, photoHeader, faceBoxes }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
@@ -1553,7 +1655,7 @@ function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photo
       style={{ background:'#fff', border:'1.5px solid var(--bark-light)', borderRadius:14, textAlign:'left' }}>
       {photoHeader && photoUrl && (
         <div className="paywall-card-photo-header">
-          <img src={photoUrl} alt=""/>
+          <PaywallPhotoOverlay photoUrl={photoUrl} faceBoxes={faceBoxes}/>
         </div>
       )}
       <div className="paywall-card-body">
@@ -1686,6 +1788,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 faceCount={session.faceCount ?? 2}
                 childCount={session.childCount ?? 0}
                 max={maxFaces}
+                faceBoxes={session.faceBoxes}
                 onChange={onFaceCountChange}
                 photoUrl={session.photoUrl}
                 photoHeader
@@ -2288,13 +2391,6 @@ function Success() {
 }
 
 /* ─── APP SHELL ───────────────────────────────────────────────── */
-const NAV_STEPS = [
-  { id:'landing',    label:'Photo' },
-  { id:'pricing',    label:'Aperçu' },
-  { id:'editor',     label:'Studio' },
-  { id:'success',    label:'Atelier' },
-];
-
 function App() {
   const [state, setState] = useState('landing');
   const [selectedPack, setSelectedPack] = useState('famille');
@@ -2303,6 +2399,7 @@ function App() {
     photoUrl: null,
     photoBase64: null,
     detectedFaces: null,
+    faceBoxes: null,
     faceCount: null,
     childCount: 0,
     showcaseCount: null,
@@ -2331,6 +2428,7 @@ function App() {
       photoUrl: null,
       photoBase64: null,
       detectedFaces: null,
+      faceBoxes: null,
       faceCount: null,
       childCount: 0,
       showcaseCount: p?.faceCount ?? null,
@@ -2349,6 +2447,7 @@ function App() {
       photoUrl: null,
       photoBase64: null,
       detectedFaces: null,
+      faceBoxes: null,
       faceCount: null,
       childCount: 0,
       showcaseCount: null,
@@ -2365,22 +2464,24 @@ function App() {
       const preset = demoPreset || presetFromFileName(file.name);
       const { photoUrl, photoBase64 } = await readImageFile(file);
       let detectedFaces = null;
+      let faceBoxes = null;
       let initialCount = 2;
       let initialChildren = 0;
 
       if (preset) {
         initialCount = preset.faceCount;
         initialChildren = preset.childCount ?? 0;
-      } else {
-        let detected = 0;
-        try {
-          detected = await detectFaceCount(photoBase64);
-        } catch { /* fallback */ }
-        if (detected > 0) {
-          detectedFaces = detected;
-          initialCount = Math.min(maxFaces, detected);
-        }
       }
+      try {
+        const detected = await detectFaces(photoBase64);
+        if (detected.count > 0 && !preset) {
+          detectedFaces = detected.count;
+          faceBoxes = detected.boxes;
+          initialCount = Math.min(maxFaces, detected.count);
+        } else if (detected.boxes.length > 0) {
+          faceBoxes = detected.boxes;
+        }
+      } catch { /* fallback */ }
 
       const showcaseCount = preset?.showcaseCount ?? initialCount;
 
@@ -2409,6 +2510,7 @@ function App() {
         photoUrl,
         photoBase64,
         detectedFaces,
+        faceBoxes,
         faceCount: initialCount,
         childCount: initialChildren,
         showcaseCount,
@@ -2460,8 +2562,6 @@ function App() {
     });
   }, [maxFaces]);
 
-  const idx = NAV_STEPS.findIndex(s => s.id === state);
-
   const screens = {
     landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload}
                   onDemoPhoto={onDemoPhoto} onHome={goHome} />,
@@ -2474,15 +2574,6 @@ function App() {
 
   return (
     <>
-      {/* Top progress bar */}
-      <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:9999,
-        background:'rgba(196,168,130,.25)' }}>
-        <div style={{ height:'100%',
-          background:'linear-gradient(90deg,var(--clay),var(--bark-light))',
-          width:`${((idx + 1) / NAV_STEPS.length) * 100}%`,
-          transition:'width .65s cubic-bezier(.4,0,.2,1)' }}/>
-      </div>
-
       <div key={tick}>
         {screens[state]}
       </div>
