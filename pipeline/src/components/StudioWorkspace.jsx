@@ -1,5 +1,3 @@
-import LineartPersonOverlay from './LineartPersonOverlay'
-
 export default function StudioWorkspace({
   sourcePhotoUrl,
   lineartUrl,
@@ -9,8 +7,7 @@ export default function StudioWorkspace({
   lineartVersion = 1,
   processingSteps,
   activeStep,
-  faceCount = 0,
-  showPersonNumbers = false,
+  children,
 }) {
   if (!sourcePhotoUrl) return null
 
@@ -38,16 +35,7 @@ export default function StudioWorkspace({
           </p>
           {lineartUrl ? (
             <div className="customer-photo-frame customer-photo-frame-lineart">
-              {showPersonNumbers && faceCount > 0 ? (
-                <LineartPersonOverlay
-                  src={lineartUrl}
-                  alt="Tracé line art"
-                  faceCount={faceCount}
-                  sourcePhotoUrl={sourcePhotoUrl}
-                />
-              ) : (
-                <img src={lineartUrl} alt="Tracé line art" />
-              )}
+              <img src={lineartUrl} alt="Tracé line art" />
             </div>
           ) : phase === 'awaiting_payment' ? (
             <div className="customer-photo-frame flex-col gap-4 py-10">
@@ -83,6 +71,8 @@ export default function StudioWorkspace({
           )}
         </div>
       </div>
+
+      {children}
     </div>
   )
 }

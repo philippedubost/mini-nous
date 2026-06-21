@@ -79,11 +79,6 @@ export default function CharacterReviewPanel({
             Tracé v{lineartVersion} prêt
           </p>
           <p className="text-xs customer-muted">{versionHint}</p>
-          {lineartVersion >= 1 && (
-            <p className="text-xs customer-muted">
-              Personnages numérotés de gauche à droite sur l&apos;image ci-dessus.
-            </p>
-          )}
         </div>
 
         {showVersionPicker && lineartVersions.length > 0 && (

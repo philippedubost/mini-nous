@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
-import StudioWorkspace from '../components/StudioWorkspace'
+import StudioCustomerFlow from '../components/StudioCustomerFlow'
 import OrderTimeline from '../components/OrderTimeline'
+import { useAuth } from '../context/AuthContext'
 
 function formatDate(iso) {
   if (!iso) return null
@@ -15,6 +16,7 @@ function formatDate(iso) {
 export default function OrderStatusPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
+  const { accessToken: bearerToken } = useAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -27,7 +29,7 @@ export default function OrderStatusPage() {
       return
     }
     try {
-      const { order: o } = await fetchOrderByToken(orderToken)
+      const { order: o } = await fetchOrderByToken(orderToken, bearerToken)
       setOrder(o)
       setError(null)
     } catch (err) {
@@ -35,7 +37,7 @@ export default function OrderStatusPage() {
     } finally {
       setLoading(false)
     }
-  }, [orderToken])
+  }, [orderToken, bearerToken])
 
   useEffect(() => {
     load()
@@ -49,8 +51,7 @@ export default function OrderStatusPage() {
     })
     : null
 
-  const lineartVersion = order?.lineartVersion ?? 1
-  const showStudio = order?.sourcePhotoUrl || order?.previewUrl
+  const showStudio = order?.isPaid && (order?.sourcePhotoUrl || order?.previewUrl || order?.workflowStatus === 'in_studio')
 
   return (
     <CustomerLayout
@@ -119,13 +120,12 @@ export default function OrderStatusPage() {
           <OrderTimeline order={order} />
 
           {showStudio && (
-            <StudioWorkspace
-              sourcePhotoUrl={order.sourcePhotoUrl}
-              lineartUrl={order.previewUrl}
-              busy={order.workflowStatus === 'in_studio' && !order.previewUrl}
-              statusMsg={order.workflowStatus === 'in_studio' ? 'Création en cours dans le studio…' : null}
-              phase={order.isPaid ? 'review' : 'awaiting_payment'}
-              lineartVersion={lineartVersion}
+            <StudioCustomerFlow
+              orderToken={orderToken}
+              bearerToken={bearerToken}
+              embedMode
+              autoStart={!order.previewUrl && order.workflowStatus === 'in_studio'}
+              onOrderChange={setOrder}
             />
           )}
 
@@ -150,21 +150,20 @@ export default function OrderStatusPage() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            {order.isPaid && order.editable && (
-              <Link
-                to={`/studio?order=${encodeURIComponent(orderToken)}${order.previewUrl ? '' : '&auto=1'}`}
-                className="customer-btn-clay flex-1 text-center"
-              >
-                {order.previewUrl ? 'Valider dans le studio →' : 'Ouvrir le studio →'}
-              </Link>
-            )}
-            {!order.editable && (
-              <p className="flex-1 text-center py-3 text-sm customer-muted">
-                Votre commande est en fabrication — modifications fermées.
-              </p>
-            )}
-          </div>
+          {!order.previewUrl && order.isPaid && order.editable && order.workflowStatus === 'awaiting_photo' && (
+            <Link
+              to={`/studio?order=${encodeURIComponent(orderToken)}&auto=1`}
+              className="customer-btn-clay w-full text-center block"
+            >
+              Ouvrir le studio →
+            </Link>
+          )}
+
+          {!order.editable && (
+            <p className="text-sm customer-muted text-center">
+              Votre commande est en fabrication — modifications fermées.
+            </p>
+          )}
 
           <p className="text-xs customer-muted text-center leading-relaxed">
             Conservez cette page en favori pour retrouver votre commande.
