@@ -216,11 +216,6 @@ input{font-family:inherit}
 .size-banner img{width:100%;display:block}
 
 /* Micro-animations landing */
-@keyframes toastExpire{from{width:100%}to{width:0%}}
-.detect-toast{margin-bottom:14px;padding:10px 12px;background:var(--forest-pale);border:1.5px solid rgba(74,138,82,.28);border-radius:10px;animation:fadeUp .3s ease both}
-.detect-toast p{font-family:Quicksand,sans-serif;font-weight:600;font-size:.82rem;color:var(--forest);line-height:1.45;margin:0}
-.detect-toast-bar{height:3px;background:rgba(74,138,82,.18);border-radius:100px;margin-top:8px;overflow:hidden}
-.detect-toast-fill{height:100%;background:var(--forest);border-radius:100px;width:100%;animation:toastExpire linear forwards}
 
 @keyframes gentleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes softPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
@@ -1539,56 +1534,10 @@ function CounterRow({ label, value, min, max, onChange, hint }) {
   );
 }
 
-function DetectionToast({ count, durationMs = 5000, onExpired }) {
-  useEffect(() => {
-    const t = setTimeout(onExpired, durationMs);
-    return () => clearTimeout(t);
-  }, [count, durationMs, onExpired]);
-
-  return (
-    <div className="detect-toast">
-      <p>
-        {count} personne{count > 1 ? 's' : ''} repérée{count > 1 ? 's' : ''} dans votre image
-      </p>
-      <div className="detect-toast-bar">
-        <div className="detect-toast-fill" style={{ animationDuration: `${durationMs}ms` }}/>
-      </div>
-    </div>
-  );
-}
-
-function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onChange, photoUrl, photoHeader }) {
+function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photoUrl, photoHeader }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
-  const initialRef = useRef(null);
-  const [hintMode, setHintMode] = useState('none');
-
-  useEffect(() => {
-    if (detected != null && detected > 0) {
-      initialRef.current = { total, children };
-      setHintMode('banner');
-    } else {
-      initialRef.current = null;
-      setHintMode('none');
-    }
-  }, [detected]);
-
-  useEffect(() => {
-    if (hintMode !== 'banner' || !(detected > 0)) return;
-    const t = setTimeout(() => setHintMode('toast'), 10000);
-    return () => clearTimeout(t);
-  }, [hintMode, detected]);
-
-  useEffect(() => {
-    if (hintMode !== 'banner' || !(detected > 0) || !initialRef.current) return;
-    const init = initialRef.current;
-    if (total !== init.total || children !== init.children) {
-      setHintMode('toast');
-    }
-  }, [total, children, hintMode, detected]);
-
-  const dismissToast = useCallback(() => setHintMode('none'), []);
 
   const setAdults = (na) => {
     const nextAdults = Math.max(0, Math.min(max - children, na));
@@ -1613,19 +1562,10 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
             <img src={photoUrl} alt=""/>
           </div>
         )}
-          {hintMode === 'banner' && detected > 0 ? (
-            <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
-              color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
-              Nous avons repéré <span style={{ color:'var(--clay)' }}>{detected} visage{detected > 1 ? 's' : ''}</span> — confirmez la composition :
-            </p>
-          ) : hintMode === 'toast' && detected > 0 ? (
-            <DetectionToast count={detected} onExpired={dismissToast}/>
-          ) : (
-            <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
-              color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
-              Combien de personnages sur votre photo ?
-            </p>
-          )}
+          <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
+            color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
+            Ajustez le nombre de personnages adultes et enfants présents dans l&apos;image
+          </p>
           <CounterRow label="Adultes" value={adults} min={children === 0 ? 1 : 0} max={max - children}
             onChange={setAdults}/>
           <CounterRow label="Enfants" value={children} min={0} max={max - adults}
@@ -1646,15 +1586,18 @@ function FamilyCompositionQuestion({ faceCount, childCount, detected, max, onCha
 function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceCountChange, onHome }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [giftMode, setGiftMode] = useState(false);
-  const [giftMessage, setGiftMessage] = useState('');
   const [fridayDelivery, setFridayDelivery] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState('product');
   const [shippingZone, setShippingZone] = useState('fr');
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [deliveryForm, setDeliveryForm] = useState({
-    name: '', line1: '', line2: '', city: '', postalCode: '', country: 'FR', phone: '',
-  });
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [checkoutStep]);
   const soldOut = status && status.remaining <= 0;
   const maxFaces = status?.maxFaces ?? 8;
   const fridayEur = Number(status?.fridayDeliveryEur) || FRIDAY_DELIVERY_EUR_FALLBACK;
@@ -1689,11 +1632,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
   const pay = async () => {
     if (!hasQuote || tooManyFaces || quoteLoading) return;
-    const f = deliveryForm;
-    if (!f.line1.trim() || !f.city.trim() || !f.postalCode.trim()) {
-      setError('Adresse de livraison incomplète.');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
@@ -1704,19 +1642,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         fridayDelivery,
         shippingZone,
         newsletterOptIn,
-        shippingAddress: {
-          name: f.name.trim() || undefined,
-          line1: f.line1.trim(),
-          line2: f.line2.trim() || undefined,
-          city: f.city.trim(),
-          postalCode: f.postalCode.trim(),
-          country: f.country || 'FR',
-          phone: f.phone.trim() || undefined,
-        },
-        ...(giftMode ? {
-          giftDelivery: true,
-          giftMessage: giftMessage.trim() || undefined,
-        } : {}),
       });
     } catch (e) {
       setError(e.message);
@@ -1760,7 +1685,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
               <FamilyCompositionQuestion
                 faceCount={session.faceCount ?? 2}
                 childCount={session.childCount ?? 0}
-                detected={session.detectedFaces}
                 max={maxFaces}
                 onChange={onFaceCountChange}
                 photoUrl={session.photoUrl}
@@ -1889,28 +1813,9 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   </label>
                 </div>
 
-                <div style={{ marginBottom:16, display:'grid', gap:8 }}>
-                  <input placeholder="Nom complet" value={deliveryForm.name}
-                    onChange={e => setDeliveryForm(f => ({ ...f, name: e.target.value }))}
-                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                  <input placeholder="Adresse *" required value={deliveryForm.line1}
-                    onChange={e => setDeliveryForm(f => ({ ...f, line1: e.target.value }))}
-                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                  <input placeholder="Complément d'adresse" value={deliveryForm.line2}
-                    onChange={e => setDeliveryForm(f => ({ ...f, line2: e.target.value }))}
-                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
-                    <input placeholder="Code postal *" value={deliveryForm.postalCode}
-                      onChange={e => setDeliveryForm(f => ({ ...f, postalCode: e.target.value }))}
-                      style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                    <input placeholder="Ville *" value={deliveryForm.city}
-                      onChange={e => setDeliveryForm(f => ({ ...f, city: e.target.value }))}
-                      style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                  </div>
-                  <input placeholder="Téléphone (optionnel)" value={deliveryForm.phone}
-                    onChange={e => setDeliveryForm(f => ({ ...f, phone: e.target.value }))}
-                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
-                </div>
+                <p style={{ fontSize:'.8rem', color:'var(--muted)', marginBottom:16, lineHeight:1.55 }}>
+                  L&apos;adresse de livraison sera saisie sur la page de paiement Stripe.
+                </p>
 
                 <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:8 }}>
                   <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.88rem', color:'var(--dark)', marginBottom:4 }}>
@@ -1948,27 +1853,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   <span>Recevoir les nouveautés et éditions limitées Les MiniNous (1×/mois max.)</span>
                 </label>
               </>
-            )}
-
-            {checkoutStep === 'product' && (
-            <div style={{ marginBottom:20, padding:'14px 16px', background:'var(--bark-pale)', borderRadius:14 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom: giftMode ? 14 : 0 }}>
-                <div>
-                  <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.9rem', color:'var(--dark)' }}>
-                    🎁 Offrir les MiniNous
-                  </div>
-                  <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>
-                    Expédition directe + petit mot dans le colis
-                  </div>
-                </div>
-                <Toggle on={giftMode} setOn={setGiftMode}/>
-              </div>
-              {giftMode && (
-                <textarea placeholder="Votre message (imprimé dans le colis)"
-                  value={giftMessage} onChange={e => setGiftMessage(e.target.value)} rows={3}
-                  style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem', resize:'vertical', width:'100%' }}/>
-              )}
-            </div>
             )}
 
             <div style={{ marginBottom:22 }}>
@@ -2012,7 +1896,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
               {tooManyFaces ? `Max ${maxFaces} personnages`
                 : soldOut ? 'Complet cette semaine'
                 : busy ? 'Redirection…'
-                : giftMode ? 'Commander ce cadeau →'
                 : ctaTransform}
             </button>
             )}
@@ -2437,7 +2320,7 @@ function App() {
   const go = useCallback(next => {
     setTick(t => t + 1);
     setState(next);
-    window.scrollTo({ top:0, behavior:'smooth' });
+    window.scrollTo(0, 0);
   }, []);
 
   const startPackRoute = useCallback((packId) => {

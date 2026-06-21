@@ -226,7 +226,7 @@ export default function OrderStatusPage() {
             </Link>
           )}
 
-          {order.isPaid && !order.editable && order.workflowStatus !== 'pending_validation' && order.workflowStatus !== 'in_studio' && (
+          {order.isPaid && ['in_production', 'shipped'].includes(order.workflowStatus) && (
             <p className="text-sm customer-muted text-center">
               Votre commande est en fabrication — modifications fermées.
             </p>

@@ -404,9 +404,9 @@ export default function StudioCustomerFlow({
         </div>
       )}
 
-      {!order.editable && !order.isAdminView && order.isPaid && !lineartUrl && !busy && !embedMode && (
+      {['in_production', 'shipped'].includes(order.workflowStatus) && !order.isAdminView && order.isPaid && (
         <p className="text-sm customer-muted text-center">
-          Cette commande n&apos;est plus modifiable (fabrication lancée).
+          Votre commande est en fabrication — modifications fermées.
         </p>
       )}
     </div>

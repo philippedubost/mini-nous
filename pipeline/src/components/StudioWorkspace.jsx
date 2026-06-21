@@ -43,7 +43,7 @@ export default function StudioWorkspace({
               <p className="text-sm font-medium text-[#C0684A] text-center px-4">Confirmation du paiement…</p>
               <p className="text-xs customer-muted text-center px-4">Le traitement démarre dès validation Stripe.</p>
             </div>
-          ) : busy ? (
+          ) : (
             <div className="customer-photo-frame flex-col gap-4 py-10">
               <div className="customer-spinner" aria-hidden />
               <p className="text-sm font-medium text-[#C0684A] text-center px-4">
@@ -61,12 +61,6 @@ export default function StudioWorkspace({
                   ))}
                 </ol>
               )}
-            </div>
-          ) : (
-            <div className="customer-photo-frame py-10">
-              <p className="text-sm customer-muted text-center px-4">
-                Le tracé apparaîtra ici après le traitement de votre photo.
-              </p>
             </div>
           )}
         </div>
