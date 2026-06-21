@@ -98,11 +98,11 @@ export default function TestFlowPage() {
     setSteps([])
     setResult(null)
     try {
-      log('Création brouillon + photo placeholder (duo.webp)')
       const data = await testFlowApi({
         action: 'full_start',
         ...DEFAULTS,
       })
+      log('Création brouillon + photo placeholder (duo.webp)')
       log('Session Stripe Checkout (mode test)')
       log(`Commande ${data.accessToken?.slice(0, 8)}…`)
       sessionStorage.setItem('mn_test_flow_token', data.accessToken)
