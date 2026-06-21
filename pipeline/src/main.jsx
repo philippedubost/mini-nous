@@ -19,6 +19,7 @@ import LabLayout from './pages/LabLayout'
 import NewOrderPage from './pages/NewOrderPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
+import TestFlowPage from './pages/TestFlowPage'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -41,6 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/nouvelle-commande" element={<NewOrderPage />} />
           <Route path="/paiement/reussi" element={<PaymentSuccessPage />} />
           <Route path="/paiement/annule" element={<PaymentCancelPage />} />
+          <Route path="/test" element={<TestFlowPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminKanbanPage />} />
             <Route path="generations" element={<AdminGenerationsPage />} />

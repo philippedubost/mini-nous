@@ -68,8 +68,10 @@ export default function CharacterReviewPanel({
   const versionHint = lineartVersion === 1
     ? 'Première version — ajustement automatique possible une fois pour générer le tracé v2.'
     : lineartVersion === 2
-      ? 'Deuxième version — un dernier ajustement possible, repris à la main par notre équipe (24 h).'
-      : 'Troisième version — choisissez la version préférée parmi v1, v2 et v3.'
+      ? showVersionPicker
+        ? 'Comparez le tracé v1 et v2, puis validez votre préférée.'
+        : 'Deuxième version — un dernier ajustement possible, repris à la main par notre équipe (24 h).'
+      : 'Choisissez la version préférée parmi les tracés disponibles.'
 
   if (mode === 'choice') {
     return (

@@ -32,6 +32,7 @@ export function resolveStudioCaps(order) {
   const lineartVersion = order?.lineartVersion ?? 1
   const ws = order?.workflowStatus
   const studio = order?.studio ?? {}
+  const versionCount = order?.lineartVersions?.length ?? 0
   return {
     ...studio,
     canAutoAdjust: studio.canAutoAdjust
@@ -39,6 +40,6 @@ export function resolveStudioCaps(order) {
     canManualAdjust: studio.canManualAdjust
       ?? (lineartVersion === 2 && ws === 'pending_validation'),
     showVersionPicker: studio.showVersionPicker
-      ?? (lineartVersion >= 3 && ws === 'pending_validation'),
+      ?? (ws === 'pending_validation' && versionCount >= 2),
   }
 }

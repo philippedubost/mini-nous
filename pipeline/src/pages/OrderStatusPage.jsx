@@ -4,6 +4,11 @@ import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
 import StudioCustomerFlow from '../components/StudioCustomerFlow'
 import OrderTimeline from '../components/OrderTimeline'
+import PaywallPhotoReplace from '../components/PaywallPhotoReplace'
+import PaywallCompositionEditor from '../components/PaywallCompositionEditor'
+import OrderCreationGallery from '../components/OrderCreationGallery'
+import NpsSurvey from '../components/NpsSurvey'
+import MiniNousShareProgram from '../components/MiniNousShareProgram'
 import { useAuth } from '../context/AuthContext'
 
 function formatDate(iso) {
@@ -52,6 +57,11 @@ export default function OrderStatusPage() {
     : null
 
   const showStudio = order?.isPaid && (order?.sourcePhotoUrl || order?.previewUrl || order?.workflowStatus === 'in_studio')
+  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl)
+  const showNps = order?.isPaid
+    && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
+    && !order?.npsSubmittedAt
+  const showShare = order?.isPaid && order?.workflowStatus === 'shipped' && !order?.mininousShareUrl
 
   return (
     <CustomerLayout
@@ -94,6 +104,20 @@ export default function OrderStatusPage() {
                   <img src={order.sourcePhotoUrl} alt="Votre photo" />
                 </div>
               )}
+              <PaywallCompositionEditor
+                orderToken={orderToken}
+                faceCount={order.faceCount}
+                childCount={order.childCount}
+                maxFaces={order.maxFaces ?? 8}
+                amountEur={order.amountEur}
+                onUpdated={setOrder}
+              />
+              <PaywallPhotoReplace
+                orderToken={orderToken}
+                canReplace={order.canReplacePaywallPhoto}
+                replaced={order.paywallPhotoReplaced}
+                onUpdated={setOrder}
+              />
               <button
                 type="button"
                 disabled={checkoutBusy}
@@ -103,6 +127,7 @@ export default function OrderStatusPage() {
                     const { url } = await resumeCheckout(orderToken, {
                       pack: order.packType,
                       faceCount: order.faceCount,
+                      childCount: order.childCount ?? 0,
                     })
                     window.location.href = url
                   } catch (e) {
@@ -119,6 +144,15 @@ export default function OrderStatusPage() {
 
           <OrderTimeline order={order} />
 
+          {showGallery && (
+            <OrderCreationGallery
+              sourcePhotoUrl={order.sourcePhotoUrl}
+              validatedLineartUrl={order.validatedLineartUrl}
+              previewUrl={order.previewUrl}
+              lineartVersion={order.validatedLineartVersion ?? order.lineartVersion}
+            />
+          )}
+
           {showStudio && (
             <StudioCustomerFlow
               orderToken={orderToken}
@@ -129,7 +163,40 @@ export default function OrderStatusPage() {
             />
           )}
 
+          {order.loyaltyCouponCode && (
+            <div className="customer-card-muted !p-4 text-center space-y-2">
+              <p className="text-sm font-semibold text-[#2C1F14]">−10 % sur votre prochaine commande</p>
+              <p className="font-mono text-lg font-bold text-[#C0684A]">{order.loyaltyCouponCode}</p>
+              <p className="text-xs customer-muted">Code unique · à saisir au paiement Stripe</p>
+            </div>
+          )}
+
+          {showNps && (
+            <NpsSurvey
+              orderToken={orderToken}
+              submitted={!!order.npsSubmittedAt}
+              initialScore={order.npsScore}
+            />
+          )}
+
+          {showShare && (
+            <MiniNousShareProgram orderToken={orderToken} submitted={!!order.mininousShareUrl} />
+          )}
+
           <div className="customer-card space-y-3 text-sm">
+            {order.shippingAddress && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">Livraison</span>
+                <span className="text-[#2C1F14] text-right font-medium text-xs leading-relaxed">
+                  {order.shippingAddress.name && <>{order.shippingAddress.name}<br /></>}
+                  {order.shippingAddress.line1}
+                  {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}
+                  <br />
+                  {order.shippingAddress.postalCode} {order.shippingAddress.city}
+                  {' · '}{order.shippingAddress.country}
+                </span>
+              </div>
+            )}
             {shipLabel && (
               <div className="flex justify-between gap-4">
                 <span className="customer-muted">Livraison prévue</span>
@@ -159,7 +226,7 @@ export default function OrderStatusPage() {
             </Link>
           )}
 
-          {!order.editable && (
+          {order.isPaid && !order.editable && order.workflowStatus !== 'pending_validation' && order.workflowStatus !== 'in_studio' && (
             <p className="text-sm customer-muted text-center">
               Votre commande est en fabrication — modifications fermées.
             </p>

@@ -90,6 +90,17 @@ export async function resumeCheckout(accessToken, { pack, faceCount, childCount 
   })
 }
 
+export async function replacePaywallPhoto(accessToken, photoBase64) {
+  return updatePaywallOrder(accessToken, { photoBase64 })
+}
+
+export async function updatePaywallOrder(accessToken, { faceCount, childCount, photoBase64 } = {}) {
+  return apiJson('/api/order-start', {
+    method: 'PATCH',
+    body: JSON.stringify({ accessToken, faceCount, childCount, photoBase64 }),
+  })
+}
+
 export async function fetchMyOrders(bearerToken) {
   return apiJson('/api/me', { headers: authHeaders(bearerToken) })
 }
@@ -130,6 +141,13 @@ export async function submitRevision(token, characters, bearerToken) {
 
 export async function selectLineartVersion(token, versionId, bearerToken) {
   return orderAction(token, 'select_lineart', bearerToken, { versionId })
+}
+
+export async function submitEngagement(token, action, payload = {}) {
+  return apiJson('/api/engagement', {
+    method: 'POST',
+    body: JSON.stringify({ token, action, ...payload }),
+  })
 }
 
 export async function publishTeamLineart(generationId) {

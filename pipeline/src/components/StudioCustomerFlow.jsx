@@ -277,7 +277,10 @@ export default function StudioCustomerFlow({
     setBusy(true)
     setError(null)
     try {
-      await orderAction(orderToken, 'validate', bearerToken)
+      const caps = resolveStudioCaps(order)
+      await orderAction(orderToken, 'validate', bearerToken, {
+        ...(caps.showVersionPicker && selectedVersionId ? { versionId: selectedVersionId } : {}),
+      })
       setStatusMsg('Tracé validé — prêt à fabriquer ! Vos figurines entrent en file d\'impression.')
       await reloadOrder()
     } catch (e) {

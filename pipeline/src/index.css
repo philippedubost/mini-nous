@@ -193,6 +193,21 @@ body {
     background: #fff;
   }
 
+  .customer-counter-btn {
+    @apply flex items-center justify-center font-bold text-lg leading-none transition-opacity;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1.5px solid #E8DCC8;
+    background: #FAF7F2;
+    color: #2C1F14;
+  }
+
+  .customer-counter-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
   .customer-btn-ghost:hover {
     background: #F5EDE0;
     border-color: #7A5C38;

@@ -362,7 +362,7 @@ function paywallDeliveryDates(status) {
   };
 }
 
-function useQuote(faceCount, fridayDelivery) {
+function useQuote(faceCount, fridayDelivery, shippingZone) {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
@@ -376,13 +376,14 @@ function useQuote(faceCount, fridayDelivery) {
     setLoading(true);
     const params = new URLSearchParams({ faces: String(n) });
     if (fridayDelivery) params.set('friday', '1');
+    if (shippingZone) params.set('zone', shippingZone);
     fetch(`/api/quote?${params}`)
       .then(r => r.json())
       .then(data => { if (!cancelled) setQuote(data); })
       .catch(() => { if (!cancelled) setQuote({ ok: false, reason: 'network' }); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [faceCount, fridayDelivery]);
+  }, [faceCount, fridayDelivery, shippingZone]);
   return { quote, loading };
 }
 
@@ -1648,6 +1649,12 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const [giftMode, setGiftMode] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const [fridayDelivery, setFridayDelivery] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState('product');
+  const [shippingZone, setShippingZone] = useState('fr');
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [deliveryForm, setDeliveryForm] = useState({
+    name: '', line1: '', line2: '', city: '', postalCode: '', country: 'FR', phone: '',
+  });
   const soldOut = status && status.remaining <= 0;
   const maxFaces = status?.maxFaces ?? 8;
   const fridayEur = Number(status?.fridayDeliveryEur) || FRIDAY_DELIVERY_EUR_FALLBACK;
@@ -1656,7 +1663,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const faceCountForQuote = session?.enterVia === 'upload'
     ? (session.faceCount ?? session.detectedFaces ?? 2)
     : packDef?.faceCount;
-  const { quote, loading: quoteLoading } = useQuote(faceCountForQuote, fridayDelivery);
+  const { quote, loading: quoteLoading } = useQuote(faceCountForQuote, fridayDelivery, shippingZone);
   const tooManyFaces = quote && !quote.ok && quote.reason === 'too_many';
   const hasQuote = quote?.ok;
   const isSoloOffer = hasQuote && quote.isSolo;
@@ -1672,8 +1679,21 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
     ? `Réception ${deliveryDates.friday}`
     : `Réception ${deliveryDates.tuesday}`;
 
+  const totalTtc = hasQuote ? quote.totalEur : null;
+
+  const goToDelivery = () => {
+    if (!hasQuote || tooManyFaces || quoteLoading) return;
+    setError(null);
+    setCheckoutStep('delivery');
+  };
+
   const pay = async () => {
     if (!hasQuote || tooManyFaces || quoteLoading) return;
+    const f = deliveryForm;
+    if (!f.line1.trim() || !f.city.trim() || !f.postalCode.trim()) {
+      setError('Adresse de livraison incomplète.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -1682,6 +1702,17 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         photoBase64: session.photoBase64 || undefined,
         childCount: session.childCount ?? 0,
         fridayDelivery,
+        shippingZone,
+        newsletterOptIn,
+        shippingAddress: {
+          name: f.name.trim() || undefined,
+          line1: f.line1.trim(),
+          line2: f.line2.trim() || undefined,
+          city: f.city.trim(),
+          postalCode: f.postalCode.trim(),
+          country: f.country || 'FR',
+          phone: f.phone.trim() || undefined,
+        },
         ...(giftMode ? {
           giftDelivery: true,
           giftMessage: giftMessage.trim() || undefined,
@@ -1808,7 +1839,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
               </>
             ) : null}
 
-            {hasQuote && (
+            {checkoutStep === 'product' && hasQuote && (
               <div style={{ display:'flex', flexDirection:'column', gap:10,
                 paddingBottom:20, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:20 }}>
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
@@ -1820,47 +1851,106 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                     🎁 Port offert dès 4 personnages
                   </div>
                 )}
-                {Number(quote.expressEur) > 0 && (
-                  <div style={{ display:'flex', justifyContent:'space-between' }}>
-                    <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>Livraison vendredi</span>
-                    <span style={{ fontWeight:700 }}>+ {quote.expressEur} €</span>
-                  </div>
-                )}
               </div>
             )}
 
-            {hasQuote && (
-              <div style={{ marginBottom:20, display:'flex', flexDirection:'column', gap:8 }}>
-                <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.88rem', color:'var(--dark)', marginBottom:4 }}>
-                  Quand recevoir vos figurines ?
-                </p>
-                <label className={`paywall-delivery-opt${!fridayDelivery ? ' selected' : ''}`}>
-                  <input type="radio" name="delivery" checked={!fridayDelivery}
-                    onChange={() => setFridayDelivery(false)}/>
-                  <div>
-                    <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
-                      {deliveryDates.tuesday}
+            {checkoutStep === 'delivery' && hasQuote && (
+              <>
+                <div style={{ marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.95rem', color:'var(--dark)', margin:0 }}>
+                    Livraison
+                  </p>
+                  <button type="button" onClick={() => setCheckoutStep('product')}
+                    style={{ background:'none', border:'none', color:'var(--clay)', fontSize:'.78rem', fontWeight:600, cursor:'pointer' }}>
+                    ← Retour
+                  </button>
+                </div>
+
+                <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:8 }}>
+                  <label className={`paywall-delivery-opt${shippingZone === 'fr' ? ' selected' : ''}`}>
+                    <input type="radio" name="zone" checked={shippingZone === 'fr'}
+                      onChange={() => setShippingZone('fr')}/>
+                    <div>
+                      <div style={{ fontSize:'.86rem', fontWeight:600 }}>France métropolitaine</div>
+                      <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                        {quote.freeShipping ? 'Port offert' : `${portEur.toFixed(0)} € de port`}
+                      </div>
                     </div>
-                    <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
-                      Réception le mardi suivant · inclus
+                  </label>
+                  <label className={`paywall-delivery-opt${shippingZone === 'international' ? ' selected' : ''}`}>
+                    <input type="radio" name="zone" checked={shippingZone === 'international'}
+                      onChange={() => setShippingZone('international')}/>
+                    <div>
+                      <div style={{ fontSize:'.86rem', fontWeight:600 }}>International</div>
+                      <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                        +12 € · hors France métropolitaine
+                      </div>
                     </div>
+                  </label>
+                </div>
+
+                <div style={{ marginBottom:16, display:'grid', gap:8 }}>
+                  <input placeholder="Nom complet" value={deliveryForm.name}
+                    onChange={e => setDeliveryForm(f => ({ ...f, name: e.target.value }))}
+                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
+                  <input placeholder="Adresse *" required value={deliveryForm.line1}
+                    onChange={e => setDeliveryForm(f => ({ ...f, line1: e.target.value }))}
+                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
+                  <input placeholder="Complément d'adresse" value={deliveryForm.line2}
+                    onChange={e => setDeliveryForm(f => ({ ...f, line2: e.target.value }))}
+                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
+                    <input placeholder="Code postal *" value={deliveryForm.postalCode}
+                      onChange={e => setDeliveryForm(f => ({ ...f, postalCode: e.target.value }))}
+                      style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
+                    <input placeholder="Ville *" value={deliveryForm.city}
+                      onChange={e => setDeliveryForm(f => ({ ...f, city: e.target.value }))}
+                      style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
                   </div>
-                </label>
-                <label className={`paywall-delivery-opt${fridayDelivery ? ' selected' : ''}`}>
-                  <input type="radio" name="delivery" checked={fridayDelivery}
-                    onChange={() => setFridayDelivery(true)}/>
-                  <div>
-                    <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
-                      Recevoir vendredi · +{fridayEur} €
+                  <input placeholder="Téléphone (optionnel)" value={deliveryForm.phone}
+                    onChange={e => setDeliveryForm(f => ({ ...f, phone: e.target.value }))}
+                    style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem' }}/>
+                </div>
+
+                <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:8 }}>
+                  <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.88rem', color:'var(--dark)', marginBottom:4 }}>
+                    Quand recevoir vos figurines ?
+                  </p>
+                  <label className={`paywall-delivery-opt${!fridayDelivery ? ' selected' : ''}`}>
+                    <input type="radio" name="delivery" checked={!fridayDelivery}
+                      onChange={() => setFridayDelivery(false)}/>
+                    <div>
+                      <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
+                        {deliveryDates.tuesday}
+                      </div>
+                      <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                        Réception le mardi suivant · inclus
+                      </div>
                     </div>
-                    <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
-                      {deliveryDates.friday}
+                  </label>
+                  <label className={`paywall-delivery-opt${fridayDelivery ? ' selected' : ''}`}>
+                    <input type="radio" name="delivery" checked={fridayDelivery}
+                      onChange={() => setFridayDelivery(true)}/>
+                    <div>
+                      <div style={{ fontSize:'.86rem', fontWeight:600, color:'var(--dark)' }}>
+                        Recevoir vendredi · +{fridayEur} €
+                      </div>
+                      <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
+                        {deliveryDates.friday}
+                      </div>
                     </div>
-                  </div>
+                  </label>
+                </div>
+
+                <label style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:16, fontSize:'.8rem', color:'var(--muted)', lineHeight:1.5, cursor:'pointer' }}>
+                  <input type="checkbox" checked={newsletterOptIn} onChange={e => setNewsletterOptIn(e.target.checked)}
+                    style={{ marginTop:3, accentColor:'var(--clay)' }}/>
+                  <span>Recevoir les nouveautés et éditions limitées Les MiniNous (1×/mois max.)</span>
                 </label>
-              </div>
+              </>
             )}
 
+            {checkoutStep === 'product' && (
             <div style={{ marginBottom:20, padding:'14px 16px', background:'var(--bark-pale)', borderRadius:14 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom: giftMode ? 14 : 0 }}>
                 <div>
@@ -1879,6 +1969,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   style={{ padding:'10px 14px', borderRadius:10, border:'1.5px solid var(--bark-light)', fontSize:'.85rem', resize:'vertical', width:'100%' }}/>
               )}
             </div>
+            )}
 
             <div style={{ marginBottom:22 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12 }}>
@@ -1886,18 +1977,34 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   Total TTC
                 </span>
                 <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)', lineHeight:1 }}>
-                  {quoteLoading ? '…' : hasQuote ? `${figurinesTtc} €` : '—'}
+                  {quoteLoading ? '…' : hasQuote ? `${checkoutStep === 'delivery' ? totalTtc : figurinesTtc} €` : '—'}
                 </span>
               </div>
-              {hasQuote && portEur > 0 && (
+              {hasQuote && checkoutStep === 'delivery' && portEur > 0 && (
                 <p className="paywall-shipping-note">
-                  + {portEur.toFixed(0)} € de frais de port · détaillés sur la page de paiement Stripe
+                  Dont {portEur.toFixed(0)} € de frais de port
+                  {Number(quote.expressEur) > 0 ? ` · +${quote.expressEur} € express vendredi` : ''}
+                </p>
+              )}
+              {hasQuote && checkoutStep === 'product' && portEur > 0 && (
+                <p className="paywall-shipping-note">
+                  Frais de port calculés à l&apos;étape livraison
                 </p>
               )}
             </div>
 
             {error && <p style={{ color:'var(--clay-deep)', fontSize:'.85rem', marginBottom:12 }}>{error}</p>}
 
+            {checkoutStep === 'product' ? (
+            <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
+              opacity: (soldOut || tooManyFaces) ? .5 : 1 }}
+              disabled={busy || soldOut || tooManyFaces || !hasQuote || quoteLoading}
+              onClick={goToDelivery}>
+              {tooManyFaces ? `Max ${maxFaces} personnages`
+                : soldOut ? 'Complet cette semaine'
+                : 'Continuer vers la livraison →'}
+            </button>
+            ) : (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
               opacity: (soldOut || tooManyFaces) ? .5 : 1 }}
               disabled={busy || soldOut || tooManyFaces || !hasQuote || quoteLoading}
@@ -1908,6 +2015,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 : giftMode ? 'Commander ce cadeau →'
                 : ctaTransform}
             </button>
+            )}
 
             <p style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:12, textAlign:'center', lineHeight:1.55 }}>
               Vous accéderez ensuite au Studio MiniNous qui permet de valider le design et faire quelques ajustements.
