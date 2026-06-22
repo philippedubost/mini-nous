@@ -113,12 +113,12 @@ input{font-family:inherit}
   .hero-quick-steps{order:4;display:flex !important}
   .hero-cta-block{order:5;display:block !important}
   .hero-text .hero-cta-row{display:none !important}
-  .hero-text .hero-lead{display:none}
+  .hero-text .hero-lead{display:block !important;font-size:.86rem !important;line-height:1.62 !important;margin-bottom:12px !important;max-width:none}
   .hero-text .hero-tag{display:none}
   .hero-text .hero-edition{display:none}
   .hero-text h1{font-size:1.65rem !important;margin-bottom:10px !important;line-height:1.15 !important}
   .hero-cta-block .btn-clay{width:100%;justify-content:center;padding:13px 20px !important;font-size:.92rem !important;display:flex;align-items:center;gap:10px}
-  .hero-photo-wrap{max-height:140px;aspect-ratio:16/10;border-radius:14px;box-shadow:0 16px 40px rgba(44,31,20,.12)}
+  .hero-photo-wrap{position:relative;max-height:140px;aspect-ratio:16/10;border-radius:14px;box-shadow:0 16px 40px rgba(44,31,20,.12)}
   .hero-mobile-rating{display:flex !important}
   .hide-mobile{display:none !important}
   .nav-glass{padding:10px 14px !important}
@@ -218,7 +218,17 @@ input{font-family:inherit}
 .demo-chip:hover{border-color:var(--clay);transform:translateY(-2px);box-shadow:0 6px 20px rgba(192,104,74,.15)}
 .demo-chip img{width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:top center}
 .img-crop-top{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
-.hero-photo-wrap{border-radius:24px;overflow:hidden;box-shadow:0 36px 80px rgba(44,31,20,.18);aspect-ratio:4/5;max-height:520px}
+.hero-photo-wrap{position:relative;border-radius:24px;overflow:hidden;box-shadow:0 36px 80px rgba(44,31,20,.18);aspect-ratio:4/5;max-height:520px}
+.hero-photo-rotator{position:absolute;inset:0;width:100%;height:100%}
+.hero-photo-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transition:opacity 2.8s ease-in-out}
+.hero-photo-slide.active{opacity:1}
+.hero-insta-badge{display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:7px 14px;border-radius:100px;background:#fff;border:1.5px solid rgba(196,168,130,.4);font-size:.78rem;font-weight:600;color:var(--clay);text-decoration:none;box-shadow:0 4px 14px rgba(44,31,20,.06);transition:border-color .2s,transform .2s}
+.hero-insta-badge:hover{border-color:var(--clay);transform:translateY(-1px)}
+.hero-insta-badge svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.hero-insta-badge .icon-fill{fill:currentColor;stroke:none}
+.paywall-dimmed{opacity:.34;pointer-events:none;filter:grayscale(.12);transition:opacity .28s ease,filter .28s ease}
+.paywall-overlimit-notice{margin-bottom:18px;padding:14px 16px;border-radius:14px;background:#fff5f0;border:1.5px solid var(--clay-light);font-size:.88rem;line-height:1.65;color:var(--clay-deep)}
+.size-section-title{text-align:center;color:var(--dark);margin-bottom:14px;font-size:clamp(1.35rem,3vw,1.75rem)}
 .fr-badge{display:inline-flex;width:18px;height:18px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(44,31,20,.12);flex-shrink:0;vertical-align:middle}
 .fr-badge span{flex:1;height:100%}
 .size-banner{border-radius:20px;overflow:hidden;box-shadow:0 16px 48px rgba(44,31,20,.12);margin-top:28px}
@@ -442,7 +452,7 @@ function FomoBar() {
   return (
     <div className="fomo-bar">
       <div className="fomo-bar-inner">
-        <span className="fomo-detail">Cut-off mardi 10h</span>
+        <span className="fomo-detail">Prochaine Fabrication</span>
         <span className="fomo-sep" aria-hidden="true">·</span>
         <span className="fomo-countdown">{countdown}</span>
         <span className="fomo-sep" aria-hidden="true">·</span>
@@ -451,6 +461,8 @@ function FomoBar() {
     </div>
   );
 }
+
+const FACE_COUNTER_MAX = 32;
 
 /** Fallback catalogue marketing si week-status pas encore chargé. */
 const CATALOG_PACKS_FALLBACK = [
@@ -517,6 +529,50 @@ function HeroCtaMeta() {
         <strong>dès 13,90 €</strong> pour une figurine solo
       </p>
     </div>
+  );
+}
+
+const HERO_ROTATION_SLIDES = [
+  { src: 'images/hero.webp', eager: true },
+  { src: 'images/famille5-objet.webp' },
+  { src: 'images/groupe4_objet.webp' },
+  { src: 'images/famille3-objet.webp' },
+];
+
+function HeroPhotoRotator() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % HERO_ROTATION_SLIDES.length), 5500);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="hero-photo-rotator" aria-hidden="true">
+      {HERO_ROTATION_SLIDES.map((s, i) => (
+        <img
+          key={s.src}
+          src={s.src}
+          alt=""
+          draggable="false"
+          className={`hero-photo-slide img-crop-top${i === idx ? ' active' : ''}`}
+          loading={s.eager ? 'eager' : 'lazy'}
+          fetchPriority={s.eager ? 'high' : 'low'}
+        />
+      ))}
+    </div>
+  );
+}
+
+function HeroInstaBadge() {
+  return (
+    <a className="hero-insta-badge hide-mobile anim-in anim-d2" href={SOCIAL_LINKS.instagram}
+      target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="5"/>
+        <circle cx="12" cy="12" r="4.2"/>
+        <circle className="icon-fill" cx="17.2" cy="6.8" r="1.1"/>
+      </svg>
+      atelier.mininous
+    </a>
   );
 }
 
@@ -881,6 +937,7 @@ function UgcFeed() {
 function SizeScaleBanner() {
   return (
     <>
+      <h2 className="size-section-title">Votre sculpture en bois unique</h2>
       <p style={{ fontSize:'.92rem', color:'var(--muted)', textAlign:'center', lineHeight:1.75, marginBottom:16 }}>
         Découpe laser en contreplaqué pin <strong style={{ color:'var(--dark)' }}>5 mm</strong> d&apos;épaisseur.
         {' '}Échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ — 18 cm pour 1 m 80.
@@ -1263,7 +1320,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             <p className="hero-lead" style={{ color:'var(--muted)', fontSize:'1.02rem', lineHeight:1.78,
               marginBottom:32, maxWidth:460 }}>
               Une photo de groupe suffit. Nos artisans repèrent chaque personnage et tracent
-              les contours pour une découpe précise, fabriquée à Nantes.
+              les contours pour une découpe précise.
             </p>
             <div className="hero-cta-row" style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
@@ -1281,10 +1338,11 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
               </span>
             </div>
             <HeroCtaMeta />
+            <HeroInstaBadge />
           </div>
           <div className="hero-img anim-in anim-d2" style={{ position:'relative' }}>
             <div className="hero-photo-wrap">
-              <img src={IMG.hero} alt="MiniNous" className="img-crop-top"/>
+              <HeroPhotoRotator />
             </div>
             <div className="hide-mobile anim-float" style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
               borderRadius:16, padding:'12px 18px', boxShadow:'0 10px 32px rgba(44,31,20,.12)',
@@ -1616,10 +1674,11 @@ function PaywallPhotoOverlay({ photoUrl, faceBoxes }) {
   );
 }
 
-function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photoUrl, photoHeader, faceBoxes }) {
+function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax, onChange, photoUrl, photoHeader, faceBoxes }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
+  const overRecommended = recommendedMax != null && total > recommendedMax;
 
   const setAdults = (na) => {
     const nextAdults = Math.max(0, Math.min(max - children, na));
@@ -1659,6 +1718,11 @@ function FamilyCompositionQuestion({ faceCount, childCount, max, onChange, photo
               {total}
             </span>
           </div>
+          {overRecommended && (
+            <p style={{ fontSize:'.78rem', color:'var(--clay-deep)', marginTop:10, lineHeight:1.55 }}>
+              Au-delà de {recommendedMax} personnages, plusieurs photos séparées sont recommandées pour la qualité du tracé.
+            </p>
+          )}
       </div>
     </div>
   );
@@ -1693,6 +1757,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const hasQuote = quote?.ok;
   const isSoloOffer = hasQuote && quote.isSolo;
   const showComposition = session?.enterVia === 'upload' && session?.photoBase64;
+  const compositionFaceCount = session?.faceCount ?? session?.detectedFaces ?? 2;
+  const overRecommended = showComposition && compositionFaceCount > maxFaces;
   const isPackOnly = session?.enterVia === 'pack' && !session?.photoBase64;
   const showcaseCount = session?.showcaseCount ?? session?.faceCount
     ?? (hasQuote ? quote.faceCount : packDef?.faceCount);
@@ -1707,13 +1773,13 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const totalTtc = hasQuote ? quote.totalEur : null;
 
   const goToDelivery = () => {
-    if (!hasQuote || tooManyFaces || quoteLoading) return;
+    if (!hasQuote || overRecommended || quoteLoading) return;
     setError(null);
     setCheckoutStep('delivery');
   };
 
   const pay = async () => {
-    if (!hasQuote || tooManyFaces || quoteLoading) return;
+    if (!hasQuote || overRecommended || quoteLoading) return;
     setBusy(true);
     setError(null);
     try {
@@ -1741,10 +1807,10 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <BrandLogo compact onClick={onHome}/>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div className="tag" style={{ background: tooManyFaces ? 'var(--clay-pale)' : 'var(--forest-pale)',
-            color: tooManyFaces ? 'var(--clay-deep)' : 'var(--forest)' }}>
-            {tooManyFaces
-              ? `⚠ Max ${maxFaces} personnages`
+          <div className="tag" style={{ background: overRecommended ? 'var(--clay-pale)' : 'var(--forest-pale)',
+            color: overRecommended ? 'var(--clay-deep)' : 'var(--forest)' }}>
+            {overRecommended
+              ? `⚠ Plus de ${maxFaces} personnages`
               : quoteLoading ? '…'
               : hasQuote ? `✓ ${quote.headline}` : '—'}
           </div>
@@ -1755,18 +1821,19 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
 
         <div>
-          {session?.isDemoExample && showComposition && !tooManyFaces && (
+          {session?.isDemoExample && showComposition && !overRecommended && (
             <div style={{ marginBottom:16 }}>
               <TryMyPhotoButton onFile={onPhotoUpload} />
             </div>
           )}
 
-          {showComposition && !tooManyFaces && (
+          {showComposition && (
             <div style={{ marginBottom:18 }}>
               <FamilyCompositionQuestion
                 faceCount={session.faceCount ?? 2}
                 childCount={session.childCount ?? 0}
-                max={maxFaces}
+                max={FACE_COUNTER_MAX}
+                recommendedMax={maxFaces}
                 faceBoxes={session.faceBoxes}
                 onChange={onFaceCountChange}
                 photoUrl={session.photoUrl}
@@ -1775,21 +1842,18 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             </div>
           )}
 
-          {tooManyFaces && (
-            <div style={{ background:'#fff5f0', border:'1.5px solid var(--clay-light)', borderRadius:16,
-              padding:'16px 18px', marginBottom:18, textAlign:'left' }}>
-              <p style={{ color:'var(--clay-deep)', fontSize:'.88rem', lineHeight:1.65, marginBottom:12 }}>
-                Maximum <strong>{maxFaces} figurines</strong> par commande — choisissez une photo moins chargée.
-              </p>
-              <PhotoUploadZone compact showDemo={false} onFile={onPhotoUpload} onDemo={onDemoPhoto}
-                label="Choisir une autre photo" hint={`Jusqu'à ${maxFaces} personnages`} />
+          {overRecommended && (
+            <div className="paywall-overlimit-notice" role="alert">
+              <strong>Attention</strong> — avec plus de {maxFaces} personnages, nous recommandons de faire
+              plusieurs photos séparées pour garder la qualité du tracé.
             </div>
           )}
 
-          {isPackOnly && !tooManyFaces && (
+          <div className={overRecommended ? 'paywall-dimmed' : undefined}>
+          {isPackOnly && (
             <div style={{ marginBottom:18 }}>
               <PhotoUploadZone compact onFile={onPhotoUpload} onDemo={onDemoPhoto}
-                label="Ajouter ma photo de groupe" hint={`1 à ${maxFaces} personnages`} />
+                label="Ajouter ma photo de groupe" hint={`1 à ${maxFaces} personnages recommandés`} />
             </div>
           )}
 
@@ -1813,9 +1877,10 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             stepLabels={{ lineart: 'Exemple de tracé', objet: 'Exemple à la maison' }}
           />
           <SizeReminder/>
+          </div>
         </div>
 
-        <div style={{ position:'sticky', top:80 }}>
+        <div className={overRecommended ? 'paywall-dimmed' : undefined} style={{ position:'sticky', top:80 }}>
           <div style={{ background:'#fff', borderRadius:24, padding:34,
             boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
             {hasQuote ? (
@@ -1830,6 +1895,15 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 )}
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
                   Échelle 1/10 · Nantes · {deliveryLabel}
+                </p>
+              </>
+            ) : overRecommended ? (
+              <>
+                <h3 style={{ color:'var(--dark)', marginBottom:8, fontSize:'1.35rem' }}>
+                  {compositionFaceCount} personnage{compositionFaceCount > 1 ? 's' : ''}
+                </h3>
+                <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:12, lineHeight:1.6 }}>
+                  Réduisez à {maxFaces} personnages ou moins pour commander, ou séparez votre photo en plusieurs commandes.
                 </p>
               </>
             ) : tooManyFaces ? (
@@ -1963,19 +2037,19 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             {checkoutStep === 'product' ? (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || tooManyFaces) ? .5 : 1 }}
-              disabled={busy || soldOut || tooManyFaces || !hasQuote || quoteLoading}
+              opacity: (soldOut || overRecommended) ? .5 : 1 }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading}
               onClick={goToDelivery}>
-              {tooManyFaces ? `Max ${maxFaces} personnages`
+              {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
                 : 'Continuer vers la livraison →'}
             </button>
             ) : (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || tooManyFaces) ? .5 : 1 }}
-              disabled={busy || soldOut || tooManyFaces || !hasQuote || quoteLoading}
+              opacity: (soldOut || overRecommended) ? .5 : 1 }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading}
               onClick={pay}>
-              {tooManyFaces ? `Max ${maxFaces} personnages`
+              {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
                 : busy ? 'Redirection…'
                 : ctaTransform}
@@ -2525,7 +2599,7 @@ function App() {
   }, [beginPhotoFlow]);
 
   const onFaceCountChange = useCallback(({ faceCount, childCount }) => {
-    const n = Math.max(1, Math.min(maxFaces, faceCount));
+    const n = Math.max(1, Math.min(FACE_COUNTER_MAX, faceCount));
     const kids = Math.max(0, Math.min(n, childCount ?? 0));
     setSession(s => {
       if (s.orderToken) {
@@ -2539,7 +2613,7 @@ function App() {
         error: null,
       };
     });
-  }, [maxFaces]);
+  }, []);
 
   const screens = {
     landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload}
