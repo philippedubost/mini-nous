@@ -11,6 +11,10 @@ rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
 
 cpSync(join(root, 'index.html'), join(dist, 'index.html'))
+for (const f of ['robots.txt', 'sitemap.xml']) {
+  const src = join(root, f)
+  if (existsSync(src)) cpSync(src, join(dist, f))
+}
 if (existsSync(join(root, 'images'))) {
   cpSync(join(root, 'images'), join(dist, 'images'), { recursive: true })
 }

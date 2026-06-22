@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { existsSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, extname, basename, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -40,6 +41,30 @@ async function toWebp(src) {
   return dest
 }
 
+/** Image Open Graph 1200×630 + icône iOS pour partage WhatsApp / Facebook. */
+async function generateOgShare() {
+  const src = join(imagesDir, 'famille4-objet.webp')
+  if (!existsSync(src)) return
+  const destWebp = join(imagesDir, 'og-share.webp')
+  const destJpg = join(imagesDir, 'og-share.jpg')
+  await sharp(src)
+    .resize(1200, 630, { fit: 'cover', position: 'centre' })
+    .webp({ quality: 86, effort: 4 })
+    .toFile(destWebp)
+  console.log('og-share', basename(destWebp))
+  await sharp(src)
+    .resize(1200, 630, { fit: 'cover', position: 'centre' })
+    .jpeg({ quality: 86, mozjpeg: true })
+    .toFile(destJpg)
+  console.log('og-share', basename(destJpg))
+  const touch = join(imagesDir, 'apple-touch-icon.webp')
+  await sharp(src)
+    .resize(180, 180, { fit: 'cover', position: 'centre' })
+    .webp({ quality: 86, effort: 4 })
+    .toFile(touch)
+  console.log('apple-touch-icon', basename(touch))
+}
+
 /** Renomme les posts UGC CapCut en noms stables. */
 async function normalizeSocial() {
   const socialDir = join(imagesDir, 'social')
@@ -58,4 +83,5 @@ async function normalizeSocial() {
 const files = await walk(imagesDir)
 for (const f of files) await toWebp(f)
 await normalizeSocial()
+await generateOgShare()
 console.log('done')
