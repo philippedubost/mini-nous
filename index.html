@@ -274,6 +274,11 @@ input{font-family:inherit}
 .triptych-ratio-square .triptych-step img{aspect-ratio:1/1}
 .triptych-ratio-landscape .triptych-step img{aspect-ratio:16/10}
 .triptych.triptych-vertical.triptych-ratio-landscape{max-width:100%;gap:6px}
+.triptych-paywall.triptych-vertical{max-width:min(100%,300px);gap:5px;margin-left:auto;margin-right:auto}
+.triptych-paywall .triptych-step{border-radius:12px;box-shadow:0 6px 18px rgba(44,31,20,.1)}
+.triptych-paywall .triptych-step img{aspect-ratio:16/10}
+.triptych-paywall .triptych-label{bottom:6px;left:6px;right:6px;padding:4px 10px;font-size:.58rem}
+.triptych-paywall.triptych-vertical .triptych-arrow{font-size:.85rem;line-height:.9}
 .triptych-label{position:absolute;bottom:10px;left:10px;right:10px;background:rgba(44,31,20,.78);color:#fff;border-radius:100px;padding:6px 12px;font-size:.68rem;font-weight:700;text-align:center;backdrop-filter:blur(8px)}
 .triptych-arrow{color:var(--clay);font-size:1.35rem;font-weight:700;opacity:.85;user-select:none}
 @media(max-width:768px){
@@ -1028,10 +1033,11 @@ function TryMyPhotoButton({ onFile }) {
 }
 
 /* ─── TRIPTYQUE Photo → Tracé → Déco ──────────────────────────── */
-function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain, hidePhoto, stepLabels }) {
+function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain, hidePhoto, stepLabels, compact }) {
   const ratioClass = ratio === 'square' ? ' triptych-ratio-square'
     : ratio === 'landscape' ? ' triptych-ratio-landscape' : '';
   const landingClass = wideLineart && !vertical ? ' triptych-landing' : '';
+  const compactClass = compact ? ' triptych-paywall' : '';
   const steps = [
     ...(hidePhoto ? [] : [{ src: showcase.photo, label: stepLabels?.photo ?? 'Photo' }]),
     { src: lineartDisplaySrc(showcase.lineart, { wide: wideLineart }), label: stepLabels?.lineart ?? 'Tracé', wide: wideLineart },
@@ -1040,7 +1046,7 @@ function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, phot
   const dual = hidePhoto && steps.length === 2;
   const arrow = vertical ? '↓' : '→';
   return (
-    <div className={`triptych${vertical ? ' triptych-vertical' : ''}${ratioClass}${landingClass}${dual ? ' triptych-dual' : ''}`}>
+    <div className={`triptych${vertical ? ' triptych-vertical' : ''}${ratioClass}${landingClass}${compactClass}${dual ? ' triptych-dual' : ''}`}>
       {steps.map((s, i) => (
         <React.Fragment key={s.label}>
           {i > 0 && <div className="triptych-arrow" aria-hidden="true">{arrow}</div>}
@@ -2020,13 +2026,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
           )}
 
           <div className={overRecommended ? 'paywall-dimmed' : undefined}>
-          {isPackOnly && (
-            <div style={{ marginBottom:18 }}>
-              <PhotoUploadZone compact onFile={onPhotoUpload} onDemo={onDemoPhoto}
-                label="Ajouter ma photo de groupe" hint={`1 à ${maxFaces} personnages recommandés`} />
-            </div>
-          )}
-
           <p style={{ color:'var(--muted)', marginBottom:10, lineHeight:1.7, fontSize:'.92rem' }}>
             {showComposition
               ? 'De votre photo aux figurines posées chez vous : voici à quoi ressemblera le rendu.'
@@ -2043,9 +2042,18 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             showcase={showcase}
             vertical
             ratio="landscape"
+            compact
             hidePhoto={showComposition}
             stepLabels={{ lineart: 'Exemple de tracé', objet: 'Exemple à la maison' }}
           />
+
+          {isPackOnly && (
+            <div style={{ marginTop:20, marginBottom:18 }}>
+              <PhotoUploadZone compact showDemo={false} onFile={onPhotoUpload}
+                label="Ajouter ma photo" hint={`1 à ${maxFaces} personnages recommandés`} />
+            </div>
+          )}
+
           <SizeReminder/>
           </div>
         </div>
