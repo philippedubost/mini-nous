@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Les MiniNous — Vos personnages, taillés dans le bois.</title>
+<title>Les MiniNous · Vos personnages, taillés dans le bois.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="icon" href="/images/v1.svg" type="image/svg+xml">
@@ -156,6 +156,16 @@ input{font-family:inherit}
 .pack-price{font-family:Quicksand,sans-serif;font-size:1.75rem;font-weight:700;color:var(--dark);display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .pack-price small{font-size:.85rem;font-weight:500;color:var(--muted)}
 .pack-price .pack-shipping{font-size:.72rem;font-weight:500;color:var(--muted)}
+.office-reveal-wrap{max-width:720px;margin:44px auto 0;text-align:center}
+.office-reveal-title{font-family:Quicksand,sans-serif;color:var(--dark);font-size:clamp(1.1rem,2.5vw,1.35rem);margin-bottom:6px}
+.office-reveal-hint{font-size:.82rem;color:var(--muted);margin-bottom:14px}
+.office-reveal{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 16px 48px rgba(44,31,20,.12);aspect-ratio:16/10;background:var(--bark-pale);cursor:ew-resize;touch-action:none;user-select:none}
+.office-reveal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block;pointer-events:none}
+.office-reveal-photo{z-index:2}
+.office-reveal-lineart{z-index:1}
+.office-reveal-handle{position:absolute;top:0;bottom:0;z-index:3;width:3px;background:#fff;box-shadow:0 0 0 1px rgba(44,31,20,.12);transform:translateX(-50%);pointer-events:none}
+.office-reveal-handle::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:#fff;border:2px solid var(--clay);box-shadow:0 4px 16px rgba(44,31,20,.14)}
+.office-reveal-labels{display:flex;justify-content:space-between;margin-top:10px;padding:0 4px;font-size:.72rem;font-weight:600;color:var(--muted)}
 
 /* Triptyque Photo → Tracé → Déco */
 .triptych{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:center;max-width:920px;margin:0 auto}
@@ -200,12 +210,15 @@ input{font-family:inherit}
   .triptych-ratio-landscape.triptych-vertical .triptych-step img{aspect-ratio:16/10}
 }
 
-/* UGC — galerie simplifiée */
-.ugc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
-@media(max-width:900px){.ugc-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.ugc-grid{grid-template-columns:1fr 1fr}}
-.ugc-tile{border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(44,31,20,.1);background:var(--bark-pale)}
-.ugc-tile img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+/* Témoignages */
+.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px;text-align:left}
+.testimonial-card{background:#fff;border:1.5px solid var(--bark-light);border-radius:16px;padding:18px 16px;box-shadow:0 6px 20px rgba(44,31,20,.06)}
+.testimonial-stars{color:var(--clay);font-size:.82rem;letter-spacing:.06em;margin-bottom:8px}
+.testimonial-quote{font-size:.86rem;line-height:1.65;color:var(--text);margin-bottom:12px}
+.testimonial-author{font-size:.76rem;color:var(--muted);font-weight:600}
+@media(max-width:900px){.testimonials-grid{grid-template-columns:1fr}}
+.photo-flow-overlay{position:fixed;inset:0;z-index:200;background:rgba(250,247,242,.94);display:flex;align-items:center;justify-content:center;padding:24px}
+.photo-flow-overlay .preview-loading-panel{width:min(100%,520px);border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(44,31,20,.14)}
 .social-row{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:28px}
 .social-link{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid var(--bark-light);color:var(--dark);transition:all var(--t);box-shadow:0 4px 16px rgba(44,31,20,.08)}
 .social-link:hover{border-color:var(--clay);color:var(--clay);transform:translateY(-2px);box-shadow:0 8px 24px rgba(192,104,74,.18)}
@@ -467,13 +480,13 @@ const FACE_COUNTER_MAX = 32;
 /** Fallback catalogue marketing si week-status pas encore chargé. */
 const CATALOG_PACKS_FALLBACK = [
   { id:'duo', label:'Pack Duo', faceCount:2, priceEur:'19.90', shippingEur:'7.00', totalEur:'26.90' },
-  { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'29.90', shippingEur:'0.00', totalEur:'29.90' },
-  { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'44.90', shippingEur:'0.00', totalEur:'44.90' },
+  { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'34.90', shippingEur:'0.00', totalEur:'34.90' },
+  { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'49.90', shippingEur:'0.00', totalEur:'49.90' },
 ];
 
 /** Visuels atelier par nombre de personnages (photo · tracé · figurines). */
 const FAMILY_SHOWCASE = {
-  2: { photo: 'images/duo.webp', lineart: 'images/duo-lineart.webp', objet: 'images/groupe4_objet.webp' },
+  2: { photo: 'images/duo.webp', lineart: 'images/duo-lineart.webp', objet: 'images/duo-objet.webp' },
   3: { photo: 'images/famille3.webp', lineart: 'images/famille3-lineart.webp', objet: 'images/famille3-objet.webp' },
   4: { photo: 'images/famille4.webp', lineart: 'images/famille4-lineart.webp', objet: 'images/famille4-objet.webp' },
   5: { photo: 'images/famille5.webp', lineart: 'images/famille5-lineart.webp', objet: 'images/famille5-objet.webp' },
@@ -622,7 +635,7 @@ function HeroQuickSteps() {
 function SizeReminder() {
   return (
     <p style={{ fontSize:'.82rem', color:'var(--muted)', marginTop:16, lineHeight:1.65, textAlign:'center' }}>
-      Les figurines sont à l&apos;échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ — par exemple 18 cm pour 1 m 80.
+      Les figurines sont à l&apos;échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ (18 cm pour 1 m 80).
     </p>
   );
 }
@@ -657,13 +670,12 @@ function presetFromFileName(name) {
   return demo || null;
 }
 
-const UGC_IMAGES = [
-  'images/social/ugc-01.webp',
-  'images/social/ugc-02.webp',
-  'images/social/ugc-03.webp',
-  'images/social/ugc-04.webp',
-  'images/social/ugc-05.webp',
-  'images/social/ugc-06.webp',
+const PAYWALL_PATH = '/mes-figurines';
+
+const TESTIMONIALS = [
+  { name: 'Sophie M.', place: 'Rennes', text: 'On a offert le pack famille à mes parents. La ressemblance est bluffante et le bois sent bon dans le salon.' },
+  { name: 'Thomas & Léa', place: 'Nantes', text: 'Photo du mariage, quatre figurines sur l\'étagère. Nos invités demandent toujours d\'où ça vient.' },
+  { name: 'Camille D.', place: 'Lyon', text: 'J\'avais peur que ce soit gadget. En vrai c\'est délicat, bien emballé, livré en boîte aux lettres comme promis.' },
 ];
 
 const SOCIAL_LINKS = {
@@ -682,6 +694,77 @@ const PACK_CTA = {
   grande_famille: 'Grande Famille →',
 };
 
+const OFFICE_REVEAL = {
+  photo: 'images/examples/theoffice/office01.webp',
+  lineart: 'images/examples/theoffice/office01lineart.webp',
+};
+
+function OfficeRevealSlider() {
+  const [pos, setPos] = useState(52);
+  const trackRef = useRef(null);
+  const dragRef = useRef(false);
+
+  const setFromClientX = useCallback((clientX) => {
+    const el = trackRef.current;
+    if (!el || clientX == null) return;
+    const { left, width } = el.getBoundingClientRect();
+    const pct = ((clientX - left) / width) * 100;
+    setPos(Math.max(4, Math.min(96, pct)));
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current) return;
+      setFromClientX(e.clientX);
+    };
+    const onUp = () => { dragRef.current = false; };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [setFromClientX]);
+
+  const startDrag = (e) => {
+    dragRef.current = true;
+    setFromClientX(e.clientX);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  return (
+    <div className="office-reveal-wrap anim-in anim-d2">
+      <h3 className="office-reveal-title">Fonctionne aussi pour les collègues</h3>
+      <p className="office-reveal-hint">Glissez pour révéler le tracé</p>
+      <div
+        ref={trackRef}
+        className="office-reveal"
+        role="slider"
+        aria-label="Comparer la photo et le tracé"
+        aria-valuemin={4}
+        aria-valuemax={96}
+        aria-valuenow={Math.round(pos)}
+        onPointerDown={startDrag}
+      >
+        <img className="office-reveal-lineart" src={OFFICE_REVEAL.lineart} alt="" draggable="false" loading="lazy"/>
+        <img
+          className="office-reveal-photo"
+          src={OFFICE_REVEAL.photo}
+          alt="Photo de bureau transformée en figurines bois"
+          draggable="false"
+          loading="lazy"
+          style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
+        />
+        <div className="office-reveal-handle" style={{ left: `${pos}%` }} aria-hidden="true"/>
+      </div>
+      <div className="office-reveal-labels">
+        <span>Photo</span>
+        <span>Tracé</span>
+      </div>
+    </div>
+  );
+}
+
 function PackCards({ onPackExample }) {
   const { status } = useWeekStatus();
 
@@ -689,7 +772,7 @@ function PackCards({ onPackExample }) {
   const soldOut = status && status.remaining <= 0;
 
   return (
-    <div id="packs">
+    <div>
       <div style={{ maxWidth:960, margin:'0 auto', textAlign:'center' }}>
         <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.95rem' }}>
           Fabrication artisanale sur-mesure · Réception vendredi chez vous · Places limitées
@@ -723,6 +806,7 @@ function PackCards({ onPackExample }) {
             </div>
           ))}
         </div>
+        <OfficeRevealSlider/>
       </div>
     </div>
   );
@@ -919,14 +1003,16 @@ function SocialLinks() {
   );
 }
 
-function UgcFeed() {
+function TestimonialsFeed() {
   return (
     <>
-      <div className="ugc-grid">
-        {UGC_IMAGES.map(src => (
-          <div key={src} className="ugc-tile">
-            <img src={src} alt="" loading="lazy" draggable="false"/>
-          </div>
+      <div className="testimonials-grid">
+        {TESTIMONIALS.map(t => (
+          <blockquote key={t.name} className="testimonial-card">
+            <div className="testimonial-stars" aria-label="5 étoiles sur 5">★★★★★</div>
+            <p className="testimonial-quote">&ldquo;{t.text}&rdquo;</p>
+            <footer className="testimonial-author">{t.name} · {t.place}</footer>
+          </blockquote>
         ))}
       </div>
       <SocialLinks/>
@@ -940,10 +1026,10 @@ function SizeScaleBanner() {
       <h2 className="size-section-title">Votre sculpture en bois unique</h2>
       <p style={{ fontSize:'.92rem', color:'var(--muted)', textAlign:'center', lineHeight:1.75, marginBottom:16 }}>
         Découpe laser en contreplaqué pin <strong style={{ color:'var(--dark)' }}>5 mm</strong> d&apos;épaisseur.
-        {' '}Échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ — 18 cm pour 1 m 80.
+        {' '}Échelle <strong style={{ color:'var(--dark)' }}>1/10</strong> environ (18 cm pour 1 m 80).
       </p>
       <div className="size-banner" style={{ marginTop: 0 }}>
-        <img src={IMG.size} alt="Figurines MiniNous — échelle 1/10 environ, 18 cm pour 1 m 80"/>
+        <img src={IMG.size} alt="Figurines MiniNous, échelle 1/10 environ"/>
       </div>
     </>
   );
@@ -1385,7 +1471,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             De la photo au salon
           </h2>
           <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
-            Votre souvenir devient une figurine en bois — taillée, posée, prête à décorer votre intérieur.
+            Votre souvenir devient une figurine en bois : taillée, posée, prête à décorer votre intérieur.
           </p>
           <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
             stepLabels={{ lineart: 'Tracé auto (studio en ligne)' }}/>
@@ -1440,26 +1526,26 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
         </div>
       </section>
 
-      {/* Atelier live */}
-      <AtelierLive/>
-
-      {/* UGC */}
-      <section style={{ padding:'72px 28px', background:'var(--cream)' }}>
-        <div style={{ maxWidth:820, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Chez vous, chez eux</h2>
-          <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.92rem' }}>
-            Des familles qui ont reçu leurs MiniNous — retrouvez-nous sur les réseaux.
-          </p>
-          <UgcFeed/>
-        </div>
-      </section>
-
-      {/* Tarifs / packs — tout en bas */}
-      <section id="upload-zone" style={{ padding:'80px 28px 96px', background:'var(--cream)' }}>
+      {/* Tarifs / packs */}
+      <section id="packs" style={{ padding:'56px 28px 72px', background:'var(--cream)' }}>
         <PackCards onPackExample={onPackExample} />
       </section>
 
-      {/* Bientôt — mode assis */}
+      {/* Atelier live */}
+      <AtelierLive/>
+
+      {/* Témoignages */}
+      <section style={{ padding:'72px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:820, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Ils ont adopté leurs MiniNous</h2>
+          <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.92rem' }}>
+            Quelques retours de familles. Les photos clients arrivent bientôt sur Instagram.
+          </p>
+          <TestimonialsFeed/>
+        </div>
+      </section>
+
+      {/* Bientôt · mode assis */}
       <ComingSoonSeated/>
 
       {/* Footer */}
@@ -1483,6 +1569,17 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
           </a>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function PhotoFlowOverlay({ photoUrl }) {
+  if (!photoUrl) return null;
+  return (
+    <div className="photo-flow-overlay" role="status" aria-live="polite" aria-busy="true">
+      <div className="preview-loading-panel">
+        <PreviewLoadingEncart photoUrl={photoUrl}/>
+      </div>
     </div>
   );
 }
@@ -1844,7 +1941,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
           {overRecommended && (
             <div className="paywall-overlimit-notice" role="alert">
-              <strong>Attention</strong> — avec plus de {maxFaces} personnages, nous recommandons de faire
+              <strong>Attention.</strong> Avec plus de {maxFaces} personnages, nous recommandons de faire
               plusieurs photos séparées pour garder la qualité du tracé.
             </div>
           )}
@@ -1859,8 +1956,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
           <p style={{ color:'var(--muted)', marginBottom:10, lineHeight:1.7, fontSize:'.92rem' }}>
             {showComposition
-              ? 'De votre photo aux figurines posées chez vous — voici à quoi ressemblera le rendu.'
-              : 'De votre photo aux figurines posées chez vous — voici les trois étapes.'}
+              ? 'De votre photo aux figurines posées chez vous : voici à quoi ressemblera le rendu.'
+              : 'De votre photo aux figurines posées chez vous : voici les trois étapes.'}
           </p>
           {!showComposition && (
             <p style={{ fontFamily:'Quicksand', fontWeight:700, color:'var(--dark)',
@@ -1886,11 +1983,11 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             {hasQuote ? (
               <>
                 <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem' }}>
-                  {quote.headline} — {quote.productEur} €
+                  {quote.headline} · {quote.productEur} €
                 </h3>
                 {isSoloOffer && (
                   <p style={{ fontSize:'.82rem', color:'var(--forest)', marginBottom:8, lineHeight:1.5 }}>
-                    Photo individuelle — 1 figurine à votre effigie
+                    Photo individuelle, 1 figurine à votre effigie
                   </p>
                 )}
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
@@ -2075,7 +2172,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 <a href={session.orderStatusUrl} style={{ color:'var(--clay)', fontWeight:600 }}>
                   Votre lien de commande
                 </a>
-                {' '}— retrouvez votre studio sans connexion.
+                {' '}Retrouvez votre studio sans connexion.
               </p>
             )}
           </div>
@@ -2324,16 +2421,16 @@ function Success() {
   const add = n => { const d = new Date(today); d.setDate(d.getDate() + n); return fmt(d); };
 
   const steps = [
-    { icon:'✅', title:'Aujourd\'hui — Validation',
+    { icon:'✅', title:'Aujourd\'hui · Validation',
       sub: add(0),
       desc:'Votre commande est confirmée. On prépare votre groupe avec amour.', done:true },
-    { icon:'⚡', title:'Demain — Découpe laser à Nantes',
+    { icon:'⚡', title:'Demain · Découpe laser à Nantes',
       sub: add(1),
       desc:'Nos équipes découpent et fabriquent chaque personnage en bois.' },
-    { icon:'📦', title:'J+3 — Expédition suivi',
+    { icon:'📦', title:'J+3 · Expédition suivi',
       sub: add(3),
       desc:'Emballage soigné dans notre boîte kraft signature, envoi en Colissimo suivi.' },
-    { icon:'🏡', title:'J+5 — Livraison chez vous',
+    { icon:'🏡', title:'J+5 · Livraison chez vous',
       sub: add(5),
       desc:'Vos MiniNous arrivent ! Prêts à être offerts ou posés dans votre intérieur.' },
   ];
@@ -2365,7 +2462,7 @@ function Success() {
         <p style={{ color:'var(--muted)', maxWidth:460, margin:'0 auto 48px',
           lineHeight:1.75 }}>
           Un email de confirmation a été envoyé. Vous recevrez une photo de vos
-          figurines terminées avant expédition — promis.
+          figurines terminées avant expédition, promis.
         </p>
 
         {/* Timeline */}
@@ -2445,8 +2542,12 @@ function Success() {
 
 /* ─── APP SHELL ───────────────────────────────────────────────── */
 function App() {
-  const [state, setState] = useState('landing');
+  const paywallPath = PAYWALL_PATH.replace(/\/$/, '');
+  const [state, setState] = useState(() => (
+    window.location.pathname.replace(/\/$/, '') === paywallPath ? 'pricing' : 'landing'
+  ));
   const [selectedPack, setSelectedPack] = useState('famille');
+  const [photoBusyUrl, setPhotoBusyUrl] = useState(null);
   const [session, setSession] = useState({
     enterVia: null,
     photoUrl: null,
@@ -2467,11 +2568,28 @@ function App() {
   const packs = status?.packs ?? CATALOG_PACKS_FALLBACK;
   const packDef = getPackDef(selectedPack || 'famille', packs);
 
-  const go = useCallback(next => {
+  const go = useCallback((next) => {
     setTick(t => t + 1);
     setState(next);
+    const path = window.location.pathname.replace(/\/$/, '') || '/';
+    if (next === 'pricing' && path !== paywallPath) {
+      window.history.pushState({ mininous: 'pricing' }, '', paywallPath);
+    } else if (next === 'landing' && path === paywallPath) {
+      window.history.pushState({ mininous: 'landing' }, '', '/');
+    }
     window.scrollTo(0, 0);
-  }, []);
+  }, [paywallPath]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const onPaywall = window.location.pathname.replace(/\/$/, '') === paywallPath;
+      setState(onPaywall ? 'pricing' : 'landing');
+      setTick(t => t + 1);
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [paywallPath]);
 
   const startPackRoute = useCallback((packId) => {
     const p = packs.find(x => x.id === packId) || CATALOG_PACKS_FALLBACK.find(x => x.id === packId);
@@ -2513,9 +2631,11 @@ function App() {
   }, [go]);
 
   const beginPhotoFlow = useCallback(async (file, { enterVia = 'upload', demoPreset = null } = {}) => {
+    setPhotoBusyUrl(demoPreset?.src || IMG.upload);
     try {
       const preset = demoPreset || presetFromFileName(file.name);
       const { photoUrl, photoBase64 } = await readImageFile(file);
+      setPhotoBusyUrl(photoUrl);
       let detectedFaces = null;
       let faceBoxes = null;
       let initialCount = 2;
@@ -2524,17 +2644,18 @@ function App() {
       if (preset) {
         initialCount = preset.faceCount;
         initialChildren = preset.childCount ?? 0;
+      } else {
+        try {
+          const detected = await detectFaces(photoBase64);
+          if (detected.count > 0) {
+            detectedFaces = detected.count;
+            faceBoxes = detected.boxes;
+            initialCount = Math.min(maxFaces, detected.count);
+          } else if (detected.boxes.length > 0) {
+            faceBoxes = detected.boxes;
+          }
+        } catch { /* fallback */ }
       }
-      try {
-        const detected = await detectFaces(photoBase64);
-        if (detected.count > 0 && !preset) {
-          detectedFaces = detected.count;
-          faceBoxes = detected.boxes;
-          initialCount = Math.min(maxFaces, detected.count);
-        } else if (detected.boxes.length > 0) {
-          faceBoxes = detected.boxes;
-        }
-      } catch { /* fallback */ }
 
       const showcaseCount = preset?.showcaseCount ?? initialCount;
 
@@ -2553,6 +2674,7 @@ function App() {
         }
       } catch (err) {
         console.warn('[order-start]', err);
+        setPhotoBusyUrl(null);
         alert('La photo n\'a pas pu être enregistrée sur le serveur. Réessayez ou vérifiez votre connexion avant de payer.');
         return;
       }
@@ -2574,7 +2696,9 @@ function App() {
       });
       setTick(t => t + 1);
       go('pricing');
+      requestAnimationFrame(() => requestAnimationFrame(() => setPhotoBusyUrl(null)));
     } catch {
+      setPhotoBusyUrl(null);
       alert('Impossible de lire cette image. Essayez un autre fichier.');
     }
   }, [go, maxFaces]);
@@ -2588,12 +2712,14 @@ function App() {
   ), [beginPhotoFlow]);
 
   const onDemoPhoto = useCallback(async (demo) => {
+    setPhotoBusyUrl(demo.src);
     try {
       const res = await fetch(demo.src);
       const blob = await res.blob();
       const file = new File([blob], `demo-${demo.count}.webp`, { type: blob.type || 'image/webp' });
-      beginPhotoFlow(file, { enterVia: 'upload', demoPreset: demo });
+      await beginPhotoFlow(file, { enterVia: 'upload', demoPreset: demo });
     } catch {
+      setPhotoBusyUrl(null);
       alert('Impossible de charger cette photo de démonstration.');
     }
   }, [beginPhotoFlow]);
@@ -2627,6 +2753,7 @@ function App() {
 
   return (
     <>
+      <PhotoFlowOverlay photoUrl={photoBusyUrl}/>
       <div key={tick}>
         {screens[state]}
       </div>

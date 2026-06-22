@@ -42,7 +42,7 @@ function proxy(req, res, port) {
 
 function serveStatic(req, res) {
   let path = req.url?.split('?')[0] || '/'
-  if (path === '/') path = '/index.html'
+  if (path === '/' || path === '/mes-figurines') path = '/index.html'
   const filePath = join(root, path.replace(/^\//, ''))
   if (!filePath.startsWith(root) || !existsSync(filePath)) {
     res.writeHead(404)
