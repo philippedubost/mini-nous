@@ -563,14 +563,6 @@ function HeroQuickSteps() {
   );
 }
 
-function AccountNavLink() {
-  return (
-    <a href={PIPELINE.compte} className="nav-account-link">
-      Mon compte
-    </a>
-  );
-}
-
 function SizeReminder() {
   return (
     <p style={{ fontSize:'.82rem', color:'var(--muted)', marginTop:16, lineHeight:1.65, textAlign:'center' }}>
@@ -1237,7 +1229,6 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
         padding:'16px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <BrandLogo onClick={onHome}/>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <AccountNavLink/>
           <span className="tag hide-mobile"
             style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
             ⭐ 4.9/5
@@ -1750,7 +1741,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <BrandLogo compact onClick={onHome}/>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <AccountNavLink/>
           <div className="tag" style={{ background: tooManyFaces ? 'var(--clay-pale)' : 'var(--forest-pale)',
             color: tooManyFaces ? 'var(--clay-deep)' : 'var(--forest)' }}>
             {tooManyFaces
