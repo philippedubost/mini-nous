@@ -670,7 +670,7 @@ function HeroInstaBadge() {
 function HeroMobilePeek({ showcase }) {
   const steps = [
     { src: showcase.photo, label: 'Photo', crop: true },
-    { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé auto (studio en ligne)', wide: true },
+    { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé', wide: true },
     { src: showcase.objet, label: 'Bois' },
   ];
   return (
@@ -1553,7 +1553,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             Votre souvenir devient une figurine en bois : taillée, posée, prête à décorer votre intérieur.
           </p>
           <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
-            stepLabels={{ lineart: 'Tracé auto (studio en ligne)' }}/>
+            stepLabels={{ lineart: 'Tracé' }}/>
         </div>
       </section>
 
@@ -1925,6 +1925,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const fridayEur = Number(status?.fridayDeliveryEur) || FRIDAY_DELIVERY_EUR_FALLBACK;
   const deliveryDates = paywallDeliveryDates(status);
 
+  const isExampleMode = session?.isDemoExample === true;
   const faceCountForQuote = session?.enterVia === 'upload'
     ? (session.faceCount ?? session.detectedFaces ?? 2)
     : packDef?.faceCount;
@@ -1949,13 +1950,13 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const totalTtc = hasQuote ? quote.totalEur : null;
 
   const goToDelivery = () => {
-    if (!hasQuote || overRecommended || quoteLoading) return;
+    if (!hasQuote || overRecommended || quoteLoading || isExampleMode) return;
     setError(null);
     setCheckoutStep('delivery');
   };
 
   const pay = async () => {
-    if (!hasQuote || overRecommended || quoteLoading) return;
+    if (!hasQuote || overRecommended || quoteLoading || isExampleMode) return;
     setBusy(true);
     setError(null);
     try {
@@ -2063,12 +2064,20 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
             {hasQuote ? (
               <>
-                <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem' }}>
+                <h3 style={{ color:'var(--dark)', marginBottom:6, fontSize:'1.35rem',
+                  opacity: isExampleMode ? .55 : 1 }}>
                   {quote.headline} · {quote.productEur} €
                 </h3>
                 {isSoloOffer && (
                   <p style={{ fontSize:'.82rem', color:'var(--forest)', marginBottom:8, lineHeight:1.5 }}>
                     Photo individuelle, 1 figurine à votre effigie
+                  </p>
+                )}
+                {isExampleMode && (
+                  <p style={{ fontSize:'.78rem', color:'var(--clay-deep)', marginBottom:10,
+                    background:'#fff5f0', border:'1px solid var(--clay-light)', borderRadius:8,
+                    padding:'7px 10px', lineHeight:1.55 }}>
+                    Prix indicatif basé sur cet exemple de {quote.faceCount} figurine{quote.faceCount > 1 ? 's' : ''} — le tarif final sera calculé d&apos;après votre photo.
                   </p>
                 )}
                 <p style={{ color:'var(--muted)', fontSize:'.88rem', marginBottom:16, lineHeight:1.6 }}>
@@ -2099,7 +2108,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             {checkoutStep === 'product' && hasQuote && (
               <div style={{ display:'flex', flexDirection:'column', gap:10,
-                paddingBottom:20, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:20 }}>
+                paddingBottom:20, borderBottom:'1.5px solid var(--bark-pale)', marginBottom:20,
+                opacity: isExampleMode ? .5 : 1 }}>
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
                   <span style={{ fontSize:'.86rem', color:'var(--muted)' }}>{quote.headline}</span>
                   <span style={{ fontWeight:700 }}>{quote.productEur} €</span>
@@ -2189,10 +2199,10 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
               </>
             )}
 
-            <div style={{ marginBottom:22 }}>
+            <div style={{ marginBottom:22, opacity: isExampleMode ? .5 : 1 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:12 }}>
                 <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'1.05rem', color:'var(--dark)' }}>
-                  Total TTC
+                  {isExampleMode ? 'Indicatif TTC' : 'Total TTC'}
                 </span>
                 <span style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'2rem', color:'var(--clay)', lineHeight:1 }}>
                   {quoteLoading ? '…' : hasQuote ? `${checkoutStep === 'delivery' ? totalTtc : figurinesTtc} €` : '—'}
@@ -2215,20 +2225,22 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             {checkoutStep === 'product' ? (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended) ? .5 : 1 }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading}
+              opacity: (soldOut || overRecommended || isExampleMode) ? .5 : 1 }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || isExampleMode}
               onClick={goToDelivery}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
+                : isExampleMode ? 'Ajoutez votre photo pour commander'
                 : 'Continuer vers la livraison →'}
             </button>
             ) : (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended) ? .5 : 1 }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading}
+              opacity: (soldOut || overRecommended || isExampleMode) ? .5 : 1 }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || isExampleMode}
               onClick={pay}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
+                : isExampleMode ? 'Ajoutez votre photo pour commander'
                 : busy ? 'Redirection…'
                 : ctaTransform}
             </button>
