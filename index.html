@@ -176,6 +176,9 @@ input{font-family:inherit}
 /* Review stars */
 .stars{color:#F5C518;letter-spacing:2px}
 
+/* Hero grid desktop — défini en CSS (pas inline) pour que les media queries iOS puissent l'overrider fiablement après rotation */
+.hero-grid{grid-template-columns:1fr 1fr;gap:64px}
+
 /* Responsive */
 @media(max-width:768px){
   .two-col{grid-template-columns:1fr !important}
@@ -192,7 +195,7 @@ input{font-family:inherit}
   .hero-text .hero-edition{display:none}
   .hero-text h1{font-size:1.65rem !important;margin-bottom:10px !important;line-height:1.15 !important}
   .hero-cta-block .btn-clay{width:100%;justify-content:center;padding:13px 20px !important;font-size:.92rem !important;display:flex;align-items:center;gap:10px}
-  .hero-photo-wrap{position:relative;max-height:100px;aspect-ratio:16/7;border-radius:14px;box-shadow:0 16px 40px rgba(44,31,20,.12)}
+  .hero-photo-wrap{position:relative;max-height:70px;aspect-ratio:16/5;border-radius:12px;box-shadow:0 12px 28px rgba(44,31,20,.12)}
   .hero-mobile-rating{display:flex !important}
   .hide-mobile{display:none !important}
   .nav-glass{padding:10px 14px !important}
@@ -1606,7 +1609,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <BrandLogo onClick={onHome}/>
           <span className="nav-nantes-badge">
-            <MadeInFranceBadge/> Nantes
+            <MadeInFranceBadge/> Fabriqué à Nantes
           </span>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -1625,13 +1628,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
       <section className="hero-section" style={{ padding:'72px 28px 64px',
         background:'linear-gradient(155deg, var(--bark-pale) 0%, var(--cream) 55%)' }}>
         <div className="hero-grid" style={{ maxWidth:1100, margin:'0 auto',
-          display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
+          display:'grid', alignItems:'center' }}>
           <div className="hero-text anim-in">
-            <div className="tag hero-tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20,
-              display:'inline-flex', alignItems:'center', gap:8 }}>
-              <MadeInFranceBadge/>
-              Fabriqué à Nantes
-            </div>
             <h1 style={{ color:'var(--dark)', marginBottom:22,
               fontSize:'clamp(2.1rem, 4.5vw, 3.4rem)', lineHeight:1.12 }}>
               Vos personnages,<br/>
@@ -2814,14 +2812,25 @@ function Success() {
 
 /* ─── APP SHELL ───────────────────────────────────────────────── */
 function useOrientationFix() {
-  const [, forceRender] = useState(0);
   useEffect(() => {
     const setVh = () => {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
     const onResize = () => setVh();
     const onOrientation = () => {
-      setTimeout(() => { setVh(); forceRender(n => n + 1); }, 120);
+      // Give iOS Safari time to finish the rotation animation and update viewport dimensions
+      setTimeout(() => {
+        setVh();
+        // Force CSS media query re-evaluation: toggling display flushes style recalc
+        const root = document.getElementById('root');
+        if (root) {
+          root.style.display = 'none';
+          void root.offsetHeight;
+          root.style.display = '';
+        }
+        // scrollTo forces WebKit to re-apply responsive rules
+        window.scrollTo(window.scrollX, window.scrollY);
+      }, 350);
     };
     window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('orientationchange', onOrientation, { passive: true });
