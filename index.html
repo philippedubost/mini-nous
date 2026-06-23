@@ -195,7 +195,7 @@ input{font-family:inherit}
   .hero-text .hero-edition{display:none}
   .hero-text h1{font-size:1.65rem !important;margin-bottom:10px !important;line-height:1.15 !important}
   .hero-cta-block .btn-clay{width:100%;justify-content:center;padding:13px 20px !important;font-size:.92rem !important;display:flex;align-items:center;gap:10px}
-  .hero-photo-wrap{position:relative;max-height:70px;aspect-ratio:16/5;border-radius:12px;box-shadow:0 12px 28px rgba(44,31,20,.12)}
+  .hero-photo-wrap{position:relative;max-height:50px;aspect-ratio:21/5;border-radius:10px;box-shadow:0 8px 20px rgba(44,31,20,.1)}
   .hero-mobile-rating{display:flex !important}
   .hide-mobile{display:none !important}
   .nav-glass{padding:10px 14px !important}
@@ -407,6 +407,8 @@ input{font-family:inherit}
 .hero-cta-meta{margin-top:14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:420px}
 .hero-price-hint{margin:0;font-size:.82rem;color:var(--muted);line-height:1.55}
 .hero-price-hint strong{color:var(--dark);font-weight:700}
+.hero-price-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;border-radius:100px;background:var(--bark-pale);border:1.5px solid var(--bark-light);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.hero-price-chip strong{color:var(--dark);font-weight:700}
 .hero-insta-link{display:inline-flex;align-items:center;gap:7px;font-size:.8rem;font-weight:600;color:var(--clay);text-decoration:none;transition:opacity .15s ease}
 .hero-insta-link:hover{opacity:.82;text-decoration:underline}
 .hero-insta-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
@@ -717,9 +719,9 @@ function BrandLogo({ onClick, compact }) {
 function HeroCtaMeta() {
   return (
     <div className="hero-cta-meta anim-in">
-      <p className="hero-price-hint">
-        <strong>dès 13,90 €</strong> pour une figurine solo
-      </p>
+      <span className="hero-price-chip">
+        <strong>dès 13,90 €</strong> la figurine
+      </span>
     </div>
   );
 }
@@ -1606,13 +1608,11 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
       {/* Nav */}
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'16px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <BrandLogo onClick={onHome}/>
+        <BrandLogo onClick={onHome}/>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <span className="nav-nantes-badge">
             <MadeInFranceBadge/> Fabriqué à Nantes
           </span>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <span className="tag hide-mobile"
             style={{ background:'var(--clay-pale)', color:'var(--clay)' }}>
             ✦ Lancé en été 2026
