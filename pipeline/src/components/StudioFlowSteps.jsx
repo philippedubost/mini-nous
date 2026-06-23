@@ -1,4 +1,4 @@
-import { STUDIO_FLOW_STEPS, isStudioSurpriseDone, studioFlowStep } from '../lib/studioFlow'
+import { STUDIO_FLOW_STEPS, isStudioBonusDone, studioFlowStep } from '../lib/studioFlow'
 
 function stepLabel(step) {
   return step.emoji ? `${step.emoji} ${step.label}` : step.label
@@ -10,14 +10,14 @@ export default function StudioFlowSteps({ order, lineartUrl, busy, phase }) {
   const current = studioFlowStep({ order, lineartUrl, busy, phase })
   if (current < 1) return null
 
-  const surpriseDone = isStudioSurpriseDone(order)
+  const bonusDone = isStudioBonusDone(order)
 
   return (
     <div className="customer-card-muted !p-4">
       <p className="text-xs customer-muted mb-3">Parcours studio</p>
       <div className="flex justify-between gap-1">
         {STUDIO_FLOW_STEPS.map((step) => {
-          const done = step.key < current || (step.key === 5 && surpriseDone)
+          const done = step.key < current || (step.key === 5 && bonusDone)
           const active = step.key === current && !done
           const future = !done && !active
 
@@ -31,7 +31,7 @@ export default function StudioFlowSteps({ order, lineartUrl, busy, phase }) {
                   done || active ? 'customer-step-active' : 'customer-step-idle'
                 }${active ? ' ring-2 ring-[#C0684A]/30' : ''}`}
               >
-                {done ? '✓' : step.emoji && future ? step.emoji : step.key}
+                {done ? '✓' : step.key}
               </div>
               <p
                 className={`text-[10px] sm:text-xs font-semibold leading-snug ${

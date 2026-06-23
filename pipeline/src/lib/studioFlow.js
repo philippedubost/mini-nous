@@ -5,7 +5,7 @@ export const STUDIO_FLOW_STEPS = [
   { key: 2, label: 'Validation tracé', hint: 'Validez ou ajustez le tracé proposé' },
   { key: 3, label: 'Fabrication', hint: 'Vos figurines entrent en file d\'impression' },
   { key: 4, label: 'Expédition', hint: 'Réception de votre colis' },
-  { key: 5, label: 'Surprise', emoji: '🎁', hint: 'Remises exclusives en échange d\'un avis Trustpilot ou d\'un partage' },
+  { key: 5, label: 'Bonus', emoji: '🎁', hint: 'Remises exclusives en échange d\'un avis Trustpilot ou d\'un partage' },
 ]
 
 export function studioFlowStep({ order, lineartUrl, busy, phase }) {
@@ -22,7 +22,7 @@ export function studioFlowStep({ order, lineartUrl, busy, phase }) {
   return 1
 }
 
-export function isStudioSurpriseDone(order) {
+export function isStudioBonusDone(order) {
   return !!(order?.mininousShareUrl || order?.npsSubmittedAt)
 }
 
