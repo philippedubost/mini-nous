@@ -1933,7 +1933,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const deliveryDates = paywallDeliveryDates(status);
 
   const isExampleMode = session?.isDemoExample === true;
-  const faceCountForQuote = session?.enterVia === 'upload'
+  const hasPersonalPhoto = !!session?.photoBase64 && !session?.isDemoExample;
+  const faceCountForQuote = (session?.enterVia === 'upload' || session?.enterVia === 'demo')
     ? (session.faceCount ?? session.detectedFaces ?? 2)
     : packDef?.faceCount;
   const { quote, loading: quoteLoading } = useQuote(faceCountForQuote, fridayDelivery, shippingZone);
@@ -1957,13 +1958,13 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const totalTtc = hasQuote ? quote.totalEur : null;
 
   const goToDelivery = () => {
-    if (!hasQuote || overRecommended || quoteLoading || isExampleMode) return;
+    if (!hasQuote || overRecommended || quoteLoading || !hasPersonalPhoto) return;
     setError(null);
     setCheckoutStep('delivery');
   };
 
   const pay = async () => {
-    if (!hasQuote || overRecommended || quoteLoading || isExampleMode) return;
+    if (!hasQuote || overRecommended || quoteLoading || !hasPersonalPhoto) return;
     const email = customerEmail.trim();
     if (checkoutStep === 'delivery' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Indiquez une adresse e-mail valide pour la confirmation de commande.');
@@ -2011,7 +2012,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
 
         <div>
-          {session?.isDemoExample && showComposition && !overRecommended && (
+          {isExampleMode && (
             <div style={{ marginBottom:16 }}>
               <TryMyPhotoButton onFile={onPhotoUpload} />
             </div>
@@ -2265,22 +2266,24 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             {checkoutStep === 'product' ? (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended || isExampleMode) ? .5 : 1 }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || isExampleMode}
+              opacity: (soldOut || overRecommended || !hasPersonalPhoto) ? .5 : 1,
+              cursor: (soldOut || overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
               onClick={goToDelivery}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
-                : isExampleMode ? 'Ajoutez votre photo pour commander'
+                : !hasPersonalPhoto ? 'Ajoutez votre photo pour commander'
                 : 'Continuer vers la livraison →'}
             </button>
             ) : (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended || isExampleMode) ? .5 : 1 }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || isExampleMode}
+              opacity: (soldOut || overRecommended || !hasPersonalPhoto) ? .5 : 1,
+              cursor: (soldOut || overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
+              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
               onClick={pay}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
                 : soldOut ? 'Complet cette semaine'
-                : isExampleMode ? 'Ajoutez votre photo pour commander'
+                : !hasPersonalPhoto ? 'Ajoutez votre photo pour commander'
                 : busy ? 'Redirection…'
                 : ctaTransform}
             </button>
@@ -2764,6 +2767,29 @@ function App() {
     go('landing');
   }, [go]);
 
+  const beginDemoFlow = useCallback((demoPreset) => {
+    if (!demoPreset) return;
+    setPhotoBusyUrl(demoPreset.src);
+    setSelectedPack('famille');
+    setSession({
+      enterVia: 'demo',
+      photoUrl: demoPreset.src,
+      photoBase64: null,
+      detectedFaces: null,
+      faceBoxes: null,
+      faceCount: demoPreset.faceCount,
+      childCount: demoPreset.childCount ?? 0,
+      showcaseCount: demoPreset.showcaseCount ?? demoPreset.faceCount,
+      isDemoExample: true,
+      error: null,
+      orderToken: null,
+      orderStatusUrl: null,
+    });
+    setTick(t => t + 1);
+    go('pricing');
+    requestAnimationFrame(() => requestAnimationFrame(() => setPhotoBusyUrl(null)));
+  }, [go]);
+
   const beginPhotoFlow = useCallback(async (file, { enterVia = 'upload', demoPreset = null } = {}) => {
     setPhotoBusyUrl(demoPreset?.src || IMG.upload);
     try {
@@ -2823,7 +2849,7 @@ function App() {
         faceCount: initialCount,
         childCount: initialChildren,
         showcaseCount,
-        isDemoExample: !!demoPreset,
+        isDemoExample: false,
         error: null,
         orderToken,
         orderStatusUrl,
@@ -2845,18 +2871,9 @@ function App() {
     beginPhotoFlow(file, { enterVia: 'upload' })
   ), [beginPhotoFlow]);
 
-  const onDemoPhoto = useCallback(async (demo) => {
-    setPhotoBusyUrl(demo.src);
-    try {
-      const res = await fetch(demo.src);
-      const blob = await res.blob();
-      const file = new File([blob], `demo-${demo.count}.webp`, { type: blob.type || 'image/webp' });
-      await beginPhotoFlow(file, { enterVia: 'upload', demoPreset: demo });
-    } catch {
-      setPhotoBusyUrl(null);
-      alert('Impossible de charger cette photo de démonstration.');
-    }
-  }, [beginPhotoFlow]);
+  const onDemoPhoto = useCallback((demo) => {
+    beginDemoFlow(demo);
+  }, [beginDemoFlow]);
 
   const onFaceCountChange = useCallback(({ faceCount, childCount }) => {
     const n = Math.max(1, Math.min(FACE_COUNTER_MAX, faceCount));
