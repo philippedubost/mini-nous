@@ -1,3 +1,5 @@
+import { ImageWithZoom } from './ImageLightbox'
+
 export default function StudioWorkspace({
   sourcePhotoUrl,
   lineartUrl,
@@ -7,6 +9,7 @@ export default function StudioWorkspace({
   lineartVersion = 1,
   processingSteps,
   activeStep,
+  embedMode = false,
   children,
 }) {
   if (!sourcePhotoUrl) return null
@@ -16,7 +19,9 @@ export default function StudioWorkspace({
   return (
     <div className="customer-card space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm font-semibold text-[#2C1F14]">Votre studio</p>
+        <p className="text-sm font-semibold text-[#2C1F14]">
+          {embedMode ? 'Validation du tracé' : 'Votre studio'}
+        </p>
         {busy && <span className="customer-badge">Traitement en cours…</span>}
         {lineartUrl && !busy && (
           <span className="customer-badge customer-badge-green">Tracé v{lineartVersion} prêt</span>
@@ -27,7 +32,12 @@ export default function StudioWorkspace({
         <div>
           <p className="text-xs customer-muted mb-2">Photo uploadée</p>
           <div className="customer-photo-frame">
-            <img src={sourcePhotoUrl} alt="Votre photo de groupe" />
+            <ImageWithZoom
+              src={sourcePhotoUrl}
+              alt="Votre photo de groupe"
+              label="Votre photo"
+              imgClassName="w-full h-auto"
+            />
           </div>
         </div>
 
@@ -37,7 +47,12 @@ export default function StudioWorkspace({
           </p>
           {lineartUrl ? (
             <div className="customer-photo-frame customer-photo-frame-lineart">
-              <img src={lineartUrl} alt="Tracé line art" />
+              <ImageWithZoom
+                src={lineartUrl}
+                alt="Tracé line art"
+                label={`Tracé v${lineartVersion}`}
+                imgClassName="w-full h-auto"
+              />
             </div>
           ) : phase === 'awaiting_payment' ? (
             <div className="customer-photo-frame flex-col gap-4 py-10">

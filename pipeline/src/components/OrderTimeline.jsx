@@ -1,14 +1,19 @@
+import { isStudioBonusDone } from '../lib/studioFlow'
+
 const STEPS = [
   { key: 'lineart', label: 'Tracé sur mesure' },
   { key: 'validation', label: 'Validation' },
   { key: 'fabrication', label: 'Fabrication' },
   { key: 'shipped', label: 'Expédition' },
+  { key: 'bonus', label: 'Bonus', emoji: '🎁' },
 ]
 
 export function timelineIndex(order) {
   if (!order?.isPaid) return -1
   const s = order.workflowStatus
-  if (s === 'shipped') return 3
+  if (s === 'shipped') {
+    return isStudioBonusDone(order) ? 5 : 4
+  }
   if (s === 'approved' || s === 'in_production') return 2
   if (['pending_validation', 'revision_requested'].includes(s)) return 1
   return 0
@@ -40,8 +45,13 @@ export default function OrderTimeline({ order }) {
               <span className={`text-[10px] sm:text-xs font-medium block truncate ${
                 future ? 'customer-muted' : 'text-[#2C1F14]'
               }`}>
-                {s.label}
+                {s.emoji ? `${s.emoji} ${s.label}` : s.label}
               </span>
+              {s.key === 'shipped' && order.deliveryDateLabel && !future && (
+                <span className="text-[9px] sm:text-[10px] block mt-0.5 text-[#C0684A] leading-tight px-0.5">
+                  {order.deliveryDateLabel}
+                </span>
+              )}
             </div>
           )
         })}

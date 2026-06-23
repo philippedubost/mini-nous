@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import LineartVersionPicker from './LineartVersionPicker'
+import { ImageWithZoom } from './ImageLightbox'
 
 const ADJUSTMENT_ISSUES = [
   { id: 'cheveux', label: 'Cheveux' },
@@ -23,6 +24,7 @@ function emptyChars(faceCount) {
 export default function CharacterReviewPanel({
   faceCount,
   lineartVersion = 1,
+  lineartUrl,
   studio = {},
   lineartVersions = [],
   selectedVersionId,
@@ -134,6 +136,9 @@ export default function CharacterReviewPanel({
               ? 'Cochez ce qui doit être revu. Notre équipe reprendra le tracé à la main (tracé v3 sous 24 h).'
               : 'Vos retours seront compilés pour regénérer automatiquement le tracé v2.'}
           </p>
+          <p className="text-xs font-medium text-[#7A5C38] mt-2">
+            Les personnages 1, 2, 3… sont rangés de <strong>gauche à droite</strong> sur le tracé.
+          </p>
         </div>
         <button
           type="button"
@@ -144,6 +149,29 @@ export default function CharacterReviewPanel({
           ← Retour
         </button>
       </div>
+
+      {lineartUrl && (
+        <div className="relative customer-photo-frame customer-photo-frame-lineart mx-auto max-w-md">
+          <ImageWithZoom
+            src={lineartUrl}
+            alt="Tracé à ajuster"
+            label={`Tracé v${lineartVersion}`}
+            imgClassName="w-full h-auto"
+            className="w-full"
+          />
+          <div className="absolute inset-x-0 bottom-[10%] flex justify-around px-[10%] pointer-events-none">
+            {Array.from({ length: faceCount }, (_, i) => (
+              <span
+                key={i}
+                className="w-7 h-7 rounded-full bg-[#C0684A] text-white text-sm font-bold flex items-center justify-center shadow-lg border-2 border-white/90"
+                aria-hidden
+              >
+                {i + 1}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="customer-person-row customer-adjust-table">
         {chars.map((c, ci) => (

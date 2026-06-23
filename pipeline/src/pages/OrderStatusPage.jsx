@@ -52,8 +52,8 @@ export default function OrderStatusPage() {
 
   const shipLabel = order?.deliveryDateLabel ?? null
 
-  const showStudio = order?.isPaid && (order?.sourcePhotoUrl || order?.previewUrl || order?.workflowStatus === 'in_studio')
-  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl)
+  const showStudioEmbed = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
+  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioEmbed
   const showNps = order?.isPaid
     && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
     && !order?.npsSubmittedAt
@@ -61,7 +61,7 @@ export default function OrderStatusPage() {
 
   return (
     <CustomerLayout
-      title={order ? 'Votre commande' : undefined}
+      title={order ? (order.customerFirstName ? `Bonjour ${order.customerFirstName}` : 'Votre commande') : undefined}
       subtitle={order ? `${order.packLabel} · ${order.faceCount} figurine${order.faceCount > 1 ? 's' : ''}${order.amountEur ? ` · ${order.amountEur} €` : ''}` : undefined}
       navRight={(
         order?.isPaid && order?.editable ? (
@@ -149,7 +149,7 @@ export default function OrderStatusPage() {
             />
           )}
 
-          {showStudio && (
+          {showStudioEmbed && (
             <StudioCustomerFlow
               orderToken={orderToken}
               bearerToken={bearerToken}

@@ -4,6 +4,7 @@ import StudioWorkspace from './StudioWorkspace'
 import StudioFlowSteps from './StudioFlowSteps'
 import CharacterReviewPanel from './CharacterReviewPanel'
 import PaywallCompositionEditor from './PaywallCompositionEditor'
+import ShippingAddressEditor from './ShippingAddressEditor'
 import { useSettings } from '../context/SettingsContext'
 import { buildPrompt1, resolveImageUrls, falStepFormat, fetchReferenceBlob } from '../lib/settings'
 import { buildMegaRegenPrompt } from '../lib/regenPrompt'
@@ -305,7 +306,7 @@ export default function StudioCustomerFlow({
       await orderAction(orderToken, 'validate', bearerToken, {
         ...(caps.showVersionPicker && selectedVersionId ? { versionId: selectedVersionId } : {}),
       })
-      setStatusMsg('Tracé validé — prêt à fabriquer ! Vos figurines entrent en file d\'impression.')
+      setStatusMsg(null)
       await reloadOrder()
     } catch (e) {
       setError(e.message)
@@ -350,6 +351,7 @@ export default function StudioCustomerFlow({
   if (!order) return null
 
   const showCompositionEditor = order?.isPaid && order?.editable && !order?.isAdminView
+    && !order?.previewUrl && !lineartUrl
 
   return (
     <div className="space-y-4">
@@ -366,7 +368,9 @@ export default function StudioCustomerFlow({
         />
       )}
 
-      <StudioFlowSteps order={order} lineartUrl={lineartUrl} busy={busy} phase={phase} />
+      {!embedMode && (
+        <StudioFlowSteps order={order} lineartUrl={lineartUrl} busy={busy} phase={phase} />
+      )}
 
       <StudioWorkspace
         sourcePhotoUrl={order.sourcePhotoUrl}
@@ -377,11 +381,13 @@ export default function StudioCustomerFlow({
         lineartVersion={lineartVersion}
         processingSteps={PROCESSING_STEPS}
         activeStep={activeStep}
+        embedMode={embedMode}
       >
         {showReviewActions && (
           <CharacterReviewPanel
             faceCount={order.faceCount}
             lineartVersion={lineartVersion}
+            lineartUrl={lineartUrl}
             studio={studioCaps}
             lineartVersions={order.lineartVersions ?? []}
             selectedVersionId={selectedVersionId}
@@ -394,6 +400,16 @@ export default function StudioCustomerFlow({
           />
         )}
       </StudioWorkspace>
+
+      {order.shippingAddress && !embedMode && (
+        <ShippingAddressEditor
+          orderToken={orderToken}
+          bearerToken={bearerToken}
+          shippingAddress={order.shippingAddress}
+          onUpdated={applyOrder}
+          disabled={busy || order.workflowStatus === 'shipped'}
+        />
+      )}
 
       {phase === 'awaiting_payment' && !order.sourcePhotoUrl && !embedMode && (
         <div className="customer-card text-center space-y-3 py-8">
@@ -427,7 +443,7 @@ export default function StudioCustomerFlow({
         />
       )}
 
-      {!order.isAdminView && order.workflowStatus === 'approved' && lineartUrl && (
+      {!order.isAdminView && order.workflowStatus === 'approved' && lineartUrl && !embedMode && (
         <p className="text-sm text-center text-[#4A8A52]">
           Prêt à fabriquer — votre commande est en file d&apos;impression.
         </p>

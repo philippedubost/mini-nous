@@ -1,3 +1,5 @@
+import { ImageWithZoom } from './ImageLightbox'
+
 /** Galerie lecture seule : photo source + tracé validé. */
 export default function OrderCreationGallery({
   sourcePhotoUrl,
@@ -17,7 +19,12 @@ export default function OrderCreationGallery({
           <div className="space-y-2">
             <p className="text-xs customer-muted text-center">Photo</p>
             <div className="customer-photo-frame">
-              <img src={sourcePhotoUrl} alt="Votre photo" className="w-full h-auto" />
+              <ImageWithZoom
+                src={sourcePhotoUrl}
+                alt="Votre photo"
+                label="Votre photo"
+                imgClassName="w-full h-auto"
+              />
             </div>
           </div>
         )}
@@ -27,14 +34,19 @@ export default function OrderCreationGallery({
               Tracé validé{lineartVersion ? ` · v${lineartVersion}` : ''}
             </p>
             <div className="customer-photo-frame ring-2 ring-[#C0684A]/40">
-              <img src={lineart} alt="Tracé validé" className="w-full h-auto" />
+              <ImageWithZoom
+                src={lineart}
+                alt="Tracé validé"
+                label={`Tracé validé${lineartVersion ? ` v${lineartVersion}` : ''}`}
+                imgClassName="w-full h-auto"
+              />
             </div>
           </div>
         )}
       </div>
       {readonly && (
         <p className="text-xs customer-muted text-center">
-          Ces visuels sont conservés pour le suivi de votre commande.
+          Cliquez sur la loupe pour agrandir et vérifier le détail.
         </p>
       )}
     </div>
