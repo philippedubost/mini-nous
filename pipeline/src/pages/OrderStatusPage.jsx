@@ -50,6 +50,12 @@ export default function OrderStatusPage() {
     return () => clearInterval(t)
   }, [load, order?.isPaid])
 
+  useEffect(() => {
+    if (window.location.hash !== '#avis') return
+    const el = document.getElementById('avis')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [order, loading])
+
   const shipLabel = order?.deliveryDateLabel ?? null
 
   const showStudioEmbed = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
@@ -168,11 +174,13 @@ export default function OrderStatusPage() {
           )}
 
           {showNps && (
-            <NpsSurvey
-              orderToken={orderToken}
-              submitted={!!order.npsSubmittedAt}
-              initialScore={order.npsScore}
-            />
+            <div id="avis">
+              <NpsSurvey
+                orderToken={orderToken}
+                submitted={!!order.npsSubmittedAt}
+                initialScore={order.npsScore}
+              />
+            </div>
           )}
 
           {showShare && (
