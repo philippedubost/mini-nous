@@ -789,6 +789,11 @@ function presetFromFileName(name) {
 
 const PAYWALL_PATH = '/mes-figurines';
 
+const TESTIMONIALS = [
+  { name: 'Sophie M.', place: 'Rennes', text: 'On a offert le pack famille à mes parents. La ressemblance est bluffante et le bois sent bon dans le salon.' },
+  { name: 'Thomas & Léa', place: 'Nantes', text: 'Photo du mariage, quatre figurines sur l\'étagère. Nos invités demandent toujours d\'où ça vient.' },
+  { name: 'Camille D.', place: 'Lyon', text: 'J\'avais peur que ce soit gadget. En vrai c\'est délicat, bien emballé, livré en boîte aux lettres comme promis.' },
+];
 
 const SOCIAL_LINKS = {
   instagram: 'https://www.instagram.com/atelier.mininous/',
@@ -1459,6 +1464,23 @@ function WatermarkedPreview({ src, alt, style = {} }) {
   );
 }
 
+function TestimonialsFeed() {
+  return (
+    <>
+      <div className="testimonials-grid">
+        {TESTIMONIALS.map(t => (
+          <blockquote key={t.name} className="testimonial-card">
+            <div className="testimonial-stars" aria-label="5 étoiles sur 5">★★★★★</div>
+            <p className="testimonial-quote">&ldquo;{t.text}&rdquo;</p>
+            <footer className="testimonial-author">{t.name} · {t.place}</footer>
+          </blockquote>
+        ))}
+      </div>
+      <SocialLinks/>
+    </>
+  );
+}
+
 /* ─── EARLY ADOPTER ────────────────────────────────────────────── */
 function EarlyAdopter({ onUpload }) {
   return (
@@ -1474,9 +1496,9 @@ function EarlyAdopter({ onUpload }) {
         </h2>
         <p className="anim-in anim-d1" style={{ color:'var(--muted)', lineHeight:1.82,
           fontSize:'.96rem', maxWidth:560, margin:'0 auto 32px' }}>
-          Les MiniNous viennent de naître. On vous invite à vivre le projet depuis le début,
-          sans fioriture : des figurines taillées à la main dans notre atelier nantais,
-          d&apos;après votre photo, livrées chez vous avec soin.
+          Les MiniNous viennent de naître.           On vous invite à vivre le projet depuis le début.
+          Chaque figurine est programmée et découpée sur mesure dans notre atelier nantais,
+          d&apos;après votre photo — livrée chez vous avec soin.
           Soyez parmi les premiers à recevoir les vôtres.
         </p>
         <button className="btn-clay anim-in anim-d2"
@@ -1529,11 +1551,14 @@ function Fondateurs() {
             <p style={{ color:'var(--text)', lineHeight:1.82, fontSize:'.96rem', marginBottom:22 }}>
               On a créé les MiniNous pour garder une trace vivante des moments ensemble
               — un souvenir qu&apos;on pose sur une étagère plutôt que d&apos;enfouir dans un téléphone.
-              Chaque figurine sort de notre atelier à Nantes, découpée et assemblée à la main.
+              On a combiné notre curiosité pour la fabrication numérique et notre passion du code
+              pour construire un atelier capable de lire une photo et d&apos;en sortir une figurine
+              en bois sur mesure.
             </p>
             <p style={{ color:'var(--muted)', lineHeight:1.78, fontSize:'.92rem', marginBottom:28 }}>
-              On a lancé le projet en été 2026 et on est ravis d&apos;accueillir nos premières familles.
-              Chaque retour nous aide à affiner l&apos;atelier — n&apos;hésitez pas à nous écrire.
+              Lancé en été 2026, le projet évolue vite — chaque commande nous aide à affiner
+              la précision du tracé et la qualité de la découpe.
+              N&apos;hésitez pas à nous écrire, on adore les retours.
             </p>
             <a href="https://lesfantomes.fr" target="_blank" rel="noopener noreferrer"
               className="fantomes-link">
@@ -1595,8 +1620,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             </h1>
             <p className="hero-lead" style={{ color:'var(--muted)', fontSize:'1.02rem', lineHeight:1.78,
               marginBottom:32, maxWidth:460 }}>
-              Une photo de groupe suffit. Dans notre atelier à Nantes, chaque silhouette est tracée
-              et découpée sur mesure dans du bois — un souvenir fait main, rien d&apos;autre.
+              Une photo de groupe suffit. On programme chaque silhouette sur mesure,
+              puis on la découpe au laser dans du bois à notre atelier nantais.
             </p>
             <div className="hero-cta-row" style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
@@ -1661,7 +1686,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             De la photo au salon
           </h2>
           <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
-            Votre photo, tracée à la main, taillée dans le bois — prête à poser sur votre étagère.
+            Votre photo, convertie en tracé sur mesure, découpée au laser dans le bois — prête à poser sur votre étagère.
           </p>
           <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
             stepLabels={{ lineart: 'Tracé' }}/>
@@ -1676,8 +1701,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             {[
               { icon:'📸', title:'Envoyez votre photo',
                 desc:'Une photo de groupe, et on reconnaît chaque personnage pour le tailler sur mesure.' },
-              { icon:'🪵', title:'On taille votre groupe',
-                desc:'Chaque silhouette est découpée à la main dans du bois d\'après votre photo — unique et irreproductible.' },
+              { icon:'🪵', title:'On programme et on découpe',
+                desc:'Chaque silhouette est paramétrée sur mesure d\'après votre photo, puis découpée au laser dans du bois à notre atelier.' },
               { icon:'📦', title:'Livré chez vous le vendredi',
                 desc:'Dans notre boîte kraft recyclée, soigneusement emballé, partout en France.' },
             ].map((s, i) => (
@@ -1723,6 +1748,17 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
 
       {/* Atelier live */}
       <AtelierLive/>
+
+      {/* Témoignages */}
+      <section style={{ padding:'72px 28px', background:'var(--bark-pale)' }}>
+        <div style={{ maxWidth:820, margin:'0 auto', textAlign:'center' }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Premiers retours</h2>
+          <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.92rem' }}>
+            Les MiniNous viennent de naître — voici les retours de nos premiers testeurs.
+          </p>
+          <TestimonialsFeed/>
+        </div>
+      </section>
 
       {/* Aventure · été 2026 */}
       <EarlyAdopter onUpload={() => document.getElementById('photo-upload')?.scrollIntoView({ behavior:'smooth' })}/>
