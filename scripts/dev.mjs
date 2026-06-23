@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { startGateway } from './gateway.mjs'
 import { loadEnv } from './lib/load-env.mjs'
 import { warnIfSupabaseUnreachable, isSupabaseReachable } from './lib/supabase-check.mjs'
+import { writeBuildInfo } from './gen-build-info.mjs'
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(scriptsDir, '..')
@@ -63,6 +64,8 @@ async function loadApiRoutes() {
 
 async function main() {
   loadEnv()
+  const buildInfo = writeBuildInfo(rootDir)
+  console.log(`  Build ${buildInfo.version} · ${buildInfo.committedAtLabel}`)
   await warnIfSupabaseUnreachable()
   if (!isSupabaseReachable()) {
     process.env.SUPABASE_REACHABLE = '0'

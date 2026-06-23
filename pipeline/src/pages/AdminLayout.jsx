@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import CustomerLayout from '../components/CustomerLayout'
+import AppBuildFooter from '../components/AppBuildFooter'
 import { checkAdminPassword, isAdminAuthed, setAdminAuthed } from '../lib/adminAuth'
 
 const NAV = [
@@ -79,6 +80,7 @@ export default function AdminLayout() {
       <main className="flex-1 w-full max-w-[1680px] mx-auto px-4 py-6">
         <Outlet />
       </main>
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }

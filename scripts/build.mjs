@@ -1,7 +1,8 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { writeBuildInfo } from './gen-build-info.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const dist = join(root, 'dist')
@@ -10,7 +11,11 @@ const pipelineDist = join(root, 'pipeline', 'dist')
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
 
-cpSync(join(root, 'index.html'), join(dist, 'index.html'))
+writeBuildInfo(root)
+cpSync(join(root, 'build-info.json'), join(dist, 'build-info.json'))
+
+let landingHtml = readFileSync(join(root, 'index.html'), 'utf8')
+writeFileSync(join(dist, 'index.html'), landingHtml)
 for (const f of ['robots.txt', 'sitemap.xml']) {
   const src = join(root, f)
   if (existsSync(src)) cpSync(src, join(dist, f))

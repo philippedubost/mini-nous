@@ -407,6 +407,9 @@ input{font-family:inherit}
 .hero-quick-steps::-webkit-scrollbar{display:none}
 .hero-step-pill{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:100px;background:#fff;border:1.5px solid var(--bark-light);font-size:.72rem;font-weight:600;color:var(--dark);white-space:nowrap}
 .hero-step-pill span:first-child{font-size:1rem;line-height:1}
+.mn-build-footer{text-align:center;padding:10px 16px 14px;font-size:11px;line-height:1.45;color:var(--muted);border-top:1px solid rgba(196,168,130,.22);background:inherit}
+.mn-build-footer--dark{color:rgba(255,255,255,.38);border-top-color:rgba(255,255,255,.08)}
+.mn-build-footer--sticky{margin-top:auto}
 </style>
 </head>
 <body>
@@ -414,6 +417,25 @@ input{font-family:inherit}
 <script type="text/babel">
 /** @jsx React.createElement */
 const { useState, useEffect, useRef, useCallback } = React;
+
+function BuildFooter({ dark, sticky }) {
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    fetch('/build-info.json', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data?.version) setInfo(data); })
+      .catch(() => {});
+  }, []);
+  if (!info?.version) return null;
+  return (
+    <footer
+      className={`mn-build-footer${dark ? ' mn-build-footer--dark' : ''}${sticky ? ' mn-build-footer--sticky' : ''}`}
+      aria-label="Version de l'application"
+    >
+      Les MiniNous · v{info.version} · {info.committedAtLabel}
+    </footer>
+  );
+}
 
 async function checkoutByFaces(faceCount, opts = {}) {
   const res = await fetch('/api/checkout', {
@@ -1647,6 +1669,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             Connexion
           </a>
         </div>
+        <BuildFooter dark />
       </footer>
     </div>
   );
@@ -1969,7 +1992,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
     : 'Commander et transformer la photo en figurines →';
 
   return (
-    <div className="screen" style={{ background:'var(--cream)' }}>
+    <div className="screen" style={{ background:'var(--cream)', display:'flex', flexDirection:'column', minHeight:'100vh' }}>
       <nav className="nav-glass" style={{ position:'sticky', top:0, zIndex:50,
         padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <BrandLogo compact onClick={onHome}/>
@@ -2288,6 +2311,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
           </div>
         </div>
       </div>
+      <BuildFooter sticky />
     </div>
   );
 }
