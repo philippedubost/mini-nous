@@ -18,13 +18,13 @@ export const IMAGE_INPUT_OPTIONS = [
   { id: 'step2', label: 'Résultat étape 2' },
 ]
 
-export const DEFAULT_REFERENCE_LINE_URL = `${import.meta.env.BASE_URL}referenceLine2.png`
+export const DEFAULT_REFERENCE_LINE_URL = '/images/referenceLine2.webp'
 
 /** Valeurs par défaut — alignées sur lib/server/pipeline-settings.js */
 export const DEFAULT_SETTINGS = {
   resolution: '2K',
   aspectRatio: '16:9',
-  referenceLineUrl: null,
+  referenceLineUrl: DEFAULT_REFERENCE_LINE_URL,
   steps: [
     {
       resolution: '2K',
@@ -78,7 +78,7 @@ export function mergeSettings(parsed) {
   return {
     resolution: '2K',
     aspectRatio: '16:9',
-    referenceLineUrl: parsed.referenceLineUrl ?? null,
+    referenceLineUrl: parsed.referenceLineUrl ?? DEFAULT_REFERENCE_LINE_URL,
     steps: DEFAULT_SETTINGS.steps.map((def, i) => {
       const step = parsed.steps?.[i] ?? {}
       return {
@@ -105,7 +105,10 @@ export function getReferenceLineUrl(settings) {
 }
 
 export async function fetchReferenceBlob(settings) {
-  const url = getReferenceLineUrl(settings)
+  let url = getReferenceLineUrl(settings)
+  if (url.startsWith('/')) {
+    url = `${window.location.origin}${url}`
+  }
   const res = await fetch(url)
   if (!res.ok) throw new Error('Impossible de charger la référence line art')
   return res.blob()
