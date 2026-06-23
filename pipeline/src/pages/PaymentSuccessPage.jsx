@@ -49,11 +49,7 @@ export default function PaymentSuccessPage() {
     }
   }, [order, orderToken, navigate])
 
-  const shipLabel = order?.shipDate
-    ? new Date(`${order.shipDate}T12:00:00`).toLocaleDateString('fr-FR', {
-      weekday: 'long', day: 'numeric', month: 'long',
-    })
-    : null
+  const shipLabel = order?.deliveryDateLabel ?? null
 
   return (
     <div className="min-h-screen bg-stone-950 flex items-center justify-center p-6">

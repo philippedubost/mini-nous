@@ -11,6 +11,8 @@ export default function StudioWorkspace({
 }) {
   if (!sourcePhotoUrl) return null
 
+  const showProcessing = busy && phase !== 'awaiting_payment'
+
   return (
     <div className="customer-card space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -43,14 +45,16 @@ export default function StudioWorkspace({
               <p className="text-sm font-medium text-[#C0684A] text-center px-4">Confirmation du paiement…</p>
               <p className="text-xs customer-muted text-center px-4">Le traitement démarre dès validation Stripe.</p>
             </div>
-          ) : (
+          ) : showProcessing ? (
             <div className="customer-photo-frame flex-col gap-4 py-10">
               <div className="customer-spinner" aria-hidden />
               <p className="text-sm font-medium text-[#C0684A] text-center px-4">
                 {statusMsg || 'Traitement en cours…'}
               </p>
               <p className="text-xs customer-muted text-center px-4">
-                Comptez entre 2 et 5 minutes — ne fermez pas cette page.
+                Comptez entre 2 et 5 minutes — vous pouvez fermer la fenêtre.
+                <br />
+                Vous recevrez un e-mail de confirmation quand votre tracé sera terminé !
               </p>
               {processingSteps?.length > 0 && (
                 <ol className="text-xs customer-muted space-y-1.5 w-full max-w-[220px]">
@@ -61,6 +65,12 @@ export default function StudioWorkspace({
                   ))}
                 </ol>
               )}
+            </div>
+          ) : (
+            <div className="customer-photo-frame flex-col gap-4 py-10">
+              <p className="text-sm customer-muted text-center px-4">
+                Votre tracé apparaîtra ici une fois le traitement terminé.
+              </p>
             </div>
           )}
         </div>

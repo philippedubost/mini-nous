@@ -5,7 +5,8 @@ fal.config({ proxyUrl: '/api/fal' })
 export const FAL_MODEL = 'fal-ai/nano-banana-pro/edit'
 
 export async function runFalStep(stepConfig, imageUrls, onLog) {
-  const result = await fal.subscribe(FAL_MODEL, {
+  const timeoutMs = 8 * 60 * 1000
+  const subscribe = fal.subscribe(FAL_MODEL, {
     input: {
       prompt: stepConfig.prompt,
       image_urls: imageUrls,
@@ -22,6 +23,15 @@ export async function runFalStep(stepConfig, imageUrls, onLog) {
       }
     },
   })
+  const result = await Promise.race([
+    subscribe,
+    new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error('Délai dépassé (8 min) — le traitement a été interrompu. Réessayez.')),
+        timeoutMs,
+      )
+    }),
+  ])
   const url = result?.data?.images?.[0]?.url ?? result?.data?.image?.url ?? result?.images?.[0]?.url
   if (!url) throw new Error('Aucune image retournée')
   return url

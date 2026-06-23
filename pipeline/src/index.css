@@ -286,6 +286,10 @@ body {
     color: #9A8F88;
   }
 
+  .customer-step-future {
+    opacity: 0.45;
+  }
+
   .customer-preview {
     @apply w-full max-h-40 object-contain rounded-xl;
     background: #F5EDE0;

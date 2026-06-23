@@ -12,11 +12,7 @@ export default function StudioPage() {
   const { accessToken: bearerToken } = useAuth()
   const [order, setOrder] = useState(null)
 
-  const shipLabel = order?.shipDate
-    ? new Date(`${order.shipDate}T12:00:00`).toLocaleDateString('fr-FR', {
-      weekday: 'long', day: 'numeric', month: 'long',
-    })
-    : null
+  const shipLabel = order?.deliveryDateLabel ?? null
 
   return (
     <CustomerLayout

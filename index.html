@@ -871,7 +871,7 @@ function PackCards({ onPackExample }) {
               <div className="pack-price">
                 {(p.priceEur ?? p.totalEur)} € <small>TTC</small>
                 {Number(p.shippingEur) > 0 ? (
-                  <span className="pack-shipping">+ {Number(p.shippingEur).toFixed(0)} € de port</span>
+                  <span className="pack-shipping">+ {Number(p.shippingEur).toFixed(0)} € de port · offert dès 4 pers.</span>
                 ) : (
                   <span className="pack-shipping">🎁 port offert</span>
                 )}
@@ -1824,33 +1824,16 @@ function CounterRow({ label, value, min, max, onChange, hint }) {
   );
 }
 
-function PaywallPhotoOverlay({ photoUrl, faceBoxes }) {
+function PaywallPhotoOverlay({ photoUrl }) {
   if (!photoUrl) return null;
-  const boxes = faceBoxes?.length ? faceBoxes : null;
   return (
     <div className="paywall-photo-overlay">
       <img src={photoUrl} alt="Votre photo de groupe"/>
-      {boxes && (
-        <div className="paywall-face-boxes" aria-hidden="true">
-          {boxes.map((b, i) => (
-            <div
-              key={i}
-              className="paywall-face-box"
-              style={{
-                left: `${b.left}%`,
-                top: `${b.top}%`,
-                width: `${b.width}%`,
-                height: `${b.height}%`,
-              }}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax, onChange, photoUrl, photoHeader, faceBoxes }) {
+function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax, onChange, photoUrl, photoHeader }) {
   const total = Math.max(1, Math.min(max, Number(faceCount) || 2));
   const children = Math.max(0, Math.min(total, Number(childCount) || 0));
   const adults = total - children;
@@ -1870,7 +1853,7 @@ function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax,
       style={{ background:'#fff', border:'1.5px solid var(--bark-light)', borderRadius:14, textAlign:'left' }}>
       {photoHeader && photoUrl && (
         <div className="paywall-card-photo-header">
-          <PaywallPhotoOverlay photoUrl={photoUrl} faceBoxes={faceBoxes}/>
+          <PaywallPhotoOverlay photoUrl={photoUrl}/>
         </div>
       )}
       <div className="paywall-card-body">
@@ -1881,7 +1864,7 @@ function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax,
         )}
           <p style={{ fontFamily:'Quicksand', fontWeight:600, fontSize:'.92rem',
             color:'var(--dark)', lineHeight:1.55, marginBottom:14 }}>
-            Ajustez le nombre de personnages adultes et enfants présents dans l&apos;image
+            Ajustez le nombre de personnages adultes et enfants présents dans votre image
           </p>
           <CounterRow label="Adultes" value={adults} min={children === 0 ? 1 : 0} max={max - children}
             onChange={setAdults}/>
@@ -1912,6 +1895,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const [checkoutStep, setCheckoutStep] = useState('product');
   const [shippingZone, setShippingZone] = useState('fr');
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -1957,6 +1941,11 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
   const pay = async () => {
     if (!hasQuote || overRecommended || quoteLoading || isExampleMode) return;
+    const email = customerEmail.trim();
+    if (checkoutStep === 'delivery' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Indiquez une adresse e-mail valide pour la confirmation de commande.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -1967,6 +1956,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         fridayDelivery,
         shippingZone,
         newsletterOptIn,
+        email: email || undefined,
       });
     } catch (e) {
       setError(e.message);
@@ -2011,7 +2001,6 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 childCount={session.childCount ?? 0}
                 max={FACE_COUNTER_MAX}
                 recommendedMax={maxFaces}
-                faceBoxes={session.faceBoxes}
                 onChange={onFaceCountChange}
                 photoUrl={session.photoUrl}
                 photoHeader
@@ -2142,6 +2131,9 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                       <div style={{ fontSize:'.86rem', fontWeight:600 }}>France métropolitaine</div>
                       <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
                         {quote.freeShipping ? 'Port offert' : `${portEur.toFixed(0)} € de port`}
+                        {!quote.freeShipping && (
+                          <span style={{ display:'block', marginTop:2 }}>Offert dès 4 personnages</span>
+                        )}
                       </div>
                     </div>
                   </label>
@@ -2191,6 +2183,27 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   </label>
                 </div>
 
+                <div style={{ marginBottom:16 }}>
+                  <label htmlFor="paywall-email" style={{ display:'block', fontFamily:'Quicksand', fontWeight:700,
+                    fontSize:'.88rem', color:'var(--dark)', marginBottom:8 }}>
+                    Votre e-mail
+                  </label>
+                  <input
+                    id="paywall-email"
+                    type="email"
+                    autoComplete="email"
+                    value={customerEmail}
+                    onChange={e => setCustomerEmail(e.target.value)}
+                    placeholder="vous@exemple.fr"
+                    required
+                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--bark-light)',
+                      fontSize:'.9rem', fontFamily:'inherit', boxSizing:'border-box' }}
+                  />
+                  <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:6, lineHeight:1.5 }}>
+                    Pour la confirmation de commande et le suivi de votre tracé.
+                  </p>
+                </div>
+
                 <label style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:16, fontSize:'.8rem', color:'var(--muted)', lineHeight:1.5, cursor:'pointer' }}>
                   <input type="checkbox" checked={newsletterOptIn} onChange={e => setNewsletterOptIn(e.target.checked)}
                     style={{ marginTop:3, accentColor:'var(--clay)' }}/>
@@ -2212,11 +2225,15 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 <p className="paywall-shipping-note">
                   Dont {portEur.toFixed(0)} € de frais de port
                   {Number(quote.expressEur) > 0 ? ` · +${quote.expressEur} € express vendredi` : ''}
+                  <br />
+                  Frais de port offerts dès 4 personnages
                 </p>
               )}
               {hasQuote && checkoutStep === 'product' && portEur > 0 && (
                 <p className="paywall-shipping-note">
                   Frais de port calculés à l&apos;étape livraison
+                  <br />
+                  Offerts dès 4 personnages
                 </p>
               )}
             </div>

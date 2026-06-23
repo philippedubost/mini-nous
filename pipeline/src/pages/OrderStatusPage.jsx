@@ -50,11 +50,7 @@ export default function OrderStatusPage() {
     return () => clearInterval(t)
   }, [load, order?.isPaid])
 
-  const shipLabel = order?.shipDate
-    ? new Date(`${order.shipDate}T12:00:00`).toLocaleDateString('fr-FR', {
-      weekday: 'long', day: 'numeric', month: 'long',
-    })
-    : null
+  const shipLabel = order?.deliveryDateLabel ?? null
 
   const showStudio = order?.isPaid && (order?.sourcePhotoUrl || order?.previewUrl || order?.workflowStatus === 'in_studio')
   const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl)

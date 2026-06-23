@@ -63,6 +63,9 @@ export default function StudioCustomerFlow({
       setSelectedVersionId(selected.versionId)
       if (o.studio?.showVersionPicker) setLineartUrl(selected.url)
     }
+    if (o.generationStatus === 'error' && o.generationError && !o.previewUrl) {
+      setError(o.generationError)
+    }
     setPhase(phaseForOrder(o))
     onOrderChange?.(o)
     return o
@@ -118,6 +121,16 @@ export default function StudioCustomerFlow({
     return () => clearInterval(t)
   }, [order?.workflowStatus, reloadOrder])
 
+  useEffect(() => {
+    if (!orderToken || busy || lineartUrl || order?.previewUrl) return undefined
+    if (!order?.isPaid) return undefined
+    if (!['in_studio', 'awaiting_photo'].includes(order?.workflowStatus)) return undefined
+    const poll = () => { reloadOrder().catch(() => {}) }
+    poll()
+    const t = setInterval(poll, 5000)
+    return () => clearInterval(t)
+  }, [orderToken, busy, lineartUrl, order?.previewUrl, order?.isPaid, order?.workflowStatus, reloadOrder])
+
   const runPipeline = useCallback(async (file, feedbackCharacters = null) => {
     if (!order?.isPaid) return
     setBusy(true)
@@ -127,6 +140,8 @@ export default function StudioCustomerFlow({
     const isAutoRegen = !!feedbackCharacters?.length
 
     try {
+      let urlMap = { user: null, ref: null, step1: null, step2: null }
+
       if (!generationId) {
         const generation = await createGeneration({
           faceCount: order.faceCount,
@@ -140,9 +155,17 @@ export default function StudioCustomerFlow({
         await linkOrderGeneration(orderToken, generationId, bearerToken)
       } else {
         await updateGeneration(generationId, { status: 'running' }).catch(() => {})
+        const { steps } = await fetchGeneration(generationId)
+        urlMap = { ...urlMap, ...urlMapFromSteps(steps) }
+        if (urlMap.step2 && !isAutoRegen) {
+          await orderAction(orderToken, 'pending_validation', bearerToken, { lineartVersion: 1 })
+          setLineartUrl(urlMap.step2)
+          setPhase('review')
+          setStatusMsg(null)
+          await reloadOrder()
+          return
+        }
       }
-
-      let urlMap = { user: null, ref: null, step1: null, step2: null }
 
       if (isAutoRegen && generationId) {
         const { steps } = await fetchGeneration(generationId)
@@ -291,14 +314,24 @@ export default function StudioCustomerFlow({
     }
   }
 
+  const handleRetry = () => {
+    autoStarted.current = false
+    setError(null)
+    runPipeline(null)
+  }
+
   const canUpload = order?.isPaid && (order?.editable || order?.isAdminView)
   const lineartVersion = order?.lineartVersion ?? 1
   const showReviewActions = canShowStudioReview({ order, lineartUrl })
   const studioCaps = resolveStudioCaps(order)
+  const showRetry = order?.isPaid && !busy && !lineartUrl && !order?.previewUrl
+    && (error || order?.generationStatus === 'error')
 
-  const activeStep = statusMsg?.includes('v2') || statusMsg?.includes('tracé') ? 2
-    : statusMsg?.includes('scène') || statusMsg?.includes('Mise') ? 1
-    : busy ? 0 : -1
+  const activeStep = busy
+    ? (statusMsg?.includes('v2') || statusMsg?.includes('tracé') || statusMsg?.includes('Tracé') ? 2
+      : statusMsg?.includes('scène') || statusMsg?.includes('Mise') ? 1
+      : 0)
+    : -1
 
   const revisionDueLabel = order?.revisionDueAt
     ? new Date(order.revisionDueAt).toLocaleString('fr-FR', {
@@ -375,7 +408,14 @@ export default function StudioCustomerFlow({
       )}
 
       {error && (
-        <div className="customer-alert-warn">{error}</div>
+        <div className="customer-alert-warn space-y-3">
+          <p>{error}</p>
+          {showRetry && (
+            <button type="button" className="customer-btn-clay w-full" onClick={handleRetry}>
+              Relancer le traitement
+            </button>
+          )}
+        </div>
       )}
 
       {phase === 'upload' && canUpload && !busy && !autoStart && !order.sourcePhotoUrl && (

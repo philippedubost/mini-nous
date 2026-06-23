@@ -134,8 +134,10 @@ export default function AccountPage() {
               </div>
               <span className="customer-badge">{o.workflowLabel}</span>
             </div>
-            {o.shipDate && (
-              <p className="text-xs customer-muted">Livraison prévue {formatShip(o.shipDate)}</p>
+            {(o.deliveryDateLabel || o.shipDate) && (
+              <p className="text-xs customer-muted">
+                Livraison prévue {o.deliveryDateLabel || formatShip(o.shipDate)}
+              </p>
             )}
             {o.previewUrl && (
               <img src={o.previewUrl} alt="" className="customer-preview max-h-44"/>
