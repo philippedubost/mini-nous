@@ -410,6 +410,23 @@ input{font-family:inherit}
 .mn-build-footer{text-align:center;padding:10px 16px 14px;font-size:11px;line-height:1.45;color:var(--muted);border-top:1px solid rgba(196,168,130,.22);background:inherit}
 .mn-build-footer--dark{color:rgba(255,255,255,.38);border-top-color:rgba(255,255,255,.08)}
 .mn-build-footer--sticky{margin-top:auto}
+
+/* Fondateurs */
+.fondateurs-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:48px;align-items:center}
+.fondateurs-photo{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/5;box-shadow:0 20px 56px rgba(44,31,20,.12);background:var(--bark-pale)}
+.fondateurs-photo img{position:relative;z-index:1}
+.fondateurs-placeholder{z-index:0 !important}
+.fondateurs-photo:has(img[style*="display:none"]) .fondateurs-placeholder,
+.fondateurs-photo:not(:has(img)) .fondateurs-placeholder{z-index:2 !important}
+.fondateurs-copy{display:flex;flex-direction:column;align-items:flex-start}
+.fantomes-link{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:100px;background:var(--bark-pale);border:2px solid var(--bark-light);color:var(--bark);font-family:Quicksand,sans-serif;font-weight:700;font-size:.88rem;text-decoration:none;transition:all var(--t)}
+.fantomes-link:hover{border-color:var(--bark);background:var(--cream);transform:translateY(-2px);box-shadow:0 8px 24px rgba(122,92,56,.14)}
+@media(max-width:768px){
+  .fondateurs-grid{grid-template-columns:1fr;gap:28px}
+  .fondateurs-photo{max-width:320px;margin:0 auto;aspect-ratio:1/1}
+  .fondateurs-copy{align-items:center;text-align:center}
+  .fantomes-link{margin:0 auto}
+}
 </style>
 </head>
 <body>
@@ -772,11 +789,6 @@ function presetFromFileName(name) {
 
 const PAYWALL_PATH = '/mes-figurines';
 
-const TESTIMONIALS = [
-  { name: 'Sophie M.', place: 'Rennes', text: 'On a offert le pack famille à mes parents. La ressemblance est bluffante et le bois sent bon dans le salon.' },
-  { name: 'Thomas & Léa', place: 'Nantes', text: 'Photo du mariage, quatre figurines sur l\'étagère. Nos invités demandent toujours d\'où ça vient.' },
-  { name: 'Camille D.', place: 'Lyon', text: 'J\'avais peur que ce soit gadget. En vrai c\'est délicat, bien emballé, livré en boîte aux lettres comme promis.' },
-];
 
 const SOCIAL_LINKS = {
   instagram: 'https://www.instagram.com/atelier.mininous/',
@@ -1104,22 +1116,6 @@ function SocialLinks() {
   );
 }
 
-function TestimonialsFeed() {
-  return (
-    <>
-      <div className="testimonials-grid">
-        {TESTIMONIALS.map(t => (
-          <blockquote key={t.name} className="testimonial-card">
-            <div className="testimonial-stars" aria-label="5 étoiles sur 5">★★★★★</div>
-            <p className="testimonial-quote">&ldquo;{t.text}&rdquo;</p>
-            <footer className="testimonial-author">{t.name} · {t.place}</footer>
-          </blockquote>
-        ))}
-      </div>
-      <SocialLinks/>
-    </>
-  );
-}
 
 function SizeScaleBanner() {
   return (
@@ -1463,6 +1459,99 @@ function WatermarkedPreview({ src, alt, style = {} }) {
   );
 }
 
+/* ─── EARLY ADOPTER ────────────────────────────────────────────── */
+function EarlyAdopter({ onUpload }) {
+  return (
+    <section style={{ padding:'72px 28px', background:'var(--bark-pale)' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', textAlign:'center' }}>
+        <div className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)',
+          marginBottom:20, display:'inline-flex' }}>
+          Lancé en été 2026
+        </div>
+        <h2 className="anim-in" style={{ color:'var(--dark)', marginBottom:16,
+          fontSize:'clamp(1.45rem,3vw,2rem)' }}>
+          Embarquez avec nous dans l&apos;aventure
+        </h2>
+        <p className="anim-in anim-d1" style={{ color:'var(--muted)', lineHeight:1.82,
+          fontSize:'.96rem', maxWidth:560, margin:'0 auto 32px' }}>
+          Les MiniNous viennent de naître. On vous invite à vivre le projet depuis le début,
+          sans fioriture : des figurines taillées à la main dans notre atelier nantais,
+          d&apos;après votre photo, livrées chez vous avec soin.
+          Soyez parmi les premiers à recevoir les vôtres.
+        </p>
+        <button className="btn-clay anim-in anim-d2"
+          style={{ padding:'14px 32px', fontSize:'.96rem', display:'inline-flex', alignItems:'center', gap:10 }}
+          onClick={onUpload}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 16V8m0 0l-4 4m4-4l4 4" stroke="#fff" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="3" y="18" width="18" height="2" rx="1" fill="rgba(255,255,255,.55)"/>
+          </svg>
+          Essayer avec ma photo
+        </button>
+        <SocialLinks/>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FONDATEURS ────────────────────────────────────────────────── */
+function Fondateurs() {
+  return (
+    <section style={{ padding:'72px 28px', background:'var(--cream)' }}>
+      <div style={{ maxWidth:820, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:44 }}>
+          <div className="tag" style={{ background:'var(--bark-pale)', color:'var(--bark)',
+            marginBottom:16, display:'inline-flex' }}>
+            Les créateurs
+          </div>
+          <h2 className="anim-in" style={{ color:'var(--dark)',
+            fontSize:'clamp(1.45rem,3vw,2rem)' }}>
+            Marie &amp; Philippe
+          </h2>
+        </div>
+        <div className="fondateurs-grid">
+          <div className="fondateurs-photo anim-in">
+            <img src="images/fondateurs.webp" alt="Marie et Philippe avec leurs MiniNous"
+              onError={e => { e.currentTarget.style.display='none'; }}
+              style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center',
+              justifyContent:'center', flexDirection:'column', gap:10,
+              background:'var(--bark-pale)', borderRadius:20 }}
+              className="fondateurs-placeholder">
+              <span style={{ fontSize:'3rem' }}>🪵</span>
+              <span style={{ fontSize:'.78rem', color:'var(--muted)', fontWeight:600 }}>
+                Notre photo arrive bientôt
+              </span>
+            </div>
+          </div>
+          <div className="fondateurs-copy anim-in anim-d1">
+            <p style={{ color:'var(--text)', lineHeight:1.82, fontSize:'.96rem', marginBottom:22 }}>
+              On a créé les MiniNous pour garder une trace vivante des moments ensemble
+              — un souvenir qu&apos;on pose sur une étagère plutôt que d&apos;enfouir dans un téléphone.
+              Chaque figurine sort de notre atelier à Nantes, découpée et assemblée à la main.
+            </p>
+            <p style={{ color:'var(--muted)', lineHeight:1.78, fontSize:'.92rem', marginBottom:28 }}>
+              On a lancé le projet en été 2026 et on est ravis d&apos;accueillir nos premières familles.
+              Chaque retour nous aide à affiner l&apos;atelier — n&apos;hésitez pas à nous écrire.
+            </p>
+            <a href="https://lesfantomes.fr" target="_blank" rel="noopener noreferrer"
+              className="fantomes-link">
+              <span style={{ fontSize:'1.1rem' }}>👻</span>
+              Notre autre projet · lesfantomes.fr
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                style={{ opacity:.6 }}>
+                <path d="M7 17L17 7M17 7H7M17 7v10" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── STATE 1 · LANDING ───────────────────────────────────────── */
 function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
   return (
@@ -1474,8 +1563,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
         <BrandLogo onClick={onHome}/>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <span className="tag hide-mobile"
-            style={{ background:'var(--forest-pale)', color:'var(--forest)' }}>
-            ⭐ 4.9/5
+            style={{ background:'var(--clay-pale)', color:'var(--clay)' }}>
+            ✦ Lancé en été 2026
           </span>
           <button className="btn-clay btn-clay-nav" style={{ padding:'10px 22px', fontSize:'.88rem' }}
             onClick={() => document.getElementById('photo-upload')?.scrollIntoView({ behavior:'smooth' })}>
@@ -1491,8 +1580,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
           display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
           <div className="hero-text anim-in">
             <div className="hero-mobile-rating">
-              <span className="stars">★★★★★</span>
-              <span>4.9/5 · +1 200 familles</span>
+              <span style={{ fontSize:'.85rem', color:'var(--clay)' }}>✦</span>
+              <span>Lancé en été 2026 · Soyez parmi les premiers</span>
             </div>
             <div className="tag hero-tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', marginBottom:20,
               display:'inline-flex', alignItems:'center', gap:8 }}>
@@ -1506,8 +1595,8 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             </h1>
             <p className="hero-lead" style={{ color:'var(--muted)', fontSize:'1.02rem', lineHeight:1.78,
               marginBottom:32, maxWidth:460 }}>
-              Une photo de groupe suffit. Nos artisans repèrent chaque personnage et tracent
-              les contours pour une découpe précise.
+              Une photo de groupe suffit. Dans notre atelier à Nantes, chaque silhouette est tracée
+              et découpée sur mesure dans du bois — un souvenir fait main, rien d&apos;autre.
             </p>
             <div className="hero-cta-row" style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <button className="btn-clay" style={{ padding:'15px 32px', fontSize:'1rem',
@@ -1537,14 +1626,14 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
               <div style={{ width:40, height:40, borderRadius:'50%',
                 background:'linear-gradient(135deg,var(--clay),var(--bark-light))',
                 display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'1.2rem' }}>🏆</div>
+                fontSize:'1.2rem' }}>🪵</div>
               <div>
                 <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.92rem',
                   color:'var(--dark)' }}>
-                  <span className="stars">★★★★★</span> 4.9/5
+                  Nantes, été 2026
                 </div>
                 <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>
-                  +1 200 familles conquises
+                  Soyez parmi les premiers
                 </div>
               </div>
             </div>
@@ -1572,7 +1661,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             De la photo au salon
           </h2>
           <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
-            Votre souvenir devient une figurine en bois : taillée, posée, prête à décorer votre intérieur.
+            Votre photo, tracée à la main, taillée dans le bois — prête à poser sur votre étagère.
           </p>
           <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
             stepLabels={{ lineart: 'Tracé' }}/>
@@ -1586,11 +1675,11 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
           <div className="how-cards" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }}>
             {[
               { icon:'📸', title:'Envoyez votre photo',
-                desc:'Une photo de groupe avec 2 à 8 personnes.' },
-              { icon:'🪚', title:'On fabrique votre groupe',
-                desc:'Nos équipes découpent chaque personnage en bois d\'après votre photo.' },
+                desc:'Une photo de groupe, et on reconnaît chaque personnage pour le tailler sur mesure.' },
+              { icon:'🪵', title:'On taille votre groupe',
+                desc:'Chaque silhouette est découpée à la main dans du bois d\'après votre photo — unique et irreproductible.' },
               { icon:'📦', title:'Livré chez vous le vendredi',
-                desc:'Dans notre boîte kraft, partout en France.' },
+                desc:'Dans notre boîte kraft recyclée, soigneusement emballé, partout en France.' },
             ].map((s, i) => (
               <div key={s.title} className={`how-card anim-in anim-d${i + 1}`} style={{ background:'var(--bark-pale)',
                 borderRadius:16, padding:'24px 20px', textAlign:'center' }}>
@@ -1635,16 +1724,11 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
       {/* Atelier live */}
       <AtelierLive/>
 
-      {/* Témoignages */}
-      <section style={{ padding:'72px 28px', background:'var(--bark-pale)' }}>
-        <div style={{ maxWidth:820, margin:'0 auto', textAlign:'center' }}>
-          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Ils ont adopté leurs MiniNous</h2>
-          <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.92rem' }}>
-            Quelques retours de familles. Les photos clients arrivent bientôt sur Instagram.
-          </p>
-          <TestimonialsFeed/>
-        </div>
-      </section>
+      {/* Aventure · été 2026 */}
+      <EarlyAdopter onUpload={() => document.getElementById('photo-upload')?.scrollIntoView({ behavior:'smooth' })}/>
+
+      {/* Les créateurs */}
+      <Fondateurs/>
 
       {/* Bientôt · mode assis */}
       <ComingSoonSeated/>
