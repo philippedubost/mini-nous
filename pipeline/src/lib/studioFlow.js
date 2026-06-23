@@ -2,25 +2,28 @@
 
 export const STUDIO_FLOW_STEPS = [
   { key: 1, label: 'Création', hint: 'Transformation de votre photo en tracé atelier' },
-  { key: 2, label: 'Validation', hint: 'Validez ou ajustez le tracé proposé' },
-  { key: 3, label: 'Version finale', hint: 'Choisissez votre version préférée' },
+  { key: 2, label: 'Validation tracé', hint: 'Validez ou ajustez le tracé proposé' },
+  { key: 3, label: 'Fabrication', hint: 'Vos figurines entrent en file d\'impression' },
+  { key: 4, label: 'Expédition', hint: 'Réception de votre colis' },
+  { key: 5, label: 'Surprise', emoji: '🎁', hint: 'Remises exclusives en échange d\'un avis Trustpilot ou d\'un partage' },
 ]
 
 export function studioFlowStep({ order, lineartUrl, busy, phase }) {
   if (!order?.isPaid) return 0
 
   const ws = order.workflowStatus
-  const version = order.lineartVersion ?? 1
 
-  if (['approved', 'in_production', 'shipped'].includes(ws)) return 3
+  if (ws === 'shipped') return 5
+  if (ws === 'in_production' || ws === 'approved') return 3
   if (ws === 'revision_requested') return 2
-  if (ws === 'pending_validation' && lineartUrl) {
-    if (order.studio?.showVersionPicker && version >= 3) return 3
-    return 2
-  }
+  if (ws === 'pending_validation' && lineartUrl) return 2
   if (busy || ws === 'in_studio' || phase === 'upload' || !lineartUrl) return 1
   if (lineartUrl && phase === 'review') return 2
   return 1
+}
+
+export function isStudioSurpriseDone(order) {
+  return !!(order?.mininousShareUrl || order?.npsSubmittedAt)
 }
 
 export function canShowStudioReview({ order, lineartUrl }) {
