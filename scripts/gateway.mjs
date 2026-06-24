@@ -40,9 +40,17 @@ function proxy(req, res, port) {
   req.pipe(upstream)
 }
 
+const LEGAL_REWRITES = {
+  '/mentions-legales': '/legal/mentions-legales.html',
+  '/cgv': '/legal/cgv.html',
+  '/confidentialite': '/legal/confidentialite.html',
+  '/cookies': '/legal/cookies.html',
+}
+
 function serveStatic(req, res) {
   let path = req.url?.split('?')[0] || '/'
   if (path === '/' || path === '/mes-figurines') path = '/index.html'
+  if (LEGAL_REWRITES[path]) path = LEGAL_REWRITES[path]
   const filePath = join(root, path.replace(/^\//, ''))
   if (!filePath.startsWith(root) || !existsSync(filePath)) {
     res.writeHead(404)

@@ -23,6 +23,9 @@ for (const f of ['robots.txt', 'sitemap.xml']) {
 if (existsSync(join(root, 'images'))) {
   cpSync(join(root, 'images'), join(dist, 'images'), { recursive: true })
 }
+if (existsSync(join(root, 'legal'))) {
+  cpSync(join(root, 'legal'), join(dist, 'legal'), { recursive: true })
+}
 
 execSync('npm run build', { cwd: join(root, 'pipeline'), stdio: 'inherit', shell: true })
 

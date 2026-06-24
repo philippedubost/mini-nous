@@ -1251,6 +1251,100 @@ function ComingSoonSeated() {
   );
 }
 
+/* ─── FAQ ──────────────────────────────────────────────────────── */
+const FAQ_ITEMS = [
+  {
+    q: 'Quelle photo envoyer pour un bon résultat ?',
+    a: 'Une photo nette, bien éclairée, avec les visages visibles de face ou ¾ face. Évitez les contre-jours et les lunettes de soleil. Plus les visages sont distincts et nets, plus votre MiniNous sera ressemblant.',
+  },
+  {
+    q: 'Dans quel matériau sont fabriquées les figurines ?',
+    a: 'Les MiniNous sont découpées au laser dans du contreplaqué de bouleau certifié FSC, d\'une épaisseur de 3 mm. La finition est réalisée à l\'encre UV résistante à la lumière, pour des couleurs durables dans le temps.',
+  },
+  {
+    q: 'Quel est le délai de fabrication et livraison ?',
+    a: 'Comptez 5 à 10 jours ouvrés pour la fabrication après votre validation de l\'aperçu, puis 2 à 5 jours pour la livraison. Votre commande arrive en boîte aux lettres dans un emballage protecteur — pas besoin d\'être présent.',
+  },
+  {
+    q: 'Puis-je offrir une MiniNous en cadeau ?',
+    a: 'Absolument ! Renseignez simplement l\'adresse du destinataire lors de la commande. Vous pouvez aussi nous contacter pour ajouter un mot personnalisé dans le colis. Les MiniNous font un cadeau unique pour les anniversaires, mariages, naissances ou départs.',
+  },
+  {
+    q: 'Est-il possible de modifier ma commande après le paiement ?',
+    a: 'Oui, tant que la fabrication n\'est pas lancée. Après le paiement, vous validez un aperçu numérique avant que nous découpions quoi que ce soit. C\'est à cette étape que vous pouvez demander des ajustements. Une fois la fabrication lancée, la commande est définitive.',
+  },
+  {
+    q: 'Combien de personnages peut-on mettre dans une même figurine ?',
+    a: 'Nos packs vont de 1 à 8 personnages sur une même pièce. Pour les groupes plus grands, contactez-nous — nous pouvons envisager des compositions sur mesure ou des lots de figurines individuelles.',
+  },
+];
+
+function FaqSection() {
+  const [open, setOpen] = React.useState(null);
+  const toggle = i => setOpen(prev => (prev === i ? null : i));
+  return (
+    <section style={{ padding:'80px 28px', background:'var(--cream)' }}>
+      <div style={{ maxWidth:760, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:44 }}>
+          <h2 style={{ color:'var(--dark)', marginBottom:10 }}>Questions fréquentes</h2>
+          <p style={{ color:'var(--muted)', fontSize:'.92rem', lineHeight:1.6 }}>
+            Tout ce que vous voulez savoir avant de commander votre MiniNous.
+          </p>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {FAQ_ITEMS.map((item, i) => (
+            <div key={i} style={{
+              background:'#fff', borderRadius:16,
+              border:`1px solid ${open===i ? 'var(--clay-light)' : 'rgba(196,168,130,.25)'}`,
+              overflow:'hidden',
+              boxShadow: open===i ? '0 4px 20px rgba(192,104,74,.1)' : '0 2px 8px rgba(0,0,0,.04)',
+              transition:'border-color .25s, box-shadow .25s',
+            }}>
+              <button
+                onClick={() => toggle(i)}
+                aria-expanded={open===i}
+                style={{
+                  width:'100%', textAlign:'left', padding:'18px 22px',
+                  display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
+                  background:'none', border:'none', cursor:'pointer', fontFamily:'inherit',
+                }}>
+                <span style={{
+                  fontFamily:'Quicksand', fontWeight:700, fontSize:'1rem',
+                  color: open===i ? 'var(--clay)' : 'var(--dark)',
+                  lineHeight:1.3, flex:1,
+                  transition:'color .2s',
+                }}>{item.q}</span>
+                <span style={{
+                  flexShrink:0, width:28, height:28, borderRadius:'50%',
+                  background: open===i ? 'var(--clay)' : 'var(--bark-pale)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  transition:'background .25s, transform .25s',
+                  transform: open===i ? 'rotate(45deg)' : 'rotate(0deg)',
+                  color: open===i ? '#fff' : 'var(--bark)',
+                  fontSize:'1.25rem', lineHeight:1, fontWeight:300,
+                }}>+</span>
+              </button>
+              {open===i && (
+                <div style={{
+                  padding:'0 22px 18px', color:'var(--muted)', fontSize:'.9rem', lineHeight:1.7,
+                }}>
+                  {item.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <p style={{ textAlign:'center', marginTop:32, fontSize:'.84rem', color:'var(--muted)' }}>
+          Une autre question ?{' '}
+          <a href="mailto:bonjour@mininous.app" style={{ color:'var(--clay)', fontWeight:600 }}>
+            Écrivez-nous
+          </a>
+        </p>
+      </div>
+    </section>
+  );
+}
+
 /* ─── DÉTECTION VISAGES (face-api.js) ─────────────────────────── */
 let faceApiReady = false;
 async function loadFaceApi() {
@@ -1785,25 +1879,54 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
       {/* Bientôt · mode assis */}
       <ComingSoonSeated/>
 
+      {/* FAQ */}
+      <FaqSection/>
+
       {/* Footer */}
-      <footer style={{ background:'var(--dark)', padding:'36px 28px',
+      <footer style={{ background:'var(--dark)', padding:'44px 28px 32px',
         textAlign:'center', color:'rgba(255,255,255,.35)', fontSize:'.78rem' }}>
-        <div style={{ fontFamily:'Quicksand', color:'rgba(255,255,255,.7)',
-          fontWeight:700, fontSize:'1.1rem', marginBottom:8 }}>
+        <div style={{ fontFamily:'Quicksand', color:'rgba(255,255,255,.75)',
+          fontWeight:700, fontSize:'1.15rem', marginBottom:6 }}>
           <span style={{ color:'var(--clay-light)' }}>Mini</span>Nous
         </div>
-        Fabrication locale · Nantes, France
-        <div style={{ marginTop:14, display:'flex', justifyContent:'center', gap:16, flexWrap:'wrap' }}>
-          <a href={PIPELINE.compte} style={{ color:'rgba(255,255,255,.5)', textDecoration:'none' }}
+        <div style={{ marginBottom:20, lineHeight:1.7 }}>
+          Objets décoratifs personnalisés · Fabrication artisanale à Nantes, France
+        </div>
+        <div style={{ display:'flex', justifyContent:'center', gap:20, flexWrap:'wrap', marginBottom:20 }}>
+          <a href={PIPELINE.compte} style={{ color:'rgba(255,255,255,.55)', textDecoration:'none' }}
             onMouseOver={e => e.currentTarget.style.color='var(--clay-light)'}
-            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.5)'}>
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.55)'}>
             Mon compte
           </a>
-          <a href={PIPELINE.connexion} style={{ color:'rgba(255,255,255,.35)', textDecoration:'none' }}
-            onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.55)'}
-            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.35)'}>
+          <a href={PIPELINE.connexion} style={{ color:'rgba(255,255,255,.4)', textDecoration:'none' }}
+            onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.65)'}
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.4)'}>
             Connexion
           </a>
+          <a href="mailto:bonjour@mininous.app" style={{ color:'rgba(255,255,255,.4)', textDecoration:'none' }}
+            onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.65)'}
+            onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.4)'}>
+            Contact
+          </a>
+        </div>
+        <div style={{
+          borderTop:'1px solid rgba(255,255,255,.08)', paddingTop:18,
+          display:'flex', justifyContent:'center', gap:16, flexWrap:'wrap',
+          fontSize:'.74rem',
+        }}>
+          {[
+            { label:'Mentions légales', href:'/mentions-legales' },
+            { label:'CGV', href:'/cgv' },
+            { label:'Confidentialité', href:'/confidentialite' },
+            { label:'Cookies', href:'/cookies' },
+          ].map(link => (
+            <a key={link.href} href={link.href}
+              style={{ color:'rgba(255,255,255,.3)', textDecoration:'none' }}
+              onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.55)'}
+              onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.3)'}>
+              {link.label}
+            </a>
+          ))}
         </div>
         <BuildFooter dark />
       </footer>
