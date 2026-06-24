@@ -19,6 +19,29 @@ function formatDate(iso) {
   })
 }
 
+function formatDateYmd(ymd) {
+  if (!ymd) return null
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+}
+
+function addDaysToYmd(ymd, n) {
+  const d = new Date(`${ymd}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+function daysLabel(ymd) {
+  if (!ymd) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(`${ymd}T12:00:00`)
+  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  if (diff <= 0) return null
+  return diff === 1 ? 'demain' : `dans ${diff} jours`
+}
+
 export default function OrderStatusPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
@@ -203,10 +226,26 @@ export default function OrderStatusPage() {
                 </span>
               </div>
             )}
+            {order.shipDate && !order.fridayDelivery && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">Expédition atelier</span>
+                <span className="text-[#2C1F14] text-right font-medium">
+                  {formatDateYmd(order.shipDate)}
+                  {daysLabel(order.shipDate) && (
+                    <span className="text-[#C0684A] font-normal"> · {daysLabel(order.shipDate)}</span>
+                  )}
+                </span>
+              </div>
+            )}
             {shipLabel && (
               <div className="flex justify-between gap-4">
                 <span className="customer-muted">Livraison prévue</span>
-                <span className="text-[#2C1F14] text-right font-medium">{shipLabel}</span>
+                <span className="text-[#2C1F14] text-right font-medium">
+                  {shipLabel}
+                  {order.shipDate && daysLabel(order.fridayDelivery ? order.shipDate : addDaysToYmd(order.shipDate, 4)) && (
+                    <span className="text-[#C0684A] font-normal"> · {daysLabel(order.fridayDelivery ? order.shipDate : addDaysToYmd(order.shipDate, 4))}</span>
+                  )}
+                </span>
               </div>
             )}
             {order.paidAt && (

@@ -355,7 +355,7 @@ export default function StudioCustomerFlow({
   if (!order) return null
 
   const showCompositionEditor = order?.isPaid && order?.editable && !order?.isAdminView
-    && !order?.previewUrl && !lineartUrl
+    && !order?.previewUrl && !lineartUrl && !busy
 
   return (
     <div className="space-y-4">
