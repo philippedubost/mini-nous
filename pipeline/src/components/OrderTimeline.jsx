@@ -1,5 +1,21 @@
 import { isStudioBonusDone } from '../lib/studioFlow'
 
+function addDaysToYmd(ymd, n) {
+  const d = new Date(`${ymd}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+function daysUntilYmd(ymd) {
+  if (!ymd) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(`${ymd}T12:00:00`)
+  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  if (diff <= 0) return null
+  return diff === 1 ? 'demain' : `dans ${diff} j`
+}
+
 const STEPS = [
   { key: 'lineart', label: 'Tracé sur mesure' },
   { key: 'validation', label: 'Validation' },
@@ -21,6 +37,10 @@ export function timelineIndex(order) {
 
 export default function OrderTimeline({ order }) {
   const current = timelineIndex(order)
+  const deliveryYmd = order?.shipDate
+    ? (order.fridayDelivery ? order.shipDate : addDaysToYmd(order.shipDate, 4))
+    : null
+  const daysLabel = daysUntilYmd(deliveryYmd)
   if (current < 0) return null
 
   return (
@@ -50,6 +70,7 @@ export default function OrderTimeline({ order }) {
               {s.key === 'shipped' && order.deliveryDateLabel && !future && (
                 <span className="text-[9px] sm:text-[10px] block mt-0.5 text-[#C0684A] leading-tight px-0.5">
                   {order.deliveryDateLabel}
+                  {daysLabel && ` · ${daysLabel}`}
                 </span>
               )}
             </div>
