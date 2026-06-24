@@ -9,7 +9,7 @@ import { useSettings } from '../context/SettingsContext'
 import { buildPrompt1, resolveImageUrls, falStepFormat, fetchReferenceBlob } from '../lib/settings'
 import { buildMegaRegenPrompt } from '../lib/regenPrompt'
 import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
-import { canShowStudioReview, resolveStudioCaps } from '../lib/studioFlow'
+import { canShowStudioReview, resolveStudioCaps, displayLineartVersion } from '../lib/studioFlow'
 import {
   createGeneration, updateGeneration, persistAsset, markStepRunning,
   fetchOrderByToken, linkOrderGeneration, orderAction, confirmCheckout,
@@ -217,9 +217,12 @@ export default function StudioCustomerFlow({
       const prompt2 = isAutoRegen
         ? buildMegaRegenPrompt(cfg2.prompt, feedbackCharacters)
         : cfg2.prompt
+      const step2Inputs = isAutoRegen
+        ? ['step1', 'ref']
+        : (cfg2.imageInputs ?? ['step1', 'ref'])
       const url2 = await runFalStep(
         { ...cfg2, ...fmt2, prompt: prompt2 },
-        resolveImageUrls(cfg2.imageInputs, urlMap),
+        resolveImageUrls(step2Inputs, urlMap),
       )
       await persistAsset(generationId, 'step2', { falUrl: url2, url: url2, prompt: prompt2, status: 'done' })
       await updateGeneration(generationId, { status: 'done' })
@@ -303,8 +306,9 @@ export default function StudioCustomerFlow({
     setError(null)
     try {
       const caps = resolveStudioCaps(order)
+      const multiVersion = (order.lineartVersions?.length ?? 0) >= 2
       await orderAction(orderToken, 'validate', bearerToken, {
-        ...(caps.showVersionPicker && selectedVersionId ? { versionId: selectedVersionId } : {}),
+        ...((caps.showVersionPicker || multiVersion) && selectedVersionId ? { versionId: selectedVersionId } : {}),
       })
       setStatusMsg(null)
       await reloadOrder()
@@ -322,7 +326,7 @@ export default function StudioCustomerFlow({
   }
 
   const canUpload = order?.isPaid && (order?.editable || order?.isAdminView)
-  const lineartVersion = order?.lineartVersion ?? 1
+  const lineartVersion = displayLineartVersion(order)
   const showReviewActions = canShowStudioReview({ order, lineartUrl })
   const studioCaps = resolveStudioCaps(order)
   const showRetry = order?.isPaid && !busy && !lineartUrl && !order?.previewUrl
@@ -379,6 +383,7 @@ export default function StudioCustomerFlow({
         statusMsg={statusMsg}
         phase={phase}
         lineartVersion={lineartVersion}
+        workflowStatus={order.workflowStatus}
         processingSteps={PROCESSING_STEPS}
         activeStep={activeStep}
         embedMode={embedMode}

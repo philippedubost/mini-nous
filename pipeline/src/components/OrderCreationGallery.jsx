@@ -1,14 +1,46 @@
 import { ImageWithZoom } from './ImageLightbox'
 
+function RejectedLineartThumb({ version }) {
+  if (!version?.url) return null
+  return (
+    <div className="relative w-[min(42%,150px)] shrink-0">
+      <p className="text-[10px] customer-muted text-center mb-1 line-through decoration-[#8A4030]/60">
+        Tracé v{version.studioVersion}
+      </p>
+      <div className="customer-photo-frame opacity-45 grayscale-[35%] relative overflow-hidden">
+        <ImageWithZoom
+          src={version.url}
+          alt={`Tracé v${version.studioVersion} non retenu`}
+          label={`Tracé v${version.studioVersion} (non retenu)`}
+          imgClassName="w-full h-auto"
+        />
+        <div
+          className="absolute inset-0 pointer-events-none flex items-center justify-center"
+          aria-hidden
+        >
+          <div className="absolute w-[120%] h-0.5 bg-[#8A4030]/55 rotate-[-12deg]" />
+        </div>
+      </div>
+      <p className="text-[9px] text-center customer-muted mt-1">Non retenu</p>
+    </div>
+  )
+}
+
 /** Galerie lecture seule : photo source + tracé validé. */
 export default function OrderCreationGallery({
   sourcePhotoUrl,
   validatedLineartUrl,
   previewUrl,
   lineartVersion,
+  lineartVersions = [],
   readonly = true,
 }) {
   const lineart = validatedLineartUrl || previewUrl
+  const validatedV = lineartVersion ?? null
+  const rejected = validatedV
+    ? lineartVersions.filter(v => v.studioVersion !== validatedV && v.url)
+    : []
+
   if (!sourcePhotoUrl && !lineart) return null
 
   return (
@@ -44,6 +76,18 @@ export default function OrderCreationGallery({
           </div>
         )}
       </div>
+
+      {rejected.length > 0 && (
+        <div className="pt-3 border-t border-[#E8DFD4] space-y-2">
+          <p className="text-xs customer-muted text-center">Autre version non retenue</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {rejected.map(v => (
+              <RejectedLineartThumb key={v.versionId} version={v} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {readonly && (
         <p className="text-xs customer-muted text-center">
           Cliquez sur la loupe pour agrandir et vérifier le détail.

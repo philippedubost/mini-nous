@@ -1,9 +1,26 @@
 import { useEffect, useState } from 'react'
 
+const MOBILE_ZOOM_MQ = '(max-width: 768px)'
+
 function isSvgUrl(url) {
   return /\.svg(\?|$)/i.test(url ?? '')
     || (url ?? '').includes('image/svg')
     || (url ?? '').startsWith('data:image/svg')
+}
+
+function useMobileViewport() {
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_ZOOM_MQ).matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_ZOOM_MQ)
+    const onChange = () => setMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return mobile
 }
 
 function LoupeIcon() {
@@ -18,6 +35,8 @@ function LoupeIcon() {
 
 export function ImageWithZoom({ src, alt, label, className = '', imgClassName = 'w-full h-full object-contain', disabled }) {
   const [open, setOpen] = useState(false)
+  const isMobile = useMobileViewport()
+  const zoomDisabled = disabled || isMobile
 
   if (!src) return null
 
@@ -27,29 +46,35 @@ export function ImageWithZoom({ src, alt, label, className = '', imgClassName = 
     setOpen(true)
   }
 
+  if (zoomDisabled) {
+    return (
+      <div className={className}>
+        <img src={src} alt={alt ?? label ?? ''} className={imgClassName} draggable={false} />
+      </div>
+    )
+  }
+
   return (
     <>
       <div
         className={`relative group/zoom cursor-zoom-in ${className}`}
-        onClick={disabled ? undefined : openLightbox}
-        onKeyDown={disabled ? undefined : e => { if (e.key === 'Enter' || e.key === ' ') openLightbox(e) }}
-        role={disabled ? undefined : 'button'}
-        tabIndex={disabled ? undefined : 0}
-        aria-label={disabled ? undefined : `Agrandir : ${label ?? alt ?? 'image'}`}
+        onClick={openLightbox}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openLightbox(e) }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Agrandir : ${label ?? alt ?? 'image'}`}
       >
         <img src={src} alt={alt ?? label ?? ''} className={imgClassName} draggable={false} />
-        {!disabled && (
-          <button
-            type="button"
-            aria-label="Agrandir"
-            onClick={openLightbox}
-            className="absolute top-2 right-2 w-14 h-14 rounded-xl bg-stone-950/75 text-stone-200
-              flex items-center justify-center opacity-90 sm:opacity-0 sm:group-hover/zoom:opacity-100
-              hover:bg-amber-500 hover:text-stone-950 transition-all shadow-lg border border-stone-700/80"
-          >
-            <LoupeIcon />
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label="Agrandir"
+          onClick={openLightbox}
+          className="absolute top-2 right-2 w-14 h-14 rounded-xl bg-stone-950/75 text-stone-200
+            flex items-center justify-center opacity-0 group-hover/zoom:opacity-100
+            hover:bg-amber-500 hover:text-stone-950 transition-all shadow-lg border border-stone-700/80"
+        >
+          <LoupeIcon />
+        </button>
       </div>
       {open && (
         <ImageLightbox
@@ -115,19 +140,31 @@ export default function ImageLightbox({ src, title, onClose, images, initialInde
       )}
 
       <div
-        className="relative z-10 flex-1 flex items-center justify-center w-full h-full min-h-0 p-2 sm:p-4"
+        className="relative z-10 flex-1 flex items-center justify-center min-h-0"
         onClick={e => e.stopPropagation()}
       >
         <div
-          className={`w-full h-full flex items-center justify-center ${
-            whiteCanvas ? 'bg-white/95 rounded-xl shadow-2xl p-4 sm:p-8 max-w-[100vw] max-h-[100vh]' : ''
-          }`}
+          className={whiteCanvas
+            ? 'bg-white/95 rounded-xl shadow-2xl flex items-center justify-center'
+            : 'flex items-center justify-center'}
+          style={{
+            width: '80vw',
+            maxWidth: '80vw',
+            maxHeight: '90vh',
+            padding: whiteCanvas ? '1.5rem' : 0,
+          }}
         >
           <img
             src={current.src}
             alt={current.title ?? ''}
             draggable={false}
-            className="w-full h-full object-contain"
+            className="block object-contain"
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              maxHeight: whiteCanvas ? 'calc(90vh - 3rem)' : '90vh',
+              height: 'auto',
+            }}
           />
         </div>
       </div>

@@ -695,6 +695,12 @@ function getShowcaseForCount(faceCount) {
   return FAMILY_SHOWCASE[best] || FAMILY_SHOWCASE[4];
 }
 
+/** Recadrage photo triptyque : haut pour 2 et 7 pers., centre vertical pour 4 pers. */
+function photoCropTopForShowcase(faceCount) {
+  const n = Number(faceCount) || 4;
+  return n === 2 || n === 7;
+}
+
 function MadeInFranceBadge() {
   return (
     <span className="fr-badge" aria-hidden="true" title="Fabriqué en France">
@@ -770,9 +776,9 @@ function HeroInstaBadge() {
   );
 }
 
-function HeroMobilePeek({ showcase }) {
+function HeroMobilePeek({ showcase, photoCropTop = true }) {
   const steps = [
-    { src: showcase.photo, label: 'Photo', crop: true },
+    { src: showcase.photo, label: 'Photo', crop: photoCropTop },
     { src: lineartDisplaySrc(showcase.lineart, { wide: true }), label: 'Tracé', wide: true },
     { src: showcase.objet, label: 'Bois' },
   ];
@@ -1136,7 +1142,7 @@ function TryMyPhotoButton({ onFile }) {
 }
 
 /* ─── TRIPTYQUE Photo → Tracé → Déco ──────────────────────────── */
-function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain, hidePhoto, stepLabels, compact }) {
+function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, photoContain, photoCropTop = true, hidePhoto, stepLabels, compact }) {
   const ratioClass = ratio === 'square' ? ' triptych-ratio-square'
     : ratio === 'landscape' ? ' triptych-ratio-landscape' : '';
   const landingClass = wideLineart && !vertical ? ' triptych-landing' : '';
@@ -1155,7 +1161,7 @@ function Triptyque({ showcase = IMG.triptych, vertical, ratio, wideLineart, phot
           {i > 0 && <div className="triptych-arrow" aria-hidden="true">{arrow}</div>}
           <div className={`triptych-step${s.wide ? ' triptych-step-wide' : ''}${i === 0 && photoContain ? ' triptych-step-contain' : ''}`}>
             <img src={s.src} alt={s.label} draggable="false"
-              className={i === 0 && !photoContain ? 'crop-top' : undefined}/>
+              className={i === 0 && !photoContain && photoCropTop ? 'crop-top' : undefined}/>
             <div className="triptych-label">{s.label}</div>
           </div>
         </React.Fragment>
@@ -1664,22 +1670,14 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             <div className="hide-mobile anim-float" style={{ position:'absolute', bottom:-18, left:-18, background:'#fff',
               borderRadius:16, padding:'12px 18px', boxShadow:'0 10px 32px rgba(44,31,20,.12)',
               display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:40, height:40, borderRadius:'50%',
-                background:'linear-gradient(135deg,var(--clay),var(--bark-light))',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:'1.2rem' }}>🪵</div>
-              <div>
-                <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.92rem',
-                  color:'var(--dark)' }}>
-                  Nantes, été 2026
-                </div>
-                <div style={{ fontSize:'.72rem', color:'var(--muted)' }}>
-                  Soyez parmi les premiers
-                </div>
+              <MadeInFranceBadge/>
+              <div style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.92rem',
+                color:'var(--dark)' }}>
+                Fabriqué à Nantes
               </div>
             </div>
           </div>
-          <HeroMobilePeek showcase={IMG.triptych}/>
+          <HeroMobilePeek showcase={IMG.triptych} photoCropTop={false}/>
           <HeroQuickSteps/>
           <div className="hero-cta-block anim-in">
             <button className="btn-clay" type="button"
@@ -1704,7 +1702,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
           <p style={{ color:'var(--muted)', marginBottom:28, lineHeight:1.7, maxWidth:520, marginLeft:'auto', marginRight:'auto' }}>
             Votre photo, convertie en tracé sur mesure, découpée au laser dans le bois, prête à poser sur votre étagère.
           </p>
-          <Triptyque showcase={IMG.triptych} ratio="square" wideLineart
+          <Triptyque showcase={IMG.triptych} ratio="square" wideLineart photoCropTop={false}
             stepLabels={{ lineart: 'Tracé' }}/>
         </div>
       </section>
@@ -2190,6 +2188,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             vertical
             ratio="landscape"
             compact
+            photoCropTop={photoCropTopForShowcase(exampleCount)}
             hidePhoto={showComposition}
             stepLabels={{ lineart: 'Exemple de tracé', objet: 'Exemple à la maison' }}
           />

@@ -7,6 +7,7 @@ import OrderTimeline from '../components/OrderTimeline'
 import PaywallPhotoReplace from '../components/PaywallPhotoReplace'
 import PaywallCompositionEditor from '../components/PaywallCompositionEditor'
 import OrderCreationGallery from '../components/OrderCreationGallery'
+import { displayLineartVersion } from '../lib/studioFlow'
 import NpsSurvey from '../components/NpsSurvey'
 import MiniNousShareProgram from '../components/MiniNousShareProgram'
 import { useAuth } from '../context/AuthContext'
@@ -151,7 +152,8 @@ export default function OrderStatusPage() {
               sourcePhotoUrl={order.sourcePhotoUrl}
               validatedLineartUrl={order.validatedLineartUrl}
               previewUrl={order.previewUrl}
-              lineartVersion={order.validatedLineartVersion ?? order.lineartVersion}
+              lineartVersion={displayLineartVersion(order)}
+              lineartVersions={order.lineartVersions ?? []}
             />
           )}
 

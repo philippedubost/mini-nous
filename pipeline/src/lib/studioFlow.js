@@ -31,6 +31,16 @@ export function canShowStudioReview({ order, lineartUrl }) {
   return order.workflowStatus === 'pending_validation'
 }
 
+/** Version affichée : validée > sélectionnée dans le picker > metadata courante. */
+export function displayLineartVersion(order) {
+  const selected = order?.lineartVersions?.find(v => v.isSelected)
+  const approved = ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
+  if (approved && selected?.studioVersion) return selected.studioVersion
+  if (order?.validatedLineartVersion >= 1) return order.validatedLineartVersion
+  if (selected?.studioVersion) return selected.studioVersion
+  return order?.lineartVersion ?? 1
+}
+
 export function resolveStudioCaps(order) {
   const lineartVersion = order?.lineartVersion ?? 1
   const ws = order?.workflowStatus

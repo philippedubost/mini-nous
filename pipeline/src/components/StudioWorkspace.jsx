@@ -1,4 +1,43 @@
+import { useEffect, useState } from 'react'
 import { ImageWithZoom } from './ImageLightbox'
+
+const PROGRESS_DURATION_MS = 4 * 60 * 1000
+const PROGRESS_CAP = 94
+
+/** Avance vite au début, ralentit vers ~94 % à 4 min (placeholder, pas le vrai statut). */
+function logProgressPct(elapsedMs) {
+  const t = Math.min(1, elapsedMs / PROGRESS_DURATION_MS)
+  return Math.log10(1 + 9 * t) * PROGRESS_CAP
+}
+
+function ProcessingProgressBar({ active }) {
+  const [pct, setPct] = useState(0)
+
+  useEffect(() => {
+    if (!active) {
+      setPct(0)
+      return undefined
+    }
+    const start = Date.now()
+    const tick = () => setPct(logProgressPct(Date.now() - start))
+    tick()
+    const id = setInterval(tick, 120)
+    return () => clearInterval(id)
+  }, [active])
+
+  if (!active) return null
+
+  return (
+    <div className="w-full max-w-[240px]" aria-hidden>
+      <div className="customer-progress-track h-2">
+        <div
+          className="customer-progress-fill"
+          style={{ width: `${pct}%`, transition: 'width 0.4s ease-out' }}
+        />
+      </div>
+    </div>
+  )
+}
 
 export default function StudioWorkspace({
   sourcePhotoUrl,
@@ -7,6 +46,7 @@ export default function StudioWorkspace({
   statusMsg,
   phase,
   lineartVersion = 1,
+  workflowStatus,
   processingSteps,
   activeStep,
   embedMode = false,
@@ -15,6 +55,10 @@ export default function StudioWorkspace({
   if (!sourcePhotoUrl) return null
 
   const showProcessing = busy && phase !== 'awaiting_payment'
+  const isValidated = ['approved', 'in_production', 'shipped'].includes(workflowStatus)
+  const lineartLabel = isValidated
+    ? `Tracé validé · v${lineartVersion}`
+    : `Tracé proposé · v${lineartVersion}`
 
   return (
     <div className="customer-card space-y-4">
@@ -43,7 +87,7 @@ export default function StudioWorkspace({
 
         <div>
           <p className="text-xs customer-muted mb-2">
-            {lineartUrl ? `Tracé proposé · v${lineartVersion}` : 'Traitement'}
+            {lineartUrl ? lineartLabel : 'Traitement'}
           </p>
           {lineartUrl ? (
             <div className="customer-photo-frame customer-photo-frame-lineart">
@@ -67,10 +111,11 @@ export default function StudioWorkspace({
                 {statusMsg || 'Traitement en cours…'}
               </p>
               <p className="text-xs customer-muted text-center px-4">
-                Comptez entre 2 et 5 minutes — vous pouvez fermer la fenêtre.
+                Environ 4 minutes — gardez cette page ouverte pendant le traitement.
                 <br />
-                Vous recevrez un e-mail de confirmation quand votre tracé sera terminé !
+                Un e-mail vous préviendra aussi quand votre tracé sera prêt.
               </p>
+              <ProcessingProgressBar active={showProcessing} />
               {processingSteps?.length > 0 && (
                 <ol className="text-xs customer-muted space-y-1.5 w-full max-w-[220px]">
                   {processingSteps.map((s, i) => (

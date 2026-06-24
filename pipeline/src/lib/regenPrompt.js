@@ -28,10 +28,10 @@ export function buildRegenPromptSuffix(characters) {
 
 Corrections demandées pour cette nouvelle version du tracé (personnages disposés de gauche à droite) :
 ${lines.join('\n')}
-Respecter impérativement ces retours tout en gardant le style line art épuré.`
+Conserver le même style d'illustration et le même niveau de détail que le tracé v1 — ne pas simplifier.`
 }
 
-/** Mega-prompt v1→v2 : regénération complète en une passe sans revue humaine. */
+/** Mega-prompt v1→v2 : même pipeline que v1 (photo step1 + ref), prompt enrichi des retours client. */
 export function buildMegaRegenPrompt(basePrompt, characters) {
   const filled = (characters ?? []).filter(c => c.issues?.length || c.freeText?.trim())
   if (!filled.length) return basePrompt
@@ -47,16 +47,22 @@ export function buildMegaRegenPrompt(basePrompt, characters) {
 
   return `${basePrompt}
 
-=== REGÉNÉRATION TRACÉ V2 — APPLICATION COMPLÈTE DES RETOURS CLIENT ===
-Objectif : produire une nouvelle version du line art (tracé v2) intégrant TOUTES les corrections ci-dessous en une seule passe.
-Ne pas demander de validation intermédiaire. Corriger simultanément tous les personnages concernés.
+=== TRACÉ V2 — REGÉNÉRATION COMPLÈTE (même méthode que le tracé v1) ===
+Générer une NOUVELLE version du line art (v2) en repartant de la photo de face séparée (image 1) et de la référence de style (image 2).
+NE PAS utiliser le tracé v1 comme image d'entrée : pas d'édition, pas d'inpainting, pas de retouche du tracé existant.
 
+À CONSERVER IMPÉRATIVEMENT (identique au tracé v1) :
+- Le même style d'illustration line art : finesse des traits, hachures/stippling, niveau de détail vestimentaire
+- Proportions réalistes et fidèles aux vrais corps — pas de style schématique ou pictogramme
+- Tous les détails de la prompt d'origine : vêtements, coiffures, accessoires, chaussures, expression
+- Même technique graphique que v1 — ne pas simplifier, ne pas aplatir en silhouettes vides
+- Aucun texte, label, annotation de distance ou marqueur sur l'image
+
+CORRECTIONS CIBLÉES (formulaire client — appliquer uniquement sur les personnages listés) :
 ${detailLines}
 
-Règles impératives :
-- Disposition des personnages : de gauche à droite, même ordre que la photo source
-- Style : line art épuré, silhouette extérieure uniquement, un tracé fermé par personnage
-- Aucun détail interne (pas de traits à l'intérieur des silhouettes)
-- Appliquer chaque correction listée sans en omettre aucune
-- Conserver la cohérence d'ensemble et les proportions entre personnages`
+Règles :
+- Disposition de gauche à droite, même ordre que la photo source
+- Appliquer chaque correction listée sans omettre aucune
+- Ne pas dégrader le reste du tracé : le rendu global doit rester aussi détaillé et fidèle que le v1`
 }
