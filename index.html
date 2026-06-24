@@ -660,6 +660,7 @@ const FACE_COUNTER_MAX = 32;
 
 /** Fallback catalogue marketing si week-status pas encore chargé. */
 const CATALOG_PACKS_FALLBACK = [
+  { id:'solo', label:'Mode Solo', faceCount:1, priceEur:'13.90', shippingEur:'7.00', totalEur:'20.90' },
   { id:'duo', label:'Pack Duo', faceCount:2, priceEur:'19.90', shippingEur:'7.00', totalEur:'26.90' },
   { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'34.90', shippingEur:'0.00', totalEur:'34.90' },
   { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'49.90', shippingEur:'0.00', totalEur:'49.90' },
@@ -876,6 +877,7 @@ const PIPELINE = {
 };
 
 const PACK_CTA = {
+  solo: 'Mode Solo →',
   duo: 'Pack Duo →',
   famille: 'Pack Famille →',
   grande_famille: 'Grande Famille →',
@@ -1440,7 +1442,7 @@ function PhotoUploadZone({ onFile, onDemo, compact, label, hint, showDemo }) {
       {(showDemo !== false && onDemo) && (
         <div className="demo-row">
           <span style={{ fontSize:'.78rem', color:'var(--muted)', width:'100%', marginBottom:4 }}>
-            Pas de photo sous la main ?
+            Pas de photo sous la main ? Testez avec un exemple :
           </span>
           {DEMO_PHOTOS.map(d => (
             <button key={d.count} type="button" className="demo-chip" disabled={loading}
@@ -1453,6 +1455,9 @@ function PhotoUploadZone({ onFile, onDemo, compact, label, hint, showDemo }) {
               {d.label}
             </button>
           ))}
+          <span style={{ fontSize:'.72rem', color:'var(--muted)', width:'100%', marginTop:4 }}>
+            Tous les nombres de 1 à 8 personnages sont disponibles — ajustez après upload.
+          </span>
         </div>
       )}
     </div>
@@ -2421,8 +2426,9 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
             </button>
             )}
 
-            <p style={{ fontSize:'.78rem', color:'var(--muted)', marginTop:12, textAlign:'center', lineHeight:1.55 }}>
-              Vous accéderez ensuite au Studio MiniNous qui permet de valider le design et faire quelques ajustements.
+            <p style={{ fontSize:'.8rem', color:'var(--clay-deep)', marginTop:12, textAlign:'center', lineHeight:1.6,
+              background:'var(--clay-pale)', borderRadius:8, padding:'9px 12px' }}>
+              ✏️ Après paiement, vous validerez le tracé de vos personnages dans le Studio avant que nous lancions la fabrication.
             </p>
 
             {quote?.pricingNote && (
@@ -2440,7 +2446,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                 <a href={session.orderStatusUrl} style={{ color:'var(--clay)', fontWeight:600 }}>
                   Votre lien de commande
                 </a>
-                {' '}Retrouvez votre studio sans connexion.
+                {' '}Reprenez votre commande depuis n&apos;importe quel appareil.
               </p>
             )}
           </div>
