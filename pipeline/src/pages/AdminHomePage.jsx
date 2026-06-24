@@ -31,7 +31,7 @@ export default function AdminHomePage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-amber-500">Carte du produit</p>
         <h2 className="text-2xl font-bold text-stone-100">MiniNous — de la photo à la figurine</h2>
         <p className="text-stone-400 leading-relaxed max-w-3xl">
-          Trois apps distinctes. Le vrai studio est dans <code className="text-stone-300">/pipeline/studio</code>
+          Trois apps distinctes. Le studio est intégré dans la page commande <code className="text-stone-300">/pipeline/commande</code>
           {' '}— pas la maquette « Editor » de la landing.
         </p>
         <SurfaceLegend />
@@ -54,7 +54,7 @@ export default function AdminHomePage() {
           <FlowCard tone="api" icon="💳" title="Stripe Checkout" path="checkout.stripe.com"
             detail="Paiement sécurisé · promo codes." tag="Paiement" />
           <FlowArrowDown label="Retour success_url + session_id" />
-          <FlowCard tone="pipeline" icon="🎨" title="Studio client" path="/pipeline/studio?order=TOKEN"
+          <FlowCard tone="pipeline" icon="🎨" title="Commande + Studio" path="/pipeline/commande?order=TOKEN"
             detail="FAL génère tracé · validation v1→v2→v3." tag="Studio" />
           <FlowArrowDown label="Client valide le tracé" />
           <FlowCard tone="pipeline" icon="✓" title="Tracé validé" path="workflow: approved"
@@ -99,7 +99,7 @@ export default function AdminHomePage() {
           <FlowBranch
             label="branches parallèles"
             left={(
-              <FlowCard tone="pipeline" icon="👤" title="Studio client" path="/pipeline/studio"
+              <FlowCard tone="pipeline" icon="👤" title="Commande + Studio" path="/pipeline/commande"
                 detail="Valider · ajuster · choisir version." tag="Client" />
             )}
             right={(
@@ -146,7 +146,7 @@ export default function AdminHomePage() {
           <RouteCard to="/generations" path="/admin/generations" desc="Liste FAL + batch fabrication." />
           <RouteCard to="/settings" path="/admin/settings" desc="Prompts step1/2 + ref line art." />
           <RouteCard to="/lab/trace" path="/admin/lab/trace" desc="Test SVG / autotrace hors commande." />
-          <RouteCard href="/pipeline/studio" path="/pipeline/studio" desc="Studio client." note="?order=TOKEN&auto=1" />
+          <RouteCard href="/pipeline/commande" path="/pipeline/commande" desc="Commande + studio client." note="?order=TOKEN&auto=1" />
           <RouteCard href="/pipeline/test" path="/pipeline/test" desc="Test E2E Stripe 4242…" />
           <RouteCard href="/" path="/" desc="Boutique landing + paywall." />
           <RouteCard href="/pipeline/commande" path="/pipeline/commande" desc="Suivi commande + galerie tracé." />

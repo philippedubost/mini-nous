@@ -8,12 +8,16 @@ alwaysApply: false
 
 ## Page principale
 
-**`StudioPage.jsx`** — flux post-paiement canonique (`/pipeline/studio?order=`).
+**`OrderStatusPage.jsx`** — page unique commande + studio (`/pipeline/commande?order=`).
+- Affiche les infos de commande (timeline, adresse, NPS, galerie)
+- Intègre le studio complet (génération FAL, validation, édition adresse)
+- Reçoit `session_id` et `auto=1` directement depuis Stripe (plus de `/studio` intermédiaire)
+
+**`StudioPage.jsx`** — redirect vers `/commande` (compatibilité liens existants).
 
 ## Autres pages
 
-- `OrderStatusPage.jsx` — suivi commande par token
-- `PaymentSuccessPage.jsx` — redirect après Stripe (legacy path)
+- `PaymentSuccessPage.jsx` — redirect après Stripe vers `/commande?order=...&auto=1`
 - `NewOrderPage.jsx` — nouvelle commande (admin/tests)
 - `PipelinePage.jsx` — **legacy** `/legacy` — ne pas étendre
 

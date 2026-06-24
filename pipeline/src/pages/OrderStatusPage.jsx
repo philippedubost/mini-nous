@@ -45,6 +45,8 @@ function daysLabel(ymd) {
 export default function OrderStatusPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
+  const stripeSessionId = searchParams.get('session_id')
+  const autoStart = searchParams.get('auto') === '1'
   const { accessToken: bearerToken } = useAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -82,8 +84,12 @@ export default function OrderStatusPage() {
 
   const shipLabel = order?.deliveryDateLabel ?? null
 
-  const showStudioEmbed = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
-  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioEmbed
+  // Show the full studio when: arriving from Stripe (session_id) or in active studio workflow statuses
+  const showStudio = !!stripeSessionId || (
+    order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
+  )
+  // Show gallery only when studio is closed (approved / in_production / shipped)
+  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudio
   const showNps = order?.isPaid
     && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
     && !order?.npsSubmittedAt
@@ -93,18 +99,7 @@ export default function OrderStatusPage() {
     <CustomerLayout
       title={order ? (order.customerFirstName ? `Bonjour ${order.customerFirstName}` : 'Votre commande') : undefined}
       subtitle={order ? `${order.packLabel} · ${order.faceCount} figurine${order.faceCount > 1 ? 's' : ''}${order.amountEur ? ` · ${order.amountEur} €` : ''}` : undefined}
-      navRight={(
-        order?.isPaid && order?.editable ? (
-          <Link
-            to={`/studio?order=${encodeURIComponent(orderToken)}`}
-            className="customer-link text-xs"
-          >
-            Studio →
-          </Link>
-        ) : (
-          <span className="customer-muted text-xs">Suivi commande</span>
-        )
-      )}
+      navRight={<Link to="/compte" className="customer-link text-xs">Mon compte</Link>}
     >
       {loading && (
         <p className="customer-muted text-center py-12">Chargement de votre commande…</p>
@@ -119,7 +114,8 @@ export default function OrderStatusPage() {
 
       {order && !loading && (
         <>
-          {!order.isPaid && (
+          {/* Unpaid paywall — hidden when arriving from Stripe (session_id handles confirmation) */}
+          {!order.isPaid && !stripeSessionId && (
             <div className="customer-card space-y-3">
               <p className="font-semibold text-[#C0684A]">Paiement en attente</p>
               <p className="text-sm customer-muted">
@@ -180,12 +176,12 @@ export default function OrderStatusPage() {
             />
           )}
 
-          {showStudioEmbed && (
+          {showStudio && (
             <StudioCustomerFlow
               orderToken={orderToken}
               bearerToken={bearerToken}
-              embedMode
-              autoStart={!order.previewUrl && order.workflowStatus === 'in_studio'}
+              autoStart={autoStart}
+              stripeSessionId={stripeSessionId}
               onOrderChange={setOrder}
             />
           )}
@@ -261,15 +257,6 @@ export default function OrderStatusPage() {
               </div>
             )}
           </div>
-
-          {!order.previewUrl && order.isPaid && order.editable && order.workflowStatus === 'awaiting_photo' && (
-            <Link
-              to={`/studio?order=${encodeURIComponent(orderToken)}&auto=1`}
-              className="customer-btn-clay w-full text-center block"
-            >
-              Ouvrir le studio →
-            </Link>
-          )}
 
           {order.isPaid && ['in_production', 'shipped'].includes(order.workflowStatus) && (
             <p className="text-sm customer-muted text-center">

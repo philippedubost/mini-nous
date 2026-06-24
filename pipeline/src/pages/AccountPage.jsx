@@ -45,7 +45,7 @@ export default function AccountPage() {
         faceCount: fromOrder?.faceCount,
         fromOrderId: fromOrder?.id,
       })
-      navigate(`/studio?order=${encodeURIComponent(token)}`)
+      navigate(`/commande?order=${encodeURIComponent(token)}`)
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -153,10 +153,10 @@ export default function AccountPage() {
                   </Link>
                   {(isAdmin || o.editable) && (
                     <Link
-                      to={`/studio?order=${encodeURIComponent(o.accessToken)}`}
+                      to={`/commande?order=${encodeURIComponent(o.accessToken)}`}
                       className="customer-btn-clay !py-2 !px-4 !text-xs"
                     >
-                      Studio
+                      Ouvrir
                     </Link>
                   )}
                   {isAdmin && (

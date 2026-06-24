@@ -31,7 +31,7 @@ function formatShip(ymd) {
 function OrderCard({ order, dragging, onDragStart, onDragEnd }) {
   const title = order.customerName?.trim() || order.email?.split('@')[0] || 'Commande'
   const studioUrl = order.accessToken
-    ? `/studio?order=${encodeURIComponent(order.accessToken)}`
+    ? `/commande?order=${encodeURIComponent(order.accessToken)}`
     : null
 
   return (
@@ -85,7 +85,7 @@ function OrderCard({ order, dragging, onDragStart, onDragEnd }) {
         )}
         {studioUrl && (
           <Link to={studioUrl} className="text-[11px] text-stone-500 hover:text-stone-300" onClick={e => e.stopPropagation()}>
-            Studio
+            Commande
           </Link>
         )}
       </div>

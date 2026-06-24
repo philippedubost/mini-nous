@@ -41,7 +41,8 @@ Dev local : `npm run dev` → `http://localhost:3333` (gateway + API + proxy Vit
 
 | Page | Route | Usage |
 |------|-------|--------|
-| `StudioPage.jsx` | `/studio` | **Post-paiement** — flux principal client |
+| `OrderStatusPage.jsx` | `/commande` | **Page unique** — commande + studio post-paiement |
+| `StudioPage.jsx` | `/studio` | Redirect → `/commande` (compatibilité liens) |
 | `NewOrderPage.jsx` | `/commande/nouvelle` | Admin / tests commande |
 | `PipelinePage.jsx` | `/legacy` | **Legacy** — éviter sauf fix ciblé |
 | `AdminGenerationPage.jsx` | `/admin/generations/:id` | Rerun FAL admin |
