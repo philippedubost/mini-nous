@@ -14,6 +14,10 @@
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
     { "source": "/pipeline", "destination": "/pipeline/index.html" },
     { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" },
-    { "source": "/assets/:path*", "destination": "/assets/:path*" }
+    { "source": "/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/mentions-legales", "destination": "/legal/mentions-legales.html" },
+    { "source": "/cgv", "destination": "/legal/cgv.html" },
+    { "source": "/confidentialite", "destination": "/legal/confidentialite.html" },
+    { "source": "/cookies", "destination": "/legal/cookies.html" }
   ]
 }
