@@ -460,20 +460,22 @@ input{font-family:inherit}
 const { useState, useEffect, useRef, useCallback } = React;
 
 function BuildFooter({ dark, sticky }) {
-  const [info, setInfo] = useState(null);
+  const [info, setInfo] = useState(() => window.__MININOUS_BUILD_INFO__ ?? null);
   useEffect(() => {
+    if (info?.version && info?.committedAtLabel) return;
     fetch('/build-info.json', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
       .then(data => { if (data?.version) setInfo(data); })
       .catch(() => {});
-  }, []);
+  }, [info]);
   if (!info?.version) return null;
+  const when = info.committedAtLabel || info.committedAt || '—';
   return (
     <footer
       className={`mn-build-footer${dark ? ' mn-build-footer--dark' : ''}${sticky ? ' mn-build-footer--sticky' : ''}`}
       aria-label="Version de l'application"
     >
-      Les MiniNous · v{info.version} · {info.committedAtLabel}
+      Les MiniNous · v{info.version} · {when}
     </footer>
   );
 }
@@ -1336,7 +1338,7 @@ function FaqSection() {
         </div>
         <p style={{ textAlign:'center', marginTop:32, fontSize:'.84rem', color:'var(--muted)' }}>
           Une autre question ?{' '}
-          <a href="mailto:bonjour@mininous.app" style={{ color:'var(--clay)', fontWeight:600 }}>
+          <a href="mailto:bonjour@lesfantomes.fr" style={{ color:'var(--clay)', fontWeight:600 }}>
             Écrivez-nous
           </a>
         </p>
@@ -1667,7 +1669,7 @@ function Fondateurs() {
         </div>
         <div className="fondateurs-grid">
           <div className="fondateurs-photo anim-in">
-            <img src="images/fondateurs.webp" alt="Marie et Philippe avec leurs MiniNous"
+            <img src="images/fondateurs/fondateurs-02.webp" alt="Marie et Philippe à l'atelier Les MiniNous"
               onError={e => { e.currentTarget.style.display='none'; }}
               style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
             <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center',
@@ -1903,7 +1905,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
             onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.4)'}>
             Connexion
           </a>
-          <a href="mailto:bonjour@mininous.app" style={{ color:'rgba(255,255,255,.4)', textDecoration:'none' }}
+          <a href="mailto:bonjour@lesfantomes.fr" style={{ color:'rgba(255,255,255,.4)', textDecoration:'none' }}
             onMouseOver={e => e.currentTarget.style.color='rgba(255,255,255,.65)'}
             onMouseOut={e => e.currentTarget.style.color='rgba(255,255,255,.4)'}>
             Contact

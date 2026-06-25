@@ -5,24 +5,51 @@ import { fileURLToPath } from 'node:url'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 
+function formatCommittedAtLabel(iso) {
+  if (!iso) return null
+  return new Date(iso).toLocaleString('fr-FR', {
+    timeZone: 'Europe/Paris',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function readGitCommitAt(sha) {
+  const ref = sha || 'HEAD'
+  return execSync(`git show -s --format=%cI ${ref}`, { encoding: 'utf8' }).trim()
+}
+
 export function getBuildInfo() {
+  const vercelSha = process.env.VERCEL_GIT_COMMIT_SHA?.trim()
+
   try {
     const version = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
-    const committedAt = execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim()
-    const committedAtLabel = new Date(committedAt).toLocaleString('fr-FR', {
-      timeZone: 'Europe/Paris',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    return { version, committedAt, committedAtLabel }
+    const committedAt = readGitCommitAt()
+    return { version, committedAt, committedAtLabel: formatCommittedAtLabel(committedAt) }
   } catch {
+    if (vercelSha) {
+      const version = vercelSha.slice(0, 7)
+      let committedAt = null
+      try {
+        committedAt = readGitCommitAt(vercelSha)
+      } catch {
+        committedAt = new Date().toISOString()
+      }
+      return {
+        version,
+        committedAt,
+        committedAtLabel: formatCommittedAtLabel(committedAt),
+      }
+    }
+
+    const committedAt = new Date().toISOString()
     return {
       version: 'local',
-      committedAt: null,
-      committedAtLabel: 'build locale',
+      committedAt,
+      committedAtLabel: formatCommittedAtLabel(committedAt) ?? 'build locale',
     }
   }
 }

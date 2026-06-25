@@ -11,10 +11,14 @@ const pipelineDist = join(root, 'pipeline', 'dist')
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist, { recursive: true })
 
-writeBuildInfo(root)
+const buildInfo = writeBuildInfo(root)
 cpSync(join(root, 'build-info.json'), join(dist, 'build-info.json'))
 
 let landingHtml = readFileSync(join(root, 'index.html'), 'utf8')
+const buildInfoScript = `<script>window.__MININOUS_BUILD_INFO__=${JSON.stringify(buildInfo)}</script>`
+landingHtml = landingHtml.includes('<!-- BUILD_INFO -->')
+  ? landingHtml.replace('<!-- BUILD_INFO -->', buildInfoScript)
+  : landingHtml.replace('</head>', `${buildInfoScript}\n</head>`)
 writeFileSync(join(dist, 'index.html'), landingHtml)
 for (const f of ['robots.txt', 'sitemap.xml']) {
   const src = join(root, f)
