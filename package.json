@@ -9,6 +9,7 @@
     "start": "node scripts/dev.mjs",
     "postinstall": "cd pipeline && npm install",
     "batch": "node scripts/batch-maker/cli.mjs",
+    "promo": "node scripts/create-promo-code.mjs",
     "images:webp": "node scripts/optimize-images.mjs",
     "images:lineart-thumbs": "node scripts/lineart-thumbs.mjs",
     "video:optimize": "node scripts/optimize-video.mjs",
