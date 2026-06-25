@@ -254,6 +254,23 @@ export default function OrderStatusPage() {
                 <span className="text-[#2C1F14] font-medium">{formatDate(order.paidAt)}</span>
               </div>
             )}
+            {order.paidAt && (
+              <div className="flex justify-between gap-4">
+                <span className="customer-muted">Facture</span>
+                {order.invoiceUrl ? (
+                  <a
+                    href={order.invoiceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#C0684A] font-medium text-sm hover:underline"
+                  >
+                    Télécharger PDF →
+                  </a>
+                ) : (
+                  <span className="text-[#9A8F88] text-sm">En cours de génération…</span>
+                )}
+              </div>
+            )}
             {order.email && (
               <div className="flex justify-between gap-4">
                 <span className="customer-muted">E-mail</span>
