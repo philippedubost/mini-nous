@@ -241,6 +241,13 @@ input{font-family:inherit}
 }
 .pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:28px}
 @media(max-width:768px){.pack-grid{grid-template-columns:1fr}}
+.pack-price-slider-wrap{max-width:540px;margin:36px auto 0;padding:28px 24px 24px;background:#fff;border-radius:20px;border:2px solid var(--bark-pale);text-align:center;box-shadow:0 8px 32px rgba(44,31,20,.06)}
+.pack-price-slider-wrap h3{font-family:Quicksand,sans-serif;color:var(--dark);font-size:1.12rem;margin-bottom:4px}
+.pack-price-slider-wrap .pack-slider-hint{font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.pack-face-slider{width:100%;height:6px;margin:8px 0 4px;accent-color:var(--clay);cursor:pointer}
+.pack-face-count{font-family:Quicksand,sans-serif;font-size:1.35rem;font-weight:700;color:var(--dark);margin:12px 0 6px}
+.pack-slider-price{margin:8px 0 4px}
+.pack-slider-note{font-size:.78rem;color:var(--muted);margin:0 0 16px;line-height:1.5}
 .pack-card{background:#fff;border-radius:20px;padding:28px 24px;border:2px solid var(--bark-pale);transition:all var(--t);text-align:left;display:flex;flex-direction:column;gap:12px}
 .pack-card:hover{border-color:var(--clay);box-shadow:0 12px 40px rgba(192,104,74,.15);transform:translateY(-4px)}
 .pack-card.featured{border-color:var(--clay);box-shadow:0 16px 48px rgba(192,104,74,.2)}
@@ -662,7 +669,6 @@ const FACE_COUNTER_MAX = 32;
 
 /** Fallback catalogue marketing si week-status pas encore chargé. */
 const CATALOG_PACKS_FALLBACK = [
-  { id:'solo', label:'Mode Solo', faceCount:1, priceEur:'13.90', shippingEur:'7.00', totalEur:'20.90' },
   { id:'duo', label:'Pack Duo', faceCount:2, priceEur:'19.90', shippingEur:'7.00', totalEur:'26.90' },
   { id:'famille', label:'Pack Famille', faceCount:4, priceEur:'34.90', shippingEur:'0.00', totalEur:'34.90' },
   { id:'grande_famille', label:'Pack Grande Famille', faceCount:8, priceEur:'49.90', shippingEur:'0.00', totalEur:'49.90' },
@@ -879,11 +885,61 @@ const PIPELINE = {
 };
 
 const PACK_CTA = {
-  solo: 'Mode Solo →',
   duo: 'Pack Duo →',
   famille: 'Pack Famille →',
   grande_famille: 'Grande Famille →',
 };
+
+function PackPriceSlider({ soldOut, onStartWithFaces }) {
+  const [faces, setFaces] = useState(4);
+  const { quote, loading } = useQuote(faces, false, 'fr');
+  const label = faces === 1 ? '1 personnage' : `${faces} personnages`;
+
+  return (
+    <div className="pack-price-slider-wrap anim-in anim-d3">
+      <h3>Calculez votre prix</h3>
+      <p className="pack-slider-hint">De 1 à 8 personnages sur la même figurine · port offert dès 4</p>
+      <input
+        type="range"
+        className="pack-face-slider"
+        min={1}
+        max={8}
+        step={1}
+        value={faces}
+        aria-label="Nombre de personnages"
+        aria-valuemin={1}
+        aria-valuemax={8}
+        aria-valuenow={faces}
+        onChange={e => setFaces(Number(e.target.value))}
+      />
+      <div className="pack-face-count">{label}</div>
+      <div className="pack-slider-price pack-price" style={{ justifyContent:'center' }}>
+        {loading ? '…' : quote?.ok ? (
+          <>
+            {quote.totalEur} € <small>TTC</small>
+            {quote.freeShipping ? (
+              <span className="pack-shipping">🎁 port offert</span>
+            ) : (
+              <span className="pack-shipping">+ {Number(quote.shippingEur).toFixed(0)} € de port</span>
+            )}
+          </>
+        ) : '—'}
+      </div>
+      {quote?.ok && quote.pricingNote && (
+        <p className="pack-slider-note">{quote.pricingNote}</p>
+      )}
+      <button
+        type="button"
+        className="btn-clay"
+        style={{ width:'100%', maxWidth:320, padding:'14px', opacity: soldOut || loading || !quote?.ok ? .5 : 1 }}
+        disabled={soldOut || loading || !quote?.ok}
+        onClick={() => onStartWithFaces?.(faces)}
+      >
+        {soldOut ? 'Complet cette semaine' : `Essayer avec ${faces} pers. →`}
+      </button>
+    </div>
+  );
+}
 
 const OFFICE_REVEAL = {
   photo: 'images/examples/theoffice/office01.webp',
@@ -956,10 +1012,10 @@ function OfficeRevealSlider() {
   );
 }
 
-function PackCards({ onPackExample }) {
+function PackCards({ onPackExample, onStartWithFaces }) {
   const { status } = useWeekStatus();
 
-  const packs = status?.packs ?? CATALOG_PACKS_FALLBACK;
+  const packs = (status?.packs ?? CATALOG_PACKS_FALLBACK).filter(p => p.id !== 'solo');
   const soldOut = status && status.remaining <= 0;
 
   return (
@@ -970,8 +1026,8 @@ function PackCards({ onPackExample }) {
         </p>
         <div className="pack-grid">
           {packs.map((p, i) => (
-            <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 1 ? ' featured' : ''}`}>
-              {i === 1 && (
+            <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 0 ? ' featured' : ''}`}>
+              {i === 0 && (
                 <span className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', alignSelf:'flex-start' }}>
                   Le plus populaire
                 </span>
@@ -997,6 +1053,7 @@ function PackCards({ onPackExample }) {
             </div>
           ))}
         </div>
+        <PackPriceSlider soldOut={soldOut} onStartWithFaces={onStartWithFaces} />
         <OfficeRevealSlider/>
       </div>
     </div>
@@ -1708,7 +1765,7 @@ function Fondateurs() {
 }
 
 /* ─── STATE 1 · LANDING ───────────────────────────────────────── */
-function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
+function Landing({ onPackExample, onStartWithFaces, onPhotoUpload, onDemoPhoto, onHome }) {
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
       <FomoBar />
@@ -1858,7 +1915,7 @@ function Landing({ onPackExample, onPhotoUpload, onDemoPhoto, onHome }) {
 
       {/* Tarifs / packs */}
       <section id="packs" style={{ padding:'56px 28px 72px', background:'var(--cream)' }}>
-        <PackCards onPackExample={onPackExample} />
+        <PackCards onPackExample={onPackExample} onStartWithFaces={onStartWithFaces} />
       </section>
 
       {/* Atelier live */}
@@ -2195,7 +2252,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
   const isExampleMode = session?.isDemoExample === true;
   const hasPersonalPhoto = !!session?.photoBase64 && !session?.isDemoExample;
-  const faceCountForQuote = (session?.enterVia === 'upload' || session?.enterVia === 'demo')
+  const faceCountForQuote = (session?.enterVia === 'upload' || session?.enterVia === 'demo' || session?.enterVia === 'slider')
     ? (session.faceCount ?? session.detectedFaces ?? 2)
     : packDef?.faceCount;
   const { quote, loading: quoteLoading } = useQuote(faceCountForQuote, fridayDelivery, shippingZone);
@@ -2205,7 +2262,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const showComposition = session?.enterVia === 'upload' && session?.photoBase64;
   const compositionFaceCount = session?.faceCount ?? session?.detectedFaces ?? 2;
   const overRecommended = showComposition && compositionFaceCount > maxFaces;
-  const isPackOnly = session?.enterVia === 'pack' && !session?.photoBase64;
+  const isPackOnly = (session?.enterVia === 'pack' || session?.enterVia === 'slider') && !session?.photoBase64;
   const showcaseCount = session?.showcaseCount ?? session?.faceCount
     ?? (hasQuote ? quote.faceCount : packDef?.faceCount);
   const showcase = getShowcaseForCount(showcaseCount);
@@ -3023,6 +3080,26 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, [paywallPath]);
 
+  const startFaceCountRoute = useCallback((faceCount) => {
+    const n = Math.max(1, Math.min(8, Number(faceCount) || 2));
+    setSelectedPack(null);
+    setSession({
+      enterVia: 'slider',
+      photoUrl: null,
+      photoBase64: null,
+      detectedFaces: null,
+      faceBoxes: null,
+      faceCount: n,
+      childCount: 0,
+      showcaseCount: n,
+      isDemoExample: false,
+      error: null,
+      orderToken: null,
+      orderStatusUrl: null,
+    });
+    go('pricing');
+  }, [go]);
+
   const startPackRoute = useCallback((packId) => {
     const p = packs.find(x => x.id === packId) || CATALOG_PACKS_FALLBACK.find(x => x.id === packId);
     setSelectedPack(packId);
@@ -3188,7 +3265,8 @@ function App() {
   }, []);
 
   const screens = {
-    landing:    <Landing onPackExample={startPackRoute} onPhotoUpload={onPhotoUpload}
+    landing:    <Landing onPackExample={startPackRoute} onStartWithFaces={startFaceCountRoute}
+                         onPhotoUpload={onPhotoUpload}
                   onDemoPhoto={onDemoPhoto} onHome={goHome} />,
     pricing:    <Paywall packDef={packDef} status={status} session={session}
                   onPhotoUpload={onPaywallPhotoUpload} onDemoPhoto={onDemoPhoto}
