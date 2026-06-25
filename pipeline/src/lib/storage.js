@@ -36,6 +36,14 @@ export async function linkOrderGeneration(token, generationId, bearerToken) {
   })
 }
 
+export async function startServerStudio(token, bearerToken, { mode = 'initial' } = {}) {
+  return apiJson('/api/studio-generate', {
+    method: 'POST',
+    headers: authHeaders(bearerToken),
+    body: JSON.stringify({ token, start: true, mode }),
+  })
+}
+
 export async function orderAction(token, action, bearerToken, payload = {}) {
   return apiJson('/api/orders', {
     method: 'PATCH',

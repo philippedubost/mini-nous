@@ -6,22 +6,13 @@ import CharacterReviewPanel from './CharacterReviewPanel'
 import PaywallCompositionEditor from './PaywallCompositionEditor'
 import ShippingAddressEditor from './ShippingAddressEditor'
 import { useSettings } from '../context/SettingsContext'
-import { buildPrompt1, resolveImageUrls, falStepFormat, fetchReferenceBlob } from '../lib/settings'
-import { buildMegaRegenPrompt } from '../lib/regenPrompt'
-import { FAL_MODEL, runFalStep, uploadToFal } from '../lib/fal'
+import { FAL_MODEL, uploadToFal } from '../lib/fal'
 import { canShowStudioReview, resolveStudioCaps, displayLineartVersion } from '../lib/studioFlow'
 import {
-  createGeneration, updateGeneration, persistAsset, markStepRunning,
+  createGeneration, persistAsset,
   fetchOrderByToken, linkOrderGeneration, orderAction, confirmCheckout,
-  fetchGeneration, urlMapFromSteps, submitRevision, selectLineartVersion,
+  submitRevision, selectLineartVersion, startServerStudio,
 } from '../lib/storage'
-
-async function fileFromImageUrl(url, name = 'photo.jpg') {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Impossible de charger votre photo')
-  const blob = await res.blob()
-  return new File([blob], name, { type: blob.type || 'image/jpeg' })
-}
 
 function phaseForOrder(order) {
   if (!order.isPaid) return 'awaiting_payment'
@@ -123,135 +114,82 @@ export default function StudioCustomerFlow({
   }, [order?.workflowStatus, reloadOrder])
 
   useEffect(() => {
-    if (!orderToken || busy || lineartUrl || order?.previewUrl) return undefined
+    if (!orderToken || lineartUrl || order?.previewUrl) return undefined
     if (!order?.isPaid) return undefined
-    if (!['in_studio', 'awaiting_photo'].includes(order?.workflowStatus)) return undefined
+    if (!order?.studioGenerateActive && !['in_studio', 'awaiting_photo'].includes(order?.workflowStatus)) return undefined
     const poll = () => { reloadOrder().catch(() => {}) }
     poll()
     const t = setInterval(poll, 5000)
     return () => clearInterval(t)
-  }, [orderToken, busy, lineartUrl, order?.previewUrl, order?.isPaid, order?.workflowStatus, reloadOrder])
+  }, [orderToken, lineartUrl, order?.previewUrl, order?.isPaid, order?.workflowStatus, order?.studioGenerateActive, reloadOrder])
 
-  const runPipeline = useCallback(async (file, feedbackCharacters = null) => {
+  useEffect(() => {
+    if (!order?.previewUrl || lineartUrl) return
+    setLineartUrl(order.previewUrl)
+    setPhase('review')
+    setBusy(false)
+    setStatusMsg(null)
+  }, [order?.previewUrl, lineartUrl])
+
+  useEffect(() => {
+    if (!order?.studioGenerateActive) return
+    setBusy(true)
+    setError(null)
+    const phaseLabel = order.studioGeneratePhase === 'step2'
+      ? 'Traitement du tracé…'
+      : order.studioGeneratePhase === 'step1'
+        ? 'Mise en scène atelier…'
+        : 'Préparation de votre photo…'
+    setStatusMsg(phaseLabel)
+  }, [order?.studioGenerateActive, order?.studioGeneratePhase])
+
+  const runPipeline = useCallback(async (file) => {
     if (!order?.isPaid) return
     setBusy(true)
     setError(null)
     setStatusMsg('Préparation de votre photo…')
-    let generationId = order.generationId ?? null
-    const isAutoRegen = !!feedbackCharacters?.length
 
     try {
-      let urlMap = { user: null, ref: null, step1: null, step2: null }
+      let generationId = order.generationId ?? null
 
-      if (!generationId) {
-        const generation = await createGeneration({
-          faceCount: order.faceCount,
-          resolution: settings.resolution,
-          aspectRatio: settings.aspectRatio,
-          settings,
-          falModel: FAL_MODEL,
-          orderId: order.id,
-        })
-        generationId = generation.id
-        await linkOrderGeneration(orderToken, generationId, bearerToken)
-      } else {
-        await updateGeneration(generationId, { status: 'running' }).catch(() => {})
-        const { steps } = await fetchGeneration(generationId)
-        urlMap = { ...urlMap, ...urlMapFromSteps(steps) }
-        if (urlMap.step2 && !isAutoRegen) {
-          await orderAction(orderToken, 'pending_validation', bearerToken, { lineartVersion: 1 })
-          setLineartUrl(urlMap.step2)
-          setPhase('review')
-          setStatusMsg(null)
-          await reloadOrder()
-          return
+      if (file) {
+        if (!generationId) {
+          const generation = await createGeneration({
+            faceCount: order.faceCount,
+            resolution: settings.resolution,
+            aspectRatio: settings.aspectRatio,
+            settings,
+            falModel: FAL_MODEL,
+            orderId: order.id,
+          })
+          generationId = generation.id
+          await linkOrderGeneration(orderToken, generationId, bearerToken)
         }
+        const userUrl = await uploadToFal(file)
+        await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
+      } else if (!order.sourcePhotoUrl && !order.hasPaywallPhoto) {
+        throw new Error('Aucune photo disponible — uploadez votre photo de groupe.')
       }
 
-      if (isAutoRegen && generationId) {
-        const { steps } = await fetchGeneration(generationId)
-        urlMap = { ...urlMap, ...urlMapFromSteps(steps) }
-      }
-
-      if (!urlMap.user) {
-        let userUrl
-        if (file) {
-          userUrl = await uploadToFal(file)
-          await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
-        } else if (order.sourcePhotoUrl) {
-          setStatusMsg('Chargement de votre photo…')
-          const photoFile = await fileFromImageUrl(order.sourcePhotoUrl)
-          userUrl = await uploadToFal(photoFile)
-          await persistAsset(generationId, 'source', { falUrl: userUrl, url: userUrl, status: 'done' })
-        } else {
-          throw new Error('Aucune photo disponible — uploadez votre photo de groupe.')
-        }
-        urlMap.user = userUrl
-      }
-
-      if (!urlMap.ref) {
-        const refBlob = await fetchReferenceBlob(settings)
-        const refUrl = await uploadToFal(new File([refBlob], 'reference-line.png', { type: refBlob.type || 'image/png' }))
-        await persistAsset(generationId, 'ref', { falUrl: refUrl, url: refUrl, status: 'done' })
-        urlMap.ref = refUrl
-      }
-
-      const [cfg1, cfg2] = settings.steps
-      const fmt1 = falStepFormat(cfg1, settings)
-      const fmt2 = falStepFormat(cfg2, settings)
-
-      if (!urlMap.step1) {
-        setStatusMsg('Mise en scène atelier…')
-        await markStepRunning(generationId, 'step1')
-        const prompt1 = buildPrompt1(order.faceCount, cfg1.prompt)
-        const url1 = await runFalStep(
-          { ...cfg1, ...fmt1, prompt: prompt1 },
-          resolveImageUrls(cfg1.imageInputs, urlMap),
-        )
-        urlMap.step1 = url1
-        await persistAsset(generationId, 'step1', { falUrl: url1, url: url1, prompt: prompt1, status: 'done' })
-      }
-
-      setStatusMsg(isAutoRegen ? 'Regénération automatique du tracé v2…' : 'Traitement du tracé…')
-      await markStepRunning(generationId, 'step2')
-      const prompt2 = isAutoRegen
-        ? buildMegaRegenPrompt(cfg2.prompt, feedbackCharacters)
-        : cfg2.prompt
-      const step2Inputs = isAutoRegen
-        ? ['step1', 'ref']
-        : (cfg2.imageInputs ?? ['step1', 'ref'])
-      const url2 = await runFalStep(
-        { ...cfg2, ...fmt2, prompt: prompt2 },
-        resolveImageUrls(step2Inputs, urlMap),
-      )
-      await persistAsset(generationId, 'step2', { falUrl: url2, url: url2, prompt: prompt2, status: 'done' })
-      await updateGeneration(generationId, { status: 'done' })
-
-      const nextVersion = isAutoRegen ? 2 : 1
-      await orderAction(orderToken, 'pending_validation', bearerToken, { lineartVersion: nextVersion })
-      setLineartUrl(url2)
-      setPhase('review')
-      setStatusMsg(null)
+      await startServerStudio(orderToken, bearerToken)
+      setStatusMsg('Traitement lancé — vous pouvez fermer cette page, un e-mail vous préviendra.')
+      setPhase('upload')
       await reloadOrder()
     } catch (err) {
-      if (generationId) {
-        await updateGeneration(generationId, { status: 'error', errorMessage: err.message }).catch(() => {})
-      }
       setError(err.message)
       setStatusMsg(null)
       setPhase(order.previewUrl ? 'review' : 'upload')
-    } finally {
       setBusy(false)
     }
   }, [order, orderToken, bearerToken, settings, reloadOrder])
 
   useEffect(() => {
-    if (!autoStart || autoStarted.current || busy || !order?.isPaid) return
-    if (order.previewUrl || phase !== 'upload') return
+    if (!autoStart || autoStarted.current || !order?.isPaid) return
+    if (order.previewUrl || order.studioGenerateActive) return
     if (!order.sourcePhotoUrl && !order.hasPaywallPhoto) return
     autoStarted.current = true
-    runPipeline(null)
-  }, [autoStart, busy, order, phase, runPipeline])
+    startServerStudio(orderToken, bearerToken).catch(err => setError(err.message))
+  }, [autoStart, order, orderToken, bearerToken])
 
   const handleAutoAdjust = async (characters) => {
     const caps = resolveStudioCaps(order)
@@ -262,7 +200,8 @@ export default function StudioCustomerFlow({
       await orderAction(orderToken, 'regen', bearerToken, { characters })
       setLineartUrl(null)
       setPhase('upload')
-      await runPipeline(null, characters)
+      setStatusMsg('Regénération en cours côté serveur…')
+      await reloadOrder()
     } catch (e) {
       setError(e.message)
       setBusy(false)
@@ -322,17 +261,18 @@ export default function StudioCustomerFlow({
   const handleRetry = () => {
     autoStarted.current = false
     setError(null)
-    runPipeline(null)
+    startServerStudio(orderToken, bearerToken).catch(err => setError(err.message))
   }
 
   const canUpload = order?.isPaid && (order?.editable || order?.isAdminView)
   const lineartVersion = displayLineartVersion(order)
   const showReviewActions = canShowStudioReview({ order, lineartUrl })
   const studioCaps = resolveStudioCaps(order)
-  const showRetry = order?.isPaid && !busy && !lineartUrl && !order?.previewUrl
+  const serverBusy = order?.studioGenerateActive
+  const showRetry = order?.isPaid && !busy && !serverBusy && !lineartUrl && !order?.previewUrl
     && (error || order?.generationStatus === 'error')
 
-  const activeStep = busy
+  const activeStep = (busy || serverBusy)
     ? (statusMsg?.includes('v2') || statusMsg?.includes('tracé') || statusMsg?.includes('Tracé') ? 2
       : statusMsg?.includes('scène') || statusMsg?.includes('Mise') ? 1
       : 0)
@@ -373,13 +313,13 @@ export default function StudioCustomerFlow({
       )}
 
       {!embedMode && (
-        <StudioFlowSteps order={order} lineartUrl={lineartUrl} busy={busy} phase={phase} />
+        <StudioFlowSteps order={order} lineartUrl={lineartUrl} busy={busy || serverBusy} phase={phase} />
       )}
 
       <StudioWorkspace
         sourcePhotoUrl={order.sourcePhotoUrl}
         lineartUrl={lineartUrl}
-        busy={busy}
+        busy={busy || serverBusy}
         statusMsg={statusMsg}
         phase={phase}
         lineartVersion={lineartVersion}
@@ -420,7 +360,7 @@ export default function StudioCustomerFlow({
         <div className="customer-card text-center space-y-3 py-8">
           <div className="customer-spinner mx-auto" aria-hidden />
           <p className="text-sm font-medium text-[#C0684A]">Confirmation du paiement Stripe…</p>
-          <p className="text-xs customer-muted">Le studio démarrera automatiquement dès validation.</p>
+          <p className="text-xs customer-muted">Le traitement démarre côté serveur — vous recevrez un e-mail quand le tracé est prêt.</p>
         </div>
       )}
 

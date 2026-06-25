@@ -111,7 +111,7 @@ export default function StudioWorkspace({
                 {statusMsg || 'Traitement en cours…'}
               </p>
               <p className="text-xs customer-muted text-center px-4">
-                Environ 4 minutes — gardez cette page ouverte pendant le traitement.
+                Environ 4 minutes — vous pouvez quitter cette page, un e-mail vous préviendra.
                 <br />
                 Un e-mail vous préviendra aussi quand votre tracé sera prêt.
               </p>
