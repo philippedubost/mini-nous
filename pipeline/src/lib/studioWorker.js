@@ -28,8 +28,9 @@ async function parseJson(res) {
   return data
 }
 
-export async function fetchWorkerBoard(secret) {
-  const res = await fetch('/api/studio-worker', { headers: workerHeaders(secret) })
+export async function fetchWorkerBoard(secret, { weekKey = null } = {}) {
+  const qs = weekKey ? `?weekKey=${encodeURIComponent(weekKey)}` : ''
+  const res = await fetch(`/api/studio-worker${qs}`, { headers: workerHeaders(secret) })
   return parseJson(res)
 }
 
@@ -65,4 +66,13 @@ export function pickNextJob(jobs) {
   if (!actionable.length) return null
   actionable.sort((a, b) => String(a.updatedAt).localeCompare(String(b.updatedAt)))
   return actionable.find(j => j.needsTick) ?? actionable[0]
+}
+
+export async function runWorkerBulkAction(secret, action, orderIds) {
+  const res = await fetch('/api/studio-worker', {
+    method: 'PATCH',
+    headers: workerHeaders(secret),
+    body: JSON.stringify({ action, orderIds }),
+  })
+  return parseJson(res)
 }

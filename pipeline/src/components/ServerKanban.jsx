@@ -1,4 +1,9 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import {
+  contextActionsForColumn,
+  truncateDisplayName,
+  faceLabel,
+} from '../lib/serverKanbanActions'
 
 const MOTOR_BADGE = {
   needsQueue: 'bg-amber-900/50 text-amber-200 border-amber-700',
@@ -6,8 +11,41 @@ const MOTOR_BADGE = {
   error: 'bg-red-900/50 text-red-200 border-red-700',
 }
 
-export function ServerOrderCard({ order, busy, onRetry }) {
-  const title = order.customerName?.trim() || order.email?.split('@')[0] || 'Commande'
+export function ServerContextMenu({ menu, onAction, onClose }) {
+  if (!menu) return null
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} onContextMenu={e => { e.preventDefault(); onClose() }} />
+      <div
+        className="fixed z-50 min-w-[180px] rounded-lg border border-stone-700 bg-stone-900 shadow-xl py-1 text-sm"
+        style={{ left: menu.x, top: menu.y }}
+      >
+        {menu.actions.map(a => (
+          <button
+            key={a.id}
+            type="button"
+            className={`w-full text-left px-3 py-2 hover:bg-stone-800 ${
+              a.danger ? 'text-red-300' : 'text-stone-200'
+            }`}
+            onClick={() => { onAction(a.id, menu.orderIds); onClose() }}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ServerOrderCard({
+  order,
+  busy,
+  selected,
+  onSelect,
+  onContextMenu,
+  onOpen,
+}) {
+  const title = truncateDisplayName(order.displayName || order.customerName || order.email?.split('@')[0])
   const motorCls = order.canRetry
     ? MOTOR_BADGE.error
     : order.needsTick
@@ -18,28 +56,36 @@ export function ServerOrderCard({ order, busy, onRetry }) {
 
   return (
     <article
-      className={`rounded-xl border bg-stone-900/80 p-2.5 space-y-2 transition-colors ${
-        busy ? 'border-sky-500/60 ring-1 ring-sky-500/30' : 'border-stone-700/80 hover:border-stone-600'
+      data-order-card={order.orderId}
+      onContextMenu={e => onContextMenu(e, order)}
+      onClick={e => {
+        e.preventDefault()
+        onSelect(order.orderId, e.shiftKey)
+      }}
+      onDoubleClick={e => { e.preventDefault(); onOpen(order.orderId) }}
+      className={`rounded-xl border bg-stone-900/80 p-2.5 space-y-1.5 transition-colors cursor-pointer select-none ${
+        selected ? 'border-sky-500 ring-1 ring-sky-500/40 bg-sky-950/20'
+          : busy ? 'border-sky-500/60 ring-1 ring-sky-500/30'
+            : 'border-stone-700/80 hover:border-stone-600'
       }`}
     >
-      <Link to={`/c/${order.orderId}`} className="flex gap-2 group">
+      <div className="flex gap-2">
         <div className="w-10 h-10 rounded-md bg-white shrink-0 overflow-hidden flex items-center justify-center border border-stone-700">
           {order.thumbUrl
-            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" />
+            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" draggable={false} />
             : <span className="text-[9px] text-stone-400 text-center leading-tight px-0.5">photo</span>}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-stone-100 truncate group-hover:text-sky-300">{title}</p>
-          <p className="text-[10px] text-stone-500 font-mono truncate">{order.orderId.slice(0, 8)}…</p>
-          <p className="text-[10px] text-stone-400">
-            {order.packLabel ?? '—'} · {order.faceCount} pers.
+          <p className="text-xs font-semibold text-stone-100 truncate" title={order.displayName || order.customerName}>
+            {title}
           </p>
+          <p className="text-[10px] text-stone-400">{faceLabel(order.faceCount)}</p>
         </div>
-      </Link>
+      </div>
 
       {motorCls && (
         <p className={`text-[10px] font-medium px-2 py-0.5 rounded border ${motorCls}`}>
-          {order.canRetry ? 'Erreur — relancer' : order.needsQueue ? 'À lancer' : 'En cours FAL…'}
+          {order.canRetry ? 'Erreur' : order.needsQueue ? 'À lancer' : 'FAL…'}
         </p>
       )}
 
@@ -48,31 +94,35 @@ export function ServerOrderCard({ order, busy, onRetry }) {
           {order.studioJob.error}
         </p>
       )}
-
-      {order.canRetry && (
-        <button
-          type="button"
-          onClick={() => onRetry?.(order)}
-          className="text-[10px] text-red-300 hover:text-red-200 underline"
-        >
-          Relancer
-        </button>
-      )}
     </article>
   )
 }
 
-export function ServerKanbanColumn({ col, orders, busyOrderId, onRetry }) {
+export function ServerKanbanColumn({
+  col,
+  orders,
+  totals,
+  busyOrderId,
+  selectedIds,
+  onSelect,
+  onContextMenu,
+  onOpen,
+}) {
+  const faceSum = totals?.faces ?? orders.reduce((n, o) => n + (Number(o.faceCount) || 0), 0)
+  const count = totals?.orders ?? orders.length
+
   return (
     <div className="flex flex-col min-w-[200px] max-w-[220px] flex-1 rounded-xl border border-stone-800 bg-stone-900/40">
       <div className="px-3 py-2 border-b border-stone-800/80">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold text-stone-200 leading-tight">{col.label}</p>
-          <span className="text-xs font-bold text-stone-500 tabular-nums">{orders.length}</span>
+          <span className="text-[10px] font-bold text-stone-500 tabular-nums whitespace-nowrap">
+            {count} · {faceSum} pers.
+          </span>
         </div>
         <p className="text-[10px] text-stone-600 mt-0.5 leading-snug">{col.hint}</p>
       </div>
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-340px)] min-h-[100px]">
+      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-380px)] min-h-[100px]">
         {orders.length === 0
           ? <p className="text-[10px] text-stone-600 text-center py-4">—</p>
           : orders.map(o => (
@@ -80,10 +130,86 @@ export function ServerKanbanColumn({ col, orders, busyOrderId, onRetry }) {
               key={o.orderId}
               order={o}
               busy={busyOrderId === o.orderId}
-              onRetry={onRetry}
+              selected={selectedIds.has(o.orderId)}
+              onSelect={onSelect}
+              onContextMenu={onContextMenu}
+              onOpen={onOpen}
             />
           ))}
       </div>
     </div>
   )
+}
+
+export function ServerKanbanBoard({
+  boardRef,
+  columns,
+  byColumn,
+  columnTotals,
+  busyOrderId,
+  selectedIds,
+  onSelect,
+  onContextMenu,
+  onBoardMouseDown,
+  selectRect,
+}) {
+  const navigate = useNavigate()
+  const openOrder = id => navigate(`/c/${id}`)
+
+  return (
+    <div
+      ref={boardRef}
+      data-kanban-board
+      className="relative overflow-x-auto pb-2 -mx-4 px-4 select-none"
+      onMouseDown={onBoardMouseDown}
+    >
+      {selectRect && (
+        <div
+          className="fixed z-30 border border-sky-400/80 bg-sky-500/10 pointer-events-none"
+          style={{
+            left: selectRect.left,
+            top: selectRect.top,
+            width: selectRect.width,
+            height: selectRect.height,
+          }}
+        />
+      )}
+      <div className="flex gap-3 min-w-max">
+        {columns.map(col => (
+          <ServerKanbanColumn
+            key={col.key}
+            col={col}
+            orders={byColumn[col.key] ?? []}
+            totals={columnTotals?.[col.key]}
+            busyOrderId={busyOrderId}
+            selectedIds={selectedIds}
+            onSelect={onSelect}
+            onContextMenu={onContextMenu}
+            onOpen={openOrder}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function buildContextMenu(e, order, selectedIds) {
+  const orderIds = selectedIds.has(order.orderId) && selectedIds.size > 1
+    ? [...selectedIds]
+    : [order.orderId]
+  const actions = contextActionsForColumn(order.column)
+  return { x: e.clientX, y: e.clientY, orderIds, actions, column: order.column }
+}
+
+export function bulkActionsForSelection(cards, selectedIds) {
+  if (!selectedIds.size) return []
+  const selected = cards.filter(c => selectedIds.has(c.orderId))
+  const columns = new Set(selected.map(c => c.column))
+  const actions = [{ id: 'delete', label: 'Supprimer la sélection', danger: true }]
+  if (columns.size === 1) {
+    const col = [...columns][0]
+    const specific = (contextActionsForColumn(col) ?? []).filter(a => a.id !== 'delete')
+    actions.unshift(...specific.map(a => ({ ...a, label: `${a.label} (${selected.length})` })))
+  }
+  return actions
 }
