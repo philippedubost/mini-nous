@@ -7,6 +7,24 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+@keyframes server-card-shine {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+.server-card-processing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(56, 189, 248, 0.18) 50%,
+    transparent 65%
+  );
+  animation: server-card-shine 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
 @keyframes shimmer {
   from { transform: translateX(-100%) }
   to   { transform: translateX(200%) }

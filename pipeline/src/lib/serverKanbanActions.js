@@ -13,9 +13,20 @@ export const CONTEXT_ACTIONS_BY_COLUMN = {
 
 export const DELETE_ACTION = { id: 'delete', label: 'Supprimer', danger: true }
 
-export function contextActionsForColumn(column) {
+export const OPEN_ADMIN_ACTION = { id: 'open_admin', label: 'Voir page commande admin' }
+export const OPEN_CLIENT_ACTION = { id: 'open_client', label: 'Voir page commande client' }
+
+export function clientOrderUrl(order) {
+  if (!order?.accessToken) return null
+  return `/pipeline/commande?order=${encodeURIComponent(order.accessToken)}`
+}
+
+export function contextActionsForColumn(column, order = null) {
   const specific = CONTEXT_ACTIONS_BY_COLUMN[column] ?? []
-  return [...specific, DELETE_ACTION]
+  const nav = []
+  if (order && adminOrderDetailUrl(order)) nav.push(OPEN_ADMIN_ACTION)
+  if (order && clientOrderUrl(order)) nav.push(OPEN_CLIENT_ACTION)
+  return [...specific, ...nav, DELETE_ACTION]
 }
 
 export function truncateDisplayName(name, max = 16) {
@@ -31,9 +42,6 @@ export function faceLabel(n) {
 
 export function adminOrderDetailUrl(order) {
   if (order?.generationId) return `/admin/g/${order.generationId}`
-  if (order?.accessToken) {
-    return `/pipeline/commande?order=${encodeURIComponent(order.accessToken)}`
-  }
   return null
 }
 

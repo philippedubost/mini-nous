@@ -70,7 +70,7 @@ export default function ServerOrderPage() {
 
   if (!order) return null
 
-  const title = order.customerName || order.email || 'Commande'
+  const title = order.email || 'Commande'
   const col = order.column
 
   return (

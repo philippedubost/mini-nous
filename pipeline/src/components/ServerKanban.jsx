@@ -4,6 +4,7 @@ import {
   truncateDisplayName,
   faceLabel,
   adminOrderDetailUrl,
+  clientOrderUrl,
   formatErrorLogAt,
 } from '../lib/serverKanbanActions'
 
@@ -63,6 +64,24 @@ const MOTOR_BADGE = {
 
 export function ServerContextMenu({ menu, onAction, onClose }) {
   if (!menu) return null
+
+  const handleAction = (a) => {
+    if (a.id === 'open_admin') {
+      const url = adminOrderDetailUrl(menu.order)
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      onClose()
+      return
+    }
+    if (a.id === 'open_client') {
+      const url = clientOrderUrl(menu.order)
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+      onClose()
+      return
+    }
+    onAction(a.id, menu.orderIds)
+    onClose()
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} onContextMenu={e => { e.preventDefault(); onClose() }} />
@@ -77,7 +96,7 @@ export function ServerContextMenu({ menu, onAction, onClose }) {
             className={`w-full text-left px-3 py-2 hover:bg-stone-800 ${
               a.danger ? 'text-red-300' : 'text-stone-200'
             }`}
-            onClick={() => { onAction(a.id, menu.orderIds); onClose() }}
+            onClick={() => handleAction(a)}
           >
             {a.label}
           </button>
@@ -95,8 +114,9 @@ function ServerOrderCard({
   onContextMenu,
   onOpen,
 }) {
-  const title = truncateDisplayName(order.displayName || order.customerName || order.email?.split('@')[0])
+  const title = truncateDisplayName(order.email, 22)
   const adminUrl = adminOrderDetailUrl(order)
+  const clientUrl = clientOrderUrl(order)
   const motorCls = order.hasFalError || order.canRetry
     ? MOTOR_BADGE.error
     : order.needsTick
@@ -114,12 +134,13 @@ function ServerOrderCard({
         onSelect(order.orderId, e.shiftKey)
       }}
       onDoubleClick={e => { e.preventDefault(); onOpen(order.orderId) }}
-      className={`rounded-xl border bg-stone-900/80 p-2.5 space-y-1.5 transition-colors cursor-pointer select-none ${
-        selected ? 'border-sky-500 ring-1 ring-sky-500/40 bg-sky-950/20'
-          : busy ? 'border-sky-500/60 ring-1 ring-sky-500/30'
-            : order.hasFalError ? 'border-red-700/80 hover:border-red-600'
-              : order.isBlocked24h ? 'border-amber-800/70 hover:border-amber-700'
-                : 'border-stone-700/80 hover:border-stone-600'
+      className={`relative overflow-hidden rounded-xl border bg-stone-900/80 p-2.5 space-y-1.5 transition-colors cursor-pointer select-none ${
+        order._processing ? 'server-card-processing border-sky-600/70'
+          : selected ? 'border-sky-500 ring-1 ring-sky-500/40 bg-sky-950/20'
+            : busy ? 'border-sky-500/60 ring-1 ring-sky-500/30'
+              : order.hasFalError ? 'border-red-700/80 hover:border-red-600'
+                : order.isBlocked24h ? 'border-amber-800/70 hover:border-amber-700'
+                  : 'border-stone-700/80 hover:border-stone-600'
       }`}
     >
       <div className="flex gap-2">
@@ -130,30 +151,51 @@ function ServerOrderCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-1">
-            <p className="text-xs font-semibold text-stone-100 truncate flex-1" title={order.displayName || order.customerName}>
+            <p className="text-xs font-semibold text-stone-100 truncate flex-1" title={order.email || undefined}>
               {title}
             </p>
-            {adminUrl && (
-              <a
-                href={adminUrl}
-                target="_blank"
-                rel="noreferrer"
-                title="Voir commande admin"
-                onClick={e => e.stopPropagation()}
-                onMouseDown={e => e.stopPropagation()}
-                className="shrink-0 p-0.5 rounded text-stone-500 hover:text-amber-400 hover:bg-stone-800/80 transition-colors"
-              >
-                <EyeIcon />
-              </a>
-            )}
+            <div className="flex shrink-0 items-center gap-0.5">
+              {clientUrl && (
+                <a
+                  href={clientUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Voir page commande client"
+                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  className="p-0.5 rounded text-stone-500 hover:text-sky-400 hover:bg-stone-800/80 transition-colors"
+                >
+                  <EyeIcon />
+                </a>
+              )}
+              {adminUrl && (
+                <a
+                  href={adminUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Voir page commande admin"
+                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  className="p-0.5 rounded text-stone-500 hover:text-amber-400 hover:bg-stone-800/80 transition-colors"
+                >
+                  <EyeIcon />
+                </a>
+              )}
+            </div>
           </div>
           <p className="text-[10px] text-stone-400">{faceLabel(order.faceCount)}</p>
         </div>
       </div>
 
-      {motorCls && (
+      {motorCls && !order._processing && (
         <p className={`text-[10px] font-medium px-2 py-0.5 rounded border ${motorCls}`}>
           {order.hasFalError || order.canRetry ? 'Erreur FAL' : order.needsQueue ? 'À lancer' : 'FAL…'}
+        </p>
+      )}
+
+      {order._processing && (
+        <p className="text-[10px] font-medium px-2 py-0.5 rounded border bg-sky-900/50 text-sky-200 border-sky-700">
+          Génération…
         </p>
       )}
 
@@ -288,8 +330,8 @@ export function buildContextMenu(e, order, selectedIds) {
   const orderIds = selectedIds.has(order.orderId) && selectedIds.size > 1
     ? [...selectedIds]
     : [order.orderId]
-  const actions = contextActionsForColumn(order.column)
-  return { x: e.clientX, y: e.clientY, orderIds, actions, column: order.column }
+  const actions = contextActionsForColumn(order.column, order)
+  return { x: e.clientX, y: e.clientY, orderIds, order, actions, column: order.column }
 }
 
 export function bulkActionsForSelection(cards, selectedIds) {

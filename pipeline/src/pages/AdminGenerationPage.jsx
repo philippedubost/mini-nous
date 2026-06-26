@@ -389,6 +389,21 @@ export default function AdminGenerationPage() {
             {gen.resolution} · {gen.aspect_ratio}
             <span className="ml-2 text-stone-600 font-mono text-xs">{gen.id}</span>
           </p>
+          {data.orderClient?.url && (
+            <p className="text-sm mt-2">
+              <a
+                href={data.orderClient.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sky-400 hover:text-sky-300"
+              >
+                Page commande client
+              </a>
+              {data.orderClient.email && (
+                <span className="text-stone-500 text-xs ml-2">{data.orderClient.email}</span>
+              )}
+            </p>
+          )}
           {fabrication && (
             <p className="text-sm text-sky-300 mt-2">
               {fabrication.label}

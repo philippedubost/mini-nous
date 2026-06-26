@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   fetchWorkerBoard,
   loadWorkerSecret,
@@ -15,6 +15,7 @@ import {
   bulkActionsForSelection,
 } from '../components/ServerKanban'
 import { useBoxSelect } from '../hooks/useBoxSelect'
+import { mergeBoardOptimistic, optimisticFromMotorResult } from '../lib/serverBoardMerge'
 
 function formatTime(d = new Date()) {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -45,6 +46,7 @@ export default function ServerWorkerPage() {
   const [lastPollAt, setLastPollAt] = useState(null)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [contextMenu, setContextMenu] = useState(null)
+  const [optimistic, setOptimistic] = useState({})
   const boardRef = useRef(null)
   const runningRef = useRef(running)
   const secretRef = useRef(secret)
@@ -88,6 +90,11 @@ export default function ServerWorkerPage() {
     return data.jobs ?? []
   }, [applyBoard])
 
+  const displayBoard = useMemo(
+    () => mergeBoardOptimistic({ columns, byColumn, columnTotals, allCards }, optimistic),
+    [columns, byColumn, columnTotals, allCards, optimistic],
+  )
+
   const handleBoxSelect = useCallback((hit, additive) => {
     setSelectedIds(prev => {
       if (!additive) return new Set(hit)
@@ -117,6 +124,12 @@ export default function ServerWorkerPage() {
     try {
       if (queue) {
         const q = await queueStudioJob(secretRef.current, orderId, { mode })
+        if (q.skipped) {
+          const msg = q.reason === 'not_paid'
+            ? 'Paiement requis avant de lancer le tracé'
+            : `Mise en file ignorée (${q.reason})`
+          throw new Error(msg)
+        }
         pushLog(`Mise en file ${orderId.slice(0, 8)}…`, q)
       }
       const result = await runMotorPass(secretRef.current, orderId)
@@ -129,22 +142,89 @@ export default function ServerWorkerPage() {
     }
   }, [pushLog])
 
+  const launchTraceV1Flow = useCallback(async (orderIds) => {
+    if (!secretRef.current || !orderIds.length) return
+
+    setOptimistic(prev => {
+      const next = { ...prev }
+      for (const id of orderIds) next[id] = { column: 'order_step1', processing: true }
+      return next
+    })
+    setSelectedIds(new Set())
+    busyRef.current = true
+
+    try {
+      for (const id of orderIds) {
+        setBusyOrderId(id)
+        const q = await queueStudioJob(secretRef.current, id, { mode: 'initial' })
+        if (q.skipped) {
+          throw new Error(
+            q.reason === 'not_paid'
+              ? 'Paiement requis avant de lancer le tracé'
+              : `Mise en file ignorée (${q.reason})`,
+          )
+        }
+        pushLog(`Tracé v1 lancé · ${id.slice(0, 8)}…`, q)
+
+        let result = await runMotorPass(secretRef.current, id)
+        setPassCount(n => n + 1)
+
+        const applyOptimistic = (r) => {
+          const ov = optimisticFromMotorResult(r)
+          if (!ov) {
+            setOptimistic(prev => {
+              const next = { ...prev }
+              delete next[id]
+              return next
+            })
+            return
+          }
+          setOptimistic(prev => ({ ...prev, [id]: ov }))
+        }
+
+        applyOptimistic(result)
+        const label = result.phase === 'step1' ? 'Step 1' : result.phase === 'step2' ? 'Step 2' : result.phase ?? 'fait'
+        pushLog(`Passage moteur → ${label}`, result, result.error ? 'error' : 'info')
+
+        while (result?.needsContinue && !result?.error && result?.phase !== 'error') {
+          await new Promise(r => setTimeout(r, 800))
+          result = await runMotorPass(secretRef.current, id)
+          setPassCount(n => n + 1)
+          applyOptimistic(result)
+        }
+
+        if (result?.error || result?.phase === 'error') {
+          pushLog(result.error || 'Erreur FAL', result, 'error')
+        }
+      }
+    } catch (err) {
+      pushLog(err.message, null, 'error')
+      setOptimistic({})
+    } finally {
+      setBusyOrderId(null)
+      busyRef.current = false
+      await refreshBoard()
+      setOptimistic({})
+    }
+  }, [pushLog, refreshBoard])
+
   const runAction = useCallback(async (action, orderIds) => {
     if (!secretRef.current || !orderIds.length) return
+    if (action === 'open_admin' || action === 'open_client') return
+
+    if (action === 'launch_trace_v1') {
+      await launchTraceV1Flow(orderIds)
+      return
+    }
+
     busyRef.current = true
     try {
-      if (action === 'launch_trace_v1') {
-        for (const id of orderIds) {
-          await runPassForOrder(id, { queue: true, mode: 'initial' })
-        }
-      } else {
-        const res = await runWorkerBulkAction(secretRef.current, action, orderIds)
-        pushLog(
-          `Action ${action} · ${orderIds.length} carte(s)`,
-          res,
-          res.failed ? 'error' : 'info',
-        )
-      }
+      const res = await runWorkerBulkAction(secretRef.current, action, orderIds)
+      pushLog(
+        `Action ${action} · ${orderIds.length} carte(s)`,
+        res,
+        res.failed ? 'error' : 'info',
+      )
       setSelectedIds(new Set())
       await refreshBoard()
     } catch (err) {
@@ -152,7 +232,7 @@ export default function ServerWorkerPage() {
     } finally {
       busyRef.current = false
     }
-  }, [pushLog, refreshBoard, runPassForOrder])
+  }, [pushLog, refreshBoard, launchTraceV1Flow])
 
   useEffect(() => {
     if (!secret) return undefined
@@ -342,8 +422,8 @@ export default function ServerWorkerPage() {
               <ServerKanbanBoard
                 boardRef={boardRef}
                 columns={columns}
-                byColumn={byColumn}
-                columnTotals={columnTotals}
+                byColumn={displayBoard.byColumn}
+                columnTotals={displayBoard.columnTotals}
                 busyOrderId={busyOrderId}
                 selectedIds={selectedIds}
                 onSelect={handleCardSelect}
