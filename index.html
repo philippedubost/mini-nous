@@ -241,13 +241,15 @@ input{font-family:inherit}
 }
 .pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:28px}
 @media(max-width:768px){.pack-grid{grid-template-columns:1fr}}
-.pack-price-slider-wrap{max-width:540px;margin:36px auto 0;padding:28px 24px 24px;background:#fff;border-radius:20px;border:2px solid var(--bark-pale);text-align:center;box-shadow:0 8px 32px rgba(44,31,20,.06)}
-.pack-price-slider-wrap h3{font-family:Quicksand,sans-serif;color:var(--dark);font-size:1.12rem;margin-bottom:4px}
-.pack-price-slider-wrap .pack-slider-hint{font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.55}
-.pack-face-slider{width:100%;height:6px;margin:8px 0 4px;accent-color:var(--clay);cursor:pointer}
-.pack-face-count{font-family:Quicksand,sans-serif;font-size:1.35rem;font-weight:700;color:var(--dark);margin:12px 0 6px}
-.pack-slider-price{margin:8px 0 4px}
-.pack-slider-note{font-size:.78rem;color:var(--muted);margin:0 0 16px;line-height:1.5}
+.pack-price-slider-wrap{max-width:540px;margin:36px auto 0;padding:22px 24px 20px;background:#fff;border-radius:20px;border:2px solid var(--bark-pale);text-align:center;box-shadow:0 8px 32px rgba(44,31,20,.06)}
+.pack-price-slider-wrap h3{font-family:Quicksand,sans-serif;color:var(--dark);font-size:.98rem;font-weight:600;margin-bottom:4px}
+.pack-price-slider-wrap .pack-slider-hint{font-size:.76rem;color:var(--muted);margin-bottom:14px;line-height:1.55}
+.pack-face-slider{width:100%;height:6px;margin:6px 0 10px;accent-color:var(--clay);cursor:pointer}
+.pack-slider-result{margin:0 0 12px}
+.pack-slider-meta{font-size:.84rem;font-weight:500;color:var(--muted);display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:5px 8px;line-height:1.5}
+.pack-slider-meta strong{font-weight:600;color:var(--dark)}
+.pack-slider-meta small{font-size:.76rem;font-weight:400;color:var(--muted)}
+.pack-slider-note{font-size:.74rem;color:var(--muted);margin:-4px 0 12px;line-height:1.45}
 .pack-card{background:#fff;border-radius:20px;padding:28px 24px;border:2px solid var(--bark-pale);transition:all var(--t);text-align:left;display:flex;flex-direction:column;gap:12px}
 .pack-card:hover{border-color:var(--clay);box-shadow:0 12px 40px rgba(192,104,74,.15);transform:translateY(-4px)}
 .pack-card.featured{border-color:var(--clay);box-shadow:0 16px 48px rgba(192,104,74,.2)}
@@ -444,7 +446,7 @@ input{font-family:inherit}
 
 /* Fondateurs */
 .fondateurs-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:48px;align-items:center}
-.fondateurs-photo{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/5;box-shadow:0 20px 56px rgba(44,31,20,.12);background:var(--bark-pale)}
+.fondateurs-photo{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:1/1;box-shadow:0 20px 56px rgba(44,31,20,.12);background:var(--bark-pale)}
 .fondateurs-photo img{position:relative;z-index:1}
 .fondateurs-placeholder{z-index:0 !important}
 .fondateurs-photo:has(img[style*="display:none"]) .fondateurs-placeholder,
@@ -912,18 +914,23 @@ function PackPriceSlider({ soldOut, onStartWithFaces }) {
         aria-valuenow={faces}
         onChange={e => setFaces(Number(e.target.value))}
       />
-      <div className="pack-face-count">{label}</div>
-      <div className="pack-slider-price pack-price" style={{ justifyContent:'center' }}>
-        {loading ? '…' : quote?.ok ? (
-          <>
-            {quote.totalEur} € <small>TTC</small>
-            {quote.freeShipping ? (
-              <span className="pack-shipping">🎁 port offert</span>
-            ) : (
-              <span className="pack-shipping">+ {Number(quote.shippingEur).toFixed(0)} € de port</span>
-            )}
-          </>
-        ) : '—'}
+      <div className="pack-slider-result">
+        <p className="pack-slider-meta">
+          <span>{label}</span>
+          <span aria-hidden>·</span>
+          {loading ? (
+            <span>…</span>
+          ) : quote?.ok ? (
+            <>
+              <strong>{quote.totalEur} € <small>TTC</small></strong>
+              <span>
+                {quote.freeShipping ? 'port offert' : `+ ${Number(quote.shippingEur).toFixed(0)} € de port`}
+              </span>
+            </>
+          ) : (
+            <span>—</span>
+          )}
+        </p>
       </div>
       {quote?.ok && quote.pricingNote && (
         <p className="pack-slider-note">{quote.pricingNote}</p>
@@ -1026,8 +1033,8 @@ function PackCards({ onPackExample, onStartWithFaces }) {
         </p>
         <div className="pack-grid">
           {packs.map((p, i) => (
-            <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 0 ? ' featured' : ''}`}>
-              {i === 0 && (
+            <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 1 ? ' featured' : ''}`}>
+              {i === 1 && (
                 <span className="tag" style={{ background:'var(--clay-pale)', color:'var(--clay)', alignSelf:'flex-start' }}>
                   Le plus populaire
                 </span>
@@ -1334,7 +1341,27 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Combien de personnages peut-on mettre dans une même figurine ?',
-    a: 'Nos packs vont de 1 à 8 personnages sur une même pièce. Pour les groupes plus grands, contactez-nous — nous pouvons envisager des compositions sur mesure ou des lots de figurines individuelles.',
+    a: 'De 1 à 8 personnages sur une même pièce. Pour les groupes plus grands, nous recommandons plusieurs photos séparées — le calculateur de prix sur cette page vous indique le tarif pour chaque composition.',
+  },
+  {
+    q: 'Quelle taille fait une figurine MiniNous ?',
+    a: 'Chaque figurine mesure environ 18 cm de haut pour une personne de taille moyenne (échelle 1/10). Ce n\'est pas un jouet miniature : c\'est une pièce déco à poser sur une étagère ou un bureau.',
+  },
+  {
+    q: 'Comment valider le tracé avant la fabrication ?',
+    a: 'Après le paiement, nous préparons un aperçu numérique de votre tracé. Vous le validez dans le studio en ligne, ou demandez des ajustements personnage par personnage. Rien n\'est découpé tant que vous n\'avez pas donné votre accord.',
+  },
+  {
+    q: 'Dois-je rester sur la page pendant la préparation du tracé ?',
+    a: 'Non. Le traitement se fait côté serveur : vous pouvez fermer la page. Un e-mail vous prévient dès que le tracé est prêt à valider (comptez environ 2 à 5 minutes).',
+  },
+  {
+    q: 'Quels sont les frais de port ?',
+    a: 'Les frais de port sont de 7 € pour les commandes de 1 à 3 personnages. Ils sont offerts à partir de 4 personnages sur la même figurine. La livraison se fait en boîte aux lettres, sans signature.',
+  },
+  {
+    q: 'Le paiement est-il sécurisé ?',
+    a: 'Oui. Le règlement passe par Stripe, une plateforme de paiement certifiée. Nous ne stockons jamais vos coordonnées bancaires sur nos serveurs.',
   },
 ];
 
