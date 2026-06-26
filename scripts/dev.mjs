@@ -106,6 +106,7 @@ async function main() {
   console.log(`    /              landing`)
   console.log(`    /pipeline/     studio client + compte`)
   console.log(`    /admin/        admin + carte produit`)
+  console.log(`    /server/       worker studio (pico PC)`)
   console.log('')
 
   const shutdown = () => { vite.kill(); process.exit(0) }

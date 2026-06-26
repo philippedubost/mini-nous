@@ -63,7 +63,7 @@ function serveStatic(req, res) {
 }
 
 function isViteDevAsset(path) {
-  if (path === '/index.html' || path === '/admin.html') return true
+  if (path === '/index.html' || path === '/admin.html' || path === '/server.html') return true
   if (path.startsWith('/assets/')) return true
   if (path.startsWith('/src/')) return true
   if (path.startsWith('/@')) return true
@@ -117,6 +117,9 @@ export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
     }
     if (path.startsWith('/admin')) {
       return proxySpa(req, res, vitePort, { stripPrefix: '/admin', spaFile: '/admin.html' })
+    }
+    if (path.startsWith('/server')) {
+      return proxySpa(req, res, vitePort, { stripPrefix: '/server', spaFile: '/server.html' })
     }
     if (path.startsWith('/pipeline')) {
       return proxySpa(req, res, vitePort, { stripPrefix: '/pipeline', spaFile: '/index.html' })

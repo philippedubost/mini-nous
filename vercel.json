@@ -3,6 +3,14 @@
   "installCommand": "npm install && cd pipeline && npm install",
   "outputDirectory": "dist",
   "framework": null,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60
+    },
+    "api/stripe-webhook.js": {
+      "maxDuration": 60
+    }
+  },
   "redirects": [
     { "source": "/pipeline/admin", "destination": "/admin", "permanent": true },
     { "source": "/pipeline/admin/:path*", "destination": "/admin/:path*", "permanent": true }
@@ -12,6 +20,8 @@
     { "source": "/api/:route((?!stripe-webhook)[^/]+)", "destination": "/api/index?route=:route" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
+    { "source": "/server", "destination": "/server/index.html" },
+    { "source": "/server/:path*", "destination": "/server/index.html" },
     { "source": "/pipeline", "destination": "/pipeline/index.html" },
     { "source": "/pipeline/:path*", "destination": "/pipeline/index.html" },
     { "source": "/assets/:path*", "destination": "/assets/:path*" },

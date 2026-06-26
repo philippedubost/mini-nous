@@ -35,11 +35,13 @@ execSync('npm run build', { cwd: join(root, 'pipeline'), stdio: 'inherit', shell
 
 mkdirSync(join(dist, 'pipeline'), { recursive: true })
 mkdirSync(join(dist, 'admin'), { recursive: true })
+mkdirSync(join(dist, 'server'), { recursive: true })
 
 if (existsSync(join(pipelineDist, 'assets'))) {
   cpSync(join(pipelineDist, 'assets'), join(dist, 'assets'), { recursive: true })
 }
 cpSync(join(pipelineDist, 'index.html'), join(dist, 'pipeline', 'index.html'))
 cpSync(join(pipelineDist, 'admin.html'), join(dist, 'admin', 'index.html'))
+cpSync(join(pipelineDist, 'server.html'), join(dist, 'server', 'index.html'))
 
 console.log('✓ dist/ prêt (landing + pipeline + admin)')
