@@ -896,7 +896,7 @@ const PACK_CTA = {
 const SLIDER_FACE_LABELS = { 1: 'Solo', 2: 'Duo', 3: 'Trio' };
 
 function PackPriceSlider({ soldOut, onStartWithFaces }) {
-  const [faces, setFaces] = useState(4);
+  const [faces, setFaces] = useState(1);
   const { quote, loading } = useQuote(faces, false, 'fr');
   const label = SLIDER_FACE_LABELS[faces]
     ?? (faces === 1 ? '1 personnage' : `${faces} personnages`);
