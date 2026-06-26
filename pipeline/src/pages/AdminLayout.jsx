@@ -81,7 +81,7 @@ export default function AdminLayout() {
       <main className="flex-1 w-full max-w-[1680px] mx-auto px-4 py-6">
         <Outlet />
       </main>
-      <AppBuildFooter variant="dark" />
+      <AppBuildFooter variant="dark" showCommit />
     </div>
   )
 }

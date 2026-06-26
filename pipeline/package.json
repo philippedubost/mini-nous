@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "node ../scripts/gen-build-info.mjs && vite build"
   },
   "dependencies": {
     "@fal-ai/client": "^1.4.0",

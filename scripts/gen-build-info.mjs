@@ -27,8 +27,15 @@ export function getBuildInfo() {
 
   try {
     const version = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    const fullCommitId = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
     const committedAt = readGitCommitAt()
-    return { version, committedAt, committedAtLabel: formatCommittedAtLabel(committedAt) }
+    return {
+      version,
+      commitId: version,
+      fullCommitId,
+      committedAt,
+      committedAtLabel: formatCommittedAtLabel(committedAt),
+    }
   } catch {
     if (vercelSha) {
       const version = vercelSha.slice(0, 7)
@@ -40,6 +47,8 @@ export function getBuildInfo() {
       }
       return {
         version,
+        commitId: version,
+        fullCommitId: vercelSha,
         committedAt,
         committedAtLabel: formatCommittedAtLabel(committedAt),
       }
@@ -48,6 +57,8 @@ export function getBuildInfo() {
     const committedAt = new Date().toISOString()
     return {
       version: 'local',
+      commitId: 'local',
+      fullCommitId: null,
       committedAt,
       committedAtLabel: formatCommittedAtLabel(committedAt) ?? 'build locale',
     }
