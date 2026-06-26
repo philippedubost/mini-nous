@@ -45,7 +45,7 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     if (order?.isPaid && orderToken) {
-      navigate(`/studio?order=${encodeURIComponent(orderToken)}&auto=1`, { replace: true })
+      navigate(`/commande?order=${encodeURIComponent(orderToken)}&auto=1`, { replace: true })
     }
   }, [order, orderToken, navigate])
 
@@ -85,10 +85,10 @@ export default function PaymentSuccessPage() {
               Suivre ma commande
             </Link>
             <Link
-              to={`/studio?order=${encodeURIComponent(orderToken)}&auto=1`}
+              to={`/commande?order=${encodeURIComponent(orderToken)}&auto=1`}
               className="inline-block w-full py-3.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 transition-colors"
             >
-              Ouvrir le studio →
+              Voir ma commande →
             </Link>
             <p className="text-xs text-stone-500 leading-relaxed">
               Un e-mail de confirmation avec votre lien personnel vous sera envoyé si ce n&apos;est pas déjà fait.
