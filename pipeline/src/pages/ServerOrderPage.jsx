@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchWorkerOrder, loadWorkerSecret } from '../lib/studioWorker'
 import { formatErrorLogAt } from '../lib/serverKanbanActions'
+import AppBuildFooter from '../components/AppBuildFooter'
 
 const STEP_LABELS = {
   source: 'Photo source',
@@ -74,8 +75,8 @@ export default function ServerOrderPage() {
   const col = order.column
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 font-['Montserrat',sans-serif]">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="min-h-screen bg-stone-950 text-stone-100 font-['Montserrat',sans-serif] flex flex-col">
+      <div className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-6 w-full">
         <header className="space-y-3 border-b border-stone-800 pb-5">
           <Link to="/" className="text-sm text-stone-500 hover:text-stone-300">← Kanban moteur</Link>
           <div className="flex flex-wrap items-start gap-4">
@@ -183,6 +184,7 @@ export default function ServerOrderPage() {
           </div>
         )}
       </div>
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }

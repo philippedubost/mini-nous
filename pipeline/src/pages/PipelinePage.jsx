@@ -12,6 +12,7 @@ import {
   createGeneration, updateGeneration, persistAsset, markStepRunning,
   fetchOrderByToken, linkOrderGeneration,
 } from '../lib/storage'
+import AppBuildFooter from '../components/AppBuildFooter'
 
 
 const INITIAL_STEPS = [
@@ -168,7 +169,8 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 px-4 py-8">
+    <div className="min-h-screen bg-stone-950 flex flex-col">
+      <div className="flex-1 px-4 py-8">
       <div className="max-w-lg mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -238,6 +240,8 @@ export default function PipelinePage() {
           </div>
         )}
       </div>
+      </div>
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }

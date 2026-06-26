@@ -16,6 +16,7 @@ import {
 } from '../components/ServerKanban'
 import { useBoxSelect } from '../hooks/useBoxSelect'
 import { mergeBoardOptimistic, optimisticFromMotorResult } from '../lib/serverBoardMerge'
+import AppBuildFooter from '../components/AppBuildFooter'
 
 function formatTime(d = new Date()) {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -312,8 +313,8 @@ export default function ServerWorkerPage() {
   const bulkActions = bulkActionsForSelection(allCards, selectedIds)
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 font-['Montserrat',sans-serif]">
-      <div className="max-w-[100vw] mx-auto px-4 py-6 space-y-5">
+    <div className="min-h-screen bg-stone-950 text-stone-100 font-['Montserrat',sans-serif] flex flex-col">
+      <div className="flex-1 max-w-[100vw] mx-auto px-4 py-6 space-y-5 w-full">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-800 pb-5">
           <div className="space-y-2 max-w-2xl">
             <h1 className="text-2xl font-semibold tracking-tight">Moteur Studio</h1>
@@ -467,6 +468,7 @@ export default function ServerWorkerPage() {
           </div>
         </section>
       </div>
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }

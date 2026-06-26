@@ -13,7 +13,7 @@ export default function LabLayout() {
       <div className="flex-1">
         <Outlet />
       </div>
-      <AppBuildFooter variant="dark" showCommit />
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }

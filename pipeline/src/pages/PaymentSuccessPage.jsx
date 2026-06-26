@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchOrderByToken } from '../lib/storage'
+import AppBuildFooter from '../components/AppBuildFooter'
 
 export default function PaymentSuccessPage() {
   const navigate = useNavigate()
@@ -52,7 +53,8 @@ export default function PaymentSuccessPage() {
   const shipLabel = order?.deliveryDateLabel ?? null
 
   return (
-    <div className="min-h-screen bg-stone-950 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-stone-950 flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-6">
       <div className="max-w-md w-full rounded-2xl border border-stone-800 bg-stone-900/80 p-8 text-center space-y-5">
         <div className="text-5xl">{waiting ? '⏳' : '✨'}</div>
         <h1 className="text-2xl font-bold text-stone-100">
@@ -94,6 +96,8 @@ export default function PaymentSuccessPage() {
           ← Retour à la boutique
         </a>
       </div>
+      </div>
+      <AppBuildFooter variant="dark" />
     </div>
   )
 }
