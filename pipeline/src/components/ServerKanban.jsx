@@ -147,7 +147,7 @@ function ServerOrderCard({
       <div className="flex gap-2">
         <div className="w-10 h-10 rounded-md bg-white shrink-0 overflow-hidden flex items-center justify-center border border-stone-700">
           {order.thumbUrl
-            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" draggable={false} loading="lazy" decoding="async" fetchPriority="low" />
             : <span className="text-[9px] text-stone-400 text-center leading-tight px-0.5">photo</span>}
         </div>
         <div className="min-w-0 flex-1">

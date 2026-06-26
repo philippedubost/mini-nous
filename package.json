@@ -12,6 +12,7 @@
     "promo": "node scripts/create-promo-code.mjs",
     "images:webp": "node scripts/optimize-images.mjs",
     "images:lineart-thumbs": "node scripts/lineart-thumbs.mjs",
+    "thumbs:kanban": "node scripts/backfill-kanban-thumbs.mjs",
     "video:optimize": "node scripts/optimize-video.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
@@ -22,11 +23,11 @@
     "@supabase/supabase-js": "^2.97.0",
     "@xmldom/xmldom": "^0.9.10",
     "stripe": "^17.7.0",
+    "sharp": "^0.35.1",
     "ws": "^8.21.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",
-    "ffmpeg-static": "^5.3.0",
-    "sharp": "^0.35.1"
+    "ffmpeg-static": "^5.3.0"
   }
 }

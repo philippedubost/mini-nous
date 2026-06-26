@@ -230,7 +230,7 @@ export default function ServerWorkerPage() {
         res.failed ? 'error' : 'info',
       )
       setSelectedIds(new Set())
-      await refreshBoard()
+      refreshBoard().catch(err => pushLog(err.message, null, 'error'))
     } catch (err) {
       pushLog(err.message, null, 'error')
     } finally {
@@ -247,15 +247,34 @@ export default function ServerWorkerPage() {
   }, [runAction])
 
   const confirmDelete = useCallback(async () => {
-    if (!deleteConfirm?.orderIds?.length) return
+    if (!deleteConfirm?.orderIds?.length || !secretRef.current) return
+    const ids = deleteConfirm.orderIds
     setDeleteBusy(true)
     try {
-      await runAction('delete', deleteConfirm.orderIds)
+      const res = await runWorkerBulkAction(secretRef.current, 'delete', ids)
+      pushLog(
+        `Suppression · ${ids.length} carte(s)`,
+        res,
+        res.failed ? 'error' : 'info',
+      )
       setDeleteConfirm(null)
+      setSelectedIds(new Set())
+      const idSet = new Set(ids)
+      setAllCards(prev => prev.filter(c => !idSet.has(c.orderId)))
+      setByColumn(prev => {
+        const next = {}
+        for (const [key, list] of Object.entries(prev)) {
+          next[key] = (list ?? []).filter(c => !idSet.has(c.orderId))
+        }
+        return next
+      })
+      refreshBoard().catch(err => pushLog(err.message, null, 'error'))
+    } catch (err) {
+      pushLog(err.message, null, 'error')
     } finally {
       setDeleteBusy(false)
     }
-  }, [deleteConfirm, runAction])
+  }, [deleteConfirm, pushLog, refreshBoard])
 
   useEffect(() => {
     if (!secret) return undefined
