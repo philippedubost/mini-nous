@@ -37,3 +37,6 @@ CREATE INDEX IF NOT EXISTS mini_nous_funnel_events_order
 CREATE INDEX IF NOT EXISTS mini_nous_funnel_events_week
   ON mini_nous_funnel_events(week_key, event)
   WHERE week_key IS NOT NULL;
+
+ALTER TABLE mini_nous_waitlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mini_nous_funnel_events ENABLE ROW LEVEL SECURITY;

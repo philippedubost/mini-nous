@@ -12,6 +12,7 @@ import NpsSurvey from '../components/NpsSurvey'
 import MiniNousShareProgram from '../components/MiniNousShareProgram'
 import { useAuth } from '../context/AuthContext'
 import { scrollPageTo } from '../lib/scrollPage'
+import { trackClientEvent } from '../lib/track'
 
 function formatDate(iso) {
   if (!iso) return null
@@ -54,6 +55,7 @@ export default function OrderStatusPage() {
   const [error, setError] = useState(null)
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const confirmTried = useRef(false)
+  const studioTracked = useRef(false)
 
   const load = useCallback(async () => {
     if (!orderToken) {
@@ -89,6 +91,20 @@ export default function OrderStatusPage() {
   useEffect(() => {
     scrollPageTo('top')
   }, [orderToken])
+
+  useEffect(() => {
+    if (!order?.isPaid || studioTracked.current) return
+    studioTracked.current = true
+    trackClientEvent('studio_opened', {
+      orderId: order.id,
+      faceCount: order.faceCount,
+      metadata: {
+        source: 'commande_page',
+        auto: autoParam,
+        workflowStatus: order.workflowStatus,
+      },
+    })
+  }, [order, autoParam])
 
   useEffect(() => {
     if (!orderToken || !stripeSessionId || confirmTried.current) return

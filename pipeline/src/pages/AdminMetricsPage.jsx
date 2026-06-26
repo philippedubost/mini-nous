@@ -113,8 +113,12 @@ export default function AdminMetricsPage() {
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-stone-400">Semaine en cours</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Paywall ouverts" value={funnel?.thisWeek?.counts?.paywall_opened} tone="stone" sub="Vue /mes-figurines" />
+          <StatCard label="Studio ouverts" value={funnel?.thisWeek?.counts?.studio_opened} tone="stone" sub="Page commande" />
           <StatCard label="Photos uploadées" value={wk.uploads} tone="blue" sub="POST order-start réussi" />
           <StatCard label="Checkouts Stripe" value={wk.checkouts} tone="amber" sub="Sessions créées" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
           <StatCard label="Commandes payées" value={wk.paid} tone="green" sub="Stripe webhook" />
           <StatCard label="Liste d'attente" value={wlWeek.total} tone="rose" sub="Inscriptions cette semaine" />
         </div>
@@ -216,6 +220,8 @@ export default function AdminMetricsPage() {
           <li><code className="text-stone-300">checkout_initiated</code> — session Stripe créée</li>
           <li><code className="text-stone-300">payment_completed</code> — webhook/confirm Stripe OK</li>
           <li><code className="text-stone-300">waitlist_signup</code> — formulaire liste d&apos;attente</li>
+          <li><code className="text-stone-300">paywall_opened</code> — ouverture du paywall landing</li>
+          <li><code className="text-stone-300">studio_opened</code> — page commande / studio client</li>
         </ul>
         <p className="text-stone-500 text-xs mt-2">
           Données stockées dans <code>mini_nous_funnel_events</code> et <code>mini_nous_waitlist</code> (Supabase).

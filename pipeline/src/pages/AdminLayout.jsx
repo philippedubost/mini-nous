@@ -6,6 +6,7 @@ import { checkAdminPassword, isAdminAuthed, setAdminAuthed } from '../lib/adminA
 
 const NAV = [
   { to: '/', label: 'Accueil', end: true },
+  { to: '/metrics', label: 'Métriques' },
   { to: '/commandes', label: 'Commandes' },
   { to: '/generations', label: 'Générations' },
   { to: '/settings', label: 'Paramètres' },
