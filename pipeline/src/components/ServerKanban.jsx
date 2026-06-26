@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ServerBtn } from './ServerUi'
 import {
   contextActionsForColumn,
   truncateDisplayName,
@@ -90,16 +91,16 @@ export function ServerContextMenu({ menu, onAction, onClose }) {
         style={{ left: menu.x, top: menu.y }}
       >
         {menu.actions.map(a => (
-          <button
+          <ServerBtn
             key={a.id}
-            type="button"
-            className={`w-full text-left px-3 py-2 hover:bg-stone-800 ${
-              a.danger ? 'text-red-300' : 'text-stone-200'
+            variant="ghost"
+            className={`w-full text-left px-3 py-2 rounded-none !font-normal text-sm justify-start ${
+              a.danger ? '!text-red-300 hover:!bg-red-950/40' : '!text-stone-200'
             }`}
             onClick={() => handleAction(a)}
           >
             {a.label}
-          </button>
+          </ServerBtn>
         ))}
       </div>
     </>

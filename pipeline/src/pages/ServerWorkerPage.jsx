@@ -17,6 +17,7 @@ import {
 import { useBoxSelect } from '../hooks/useBoxSelect'
 import { mergeBoardOptimistic, optimisticFromMotorResult } from '../lib/serverBoardMerge'
 import AppBuildFooter from '../components/AppBuildFooter'
+import { ServerBtn, ServerConfirmModal } from '../components/ServerUi'
 
 function formatTime(d = new Date()) {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -48,6 +49,8 @@ export default function ServerWorkerPage() {
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [contextMenu, setContextMenu] = useState(null)
   const [optimistic, setOptimistic] = useState({})
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const boardRef = useRef(null)
   const runningRef = useRef(running)
   const secretRef = useRef(secret)
@@ -235,6 +238,25 @@ export default function ServerWorkerPage() {
     }
   }, [pushLog, refreshBoard, launchTraceV1Flow])
 
+  const requestAction = useCallback((action, orderIds) => {
+    if (action === 'delete') {
+      setDeleteConfirm({ orderIds: [...orderIds], count: orderIds.length })
+      return
+    }
+    runAction(action, orderIds)
+  }, [runAction])
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirm?.orderIds?.length) return
+    setDeleteBusy(true)
+    try {
+      await runAction('delete', deleteConfirm.orderIds)
+      setDeleteConfirm(null)
+    } finally {
+      setDeleteBusy(false)
+    }
+  }, [deleteConfirm, runAction])
+
   useEffect(() => {
     if (!secret) return undefined
     let cancelled = false
@@ -292,16 +314,17 @@ export default function ServerWorkerPage() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') setSelectedIds(new Set())
-      if (e.key === 'Delete' && selectedIds.size && secret) {
-        if (window.confirm(`Supprimer ${selectedIds.size} commande(s) ?`)) {
-          runAction('delete', [...selectedIds])
-        }
+      if (e.key === 'Escape') {
+        if (deleteConfirm) setDeleteConfirm(null)
+        else setSelectedIds(new Set())
+      }
+      if (e.key === 'Delete' && selectedIds.size && secret && !deleteConfirm) {
+        setDeleteConfirm({ orderIds: [...selectedIds], count: selectedIds.size })
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedIds, secret, runAction])
+  }, [selectedIds, secret, deleteConfirm])
 
   const handleSaveSecret = (e) => {
     e.preventDefault()
@@ -323,17 +346,13 @@ export default function ServerWorkerPage() {
               Double-clic pour ouvrir le détail.
             </p>
           </div>
-          <button
-            type="button"
+          <ServerBtn
+            variant={running ? 'success' : 'muted'}
+            className="px-4 py-2 text-sm"
             onClick={() => setRunning(r => !r)}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              running
-                ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                : 'bg-stone-700 hover:bg-stone-600 text-stone-200'
-            }`}
           >
             {running ? '● Moteur actif' : '○ Moteur en pause'}
-          </button>
+          </ServerBtn>
         </header>
 
         {!secret && (
@@ -348,9 +367,9 @@ export default function ServerWorkerPage() {
               className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm font-mono"
               autoComplete="off"
             />
-            <button type="submit" className="rounded-lg bg-amber-700 hover:bg-amber-600 px-4 py-2 text-sm font-medium">
+            <ServerBtn type="submit" variant="primary" className="px-4 py-2 text-sm w-full sm:w-auto">
               Enregistrer
-            </button>
+            </ServerBtn>
           </form>
         )}
 
@@ -396,26 +415,21 @@ export default function ServerWorkerPage() {
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-800/60 bg-sky-950/30 px-4 py-3">
                 <span className="text-sm text-sky-200 font-medium">{selectedIds.size} sélectionnée(s)</span>
                 {bulkActions.map(a => (
-                  <button
+                  <ServerBtn
                     key={a.id}
-                    type="button"
-                    onClick={() => runAction(a.id, [...selectedIds])}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                      a.danger
-                        ? 'bg-red-900/60 text-red-200 hover:bg-red-800/60'
-                        : 'bg-stone-800 text-stone-200 hover:bg-stone-700'
-                    }`}
+                    variant={a.danger ? 'danger' : 'default'}
+                    onClick={() => requestAction(a.id, [...selectedIds])}
                   >
                     {a.label}
-                  </button>
+                  </ServerBtn>
                 ))}
-                <button
-                  type="button"
+                <ServerBtn
+                  variant="ghost"
+                  className="ml-auto"
                   onClick={() => setSelectedIds(new Set())}
-                  className="text-xs text-stone-500 hover:text-stone-300 ml-auto"
                 >
                   Effacer
-                </button>
+                </ServerBtn>
               </div>
             )}
 
@@ -445,15 +459,28 @@ export default function ServerWorkerPage() {
         <ServerContextMenu
           menu={contextMenu}
           onClose={() => setContextMenu(null)}
-          onAction={runAction}
+          onAction={requestAction}
         />
+
+        <ServerConfirmModal
+          open={!!deleteConfirm}
+          title="Supprimer ?"
+          confirmLabel="Supprimer"
+          busy={deleteBusy}
+          onCancel={() => !deleteBusy && setDeleteConfirm(null)}
+          onConfirm={confirmDelete}
+        >
+          {deleteConfirm?.count === 1
+            ? 'Cette commande sera annulée (statut cancelled).'
+            : `${deleteConfirm?.count ?? 0} commandes seront annulées (statut cancelled).`}
+        </ServerConfirmModal>
 
         <section className="rounded-xl border border-stone-800 overflow-hidden max-w-4xl">
           <div className="px-4 py-3 border-b border-stone-800 bg-stone-900/80 flex justify-between items-center">
             <h2 className="text-sm font-semibold text-stone-300">Journal moteur</h2>
-            <button type="button" onClick={() => setLogs([])} className="text-xs text-stone-500 hover:text-stone-300">
+            <ServerBtn variant="ghost" onClick={() => setLogs([])}>
               effacer
-            </button>
+            </ServerBtn>
           </div>
           <div className="max-h-64 overflow-y-auto p-3 space-y-1 font-['JetBrains_Mono',monospace] text-xs">
             {logs.length === 0 && <p className="text-stone-600 px-1 py-2">Les actions apparaîtront ici…</p>}
