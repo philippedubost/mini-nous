@@ -47,7 +47,7 @@ export default function ServerOrderPage() {
   useEffect(() => {
     if (!secret || !orderId) {
       setLoading(false)
-      if (!secret) setError('Secret worker manquant — retournez à l’accueil /server')
+      if (!secret) setError('Mot de passe manquant — retournez à l’accueil /server')
       return
     }
     fetchWorkerOrder(secret, orderId)

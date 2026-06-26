@@ -147,7 +147,7 @@ export default function AdminHomePage() {
           <RouteCard to="/metrics" path="/admin/metrics" desc="Conversion funnel · liste d'attente · taux upload→paiement." />
           <RouteCard to="/settings" path="/admin/settings" desc="Prompts step1/2 + ref line art." />
           <RouteCard to="/lab/trace" path="/admin/lab/trace" desc="Test SVG / autotrace hors commande." />
-          <RouteCard href="/server" path="/server" desc="Worker studio — pico PC, chaînage FAL." note="STUDIO_GENERATE_SECRET" />
+          <RouteCard href="/server" path="/server" desc="Worker studio — pico PC, chaînage FAL." note="Mot de passe atelier" />
           <RouteCard href="/pipeline/studio" path="/pipeline/studio" desc="Studio client." note="?order=TOKEN&auto=1" />
           <RouteCard href="/pipeline/test" path="/pipeline/test" desc="Test E2E Stripe 4242…" />
           <RouteCard href="/" path="/" desc="Boutique landing + paywall." />

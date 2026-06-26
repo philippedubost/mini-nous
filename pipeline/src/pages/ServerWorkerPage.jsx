@@ -123,7 +123,7 @@ export default function ServerWorkerPage() {
   }, [])
 
   const runPassForOrder = useCallback(async (orderId, { queue = false, mode = 'initial' } = {}) => {
-    if (!secretRef.current) throw new Error('Secret worker manquant')
+    if (!secretRef.current) throw new Error('Mot de passe atelier manquant')
     setBusyOrderId(orderId)
     try {
       if (queue) {
@@ -349,7 +349,7 @@ export default function ServerWorkerPage() {
     e.preventDefault()
     saveWorkerSecret(secretDraft.trim())
     setSecret(secretDraft.trim())
-    pushLog('Secret enregistré localement')
+    pushLog('Mot de passe enregistré localement')
   }
 
   const bulkActions = bulkActionsForSelection(allCards, selectedIds)
@@ -377,12 +377,13 @@ export default function ServerWorkerPage() {
         {!secret && (
           <form onSubmit={handleSaveSecret} className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-4 space-y-3 max-w-lg">
             <p className="text-sm text-amber-100">
-              Secret <code className="text-amber-200">STUDIO_GENERATE_SECRET</code>
+              Mot de passe atelier
             </p>
             <input
               type="password"
               value={secretDraft}
               onChange={e => setSecretDraft(e.target.value)}
+              placeholder="admininous"
               className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm font-mono"
               autoComplete="off"
             />
