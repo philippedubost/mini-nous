@@ -28,3 +28,22 @@ export function faceLabel(n) {
   const count = Number(n) || 0
   return `${count} personne${count > 1 ? 's' : ''}`
 }
+
+export function adminOrderDetailUrl(order) {
+  if (order?.generationId) return `/admin/g/${order.generationId}`
+  if (order?.accessToken) {
+    return `/pipeline/commande?order=${encodeURIComponent(order.accessToken)}`
+  }
+  return null
+}
+
+export function formatErrorLogAt(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return String(iso)
+  }
+}

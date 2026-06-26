@@ -3,7 +3,57 @@ import {
   contextActionsForColumn,
   truncateDisplayName,
   faceLabel,
+  adminOrderDetailUrl,
+  formatErrorLogAt,
 } from '../lib/serverKanbanActions'
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
+      <path d="M10 4.5c-3.2 0-5.9 2.1-7 5 1.1 2.9 3.8 5 7 5s5.9-2.1 7-5c-1.1-2.9-3.8-5-7-5zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm0-1.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z" />
+    </svg>
+  )
+}
+
+function ErrorLogPanel({ order }) {
+  const log = order.errorLog?.length ? order.errorLog : (
+    order.studioJob?.error
+      ? [{ at: order.studioJob.updatedAt, step: order.studioJob.phase, message: order.studioJob.error }]
+      : order.generationError
+        ? [{ at: order.updatedAt, message: order.generationError, source: 'generation' }]
+        : []
+  )
+  if (!log.length) return null
+
+  const latest = log[log.length - 1]
+
+  return (
+    <details
+      className="rounded border border-red-900/50 bg-red-950/20"
+      onClick={e => e.stopPropagation()}
+      onMouseDown={e => e.stopPropagation()}
+    >
+      <summary className="text-[10px] text-red-300 cursor-pointer px-2 py-1 list-none flex items-center justify-between gap-1">
+        <span className="line-clamp-1 min-w-0" title={latest.message}>{latest.message}</span>
+        {log.length > 1 && (
+          <span className="shrink-0 text-red-400/80 tabular-nums">{log.length} entrées</span>
+        )}
+      </summary>
+      <ul className="px-2 pb-2 space-y-1.5 max-h-28 overflow-y-auto border-t border-red-900/40">
+        {[...log].reverse().map((entry, i) => (
+          <li key={`${entry.at}-${i}`} className="text-[9px] text-red-200/90 border-l border-red-800 pl-2">
+            <p className="text-stone-500">
+              {formatErrorLogAt(entry.at)}
+              {entry.step ? ` · ${entry.step}` : ''}
+              {entry.source ? ` · ${entry.source}` : ''}
+            </p>
+            <p className="break-words leading-snug">{entry.message}</p>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
 
 const MOTOR_BADGE = {
   needsQueue: 'bg-amber-900/50 text-amber-200 border-amber-700',
@@ -46,6 +96,7 @@ function ServerOrderCard({
   onOpen,
 }) {
   const title = truncateDisplayName(order.displayName || order.customerName || order.email?.split('@')[0])
+  const adminUrl = adminOrderDetailUrl(order)
   const motorCls = order.hasFalError || order.canRetry
     ? MOTOR_BADGE.error
     : order.needsTick
@@ -78,9 +129,24 @@ function ServerOrderCard({
             : <span className="text-[9px] text-stone-400 text-center leading-tight px-0.5">photo</span>}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-stone-100 truncate" title={order.displayName || order.customerName}>
-            {title}
-          </p>
+          <div className="flex items-start gap-1">
+            <p className="text-xs font-semibold text-stone-100 truncate flex-1" title={order.displayName || order.customerName}>
+              {title}
+            </p>
+            {adminUrl && (
+              <a
+                href={adminUrl}
+                target="_blank"
+                rel="noreferrer"
+                title="Voir commande admin"
+                onClick={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+                className="shrink-0 p-0.5 rounded text-stone-500 hover:text-amber-400 hover:bg-stone-800/80 transition-colors"
+              >
+                <EyeIcon />
+              </a>
+            )}
+          </div>
           <p className="text-[10px] text-stone-400">{faceLabel(order.faceCount)}</p>
         </div>
       </div>
@@ -97,10 +163,8 @@ function ServerOrderCard({
         </p>
       )}
 
-      {order.studioJob?.error && (
-        <p className="text-[10px] text-red-400 line-clamp-2" title={order.studioJob.error}>
-          {order.studioJob.error}
-        </p>
+      {(order.hasFalError || order.errorLog?.length > 0) && (
+        <ErrorLogPanel order={order} />
       )}
     </article>
   )

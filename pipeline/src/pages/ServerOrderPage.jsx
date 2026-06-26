@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchWorkerOrder, loadWorkerSecret } from '../lib/studioWorker'
+import { formatErrorLogAt } from '../lib/serverKanbanActions'
 
 const STEP_LABELS = {
   source: 'Photo source',
@@ -162,9 +163,23 @@ export default function ServerOrderPage() {
           )}
         </section>
 
-        {order.studioJob?.error && (
-          <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-300">
-            <strong>Erreur moteur :</strong> {order.studioJob.error}
+        {(order.errorLog?.length > 0 || order.studioJob?.error) && (
+          <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 space-y-3 text-sm text-red-300">
+            <strong>Erreur moteur :</strong>{' '}
+            {order.studioJob?.error || order.generationError || order.errorLog?.[order.errorLog.length - 1]?.message}
+            {order.errorLog?.length > 0 && (
+              <ul className="space-y-2 max-h-48 overflow-y-auto text-xs border-t border-red-900/40 pt-3">
+                {[...order.errorLog].reverse().map((entry, i) => (
+                  <li key={`${entry.at}-${i}`} className="border-l-2 border-red-800 pl-3">
+                    <p className="text-stone-500">
+                      {formatErrorLogAt(entry.at)}
+                      {entry.step ? ` · étape ${entry.step}` : ''}
+                    </p>
+                    <p className="text-red-200/90 break-words">{entry.message}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </div>
