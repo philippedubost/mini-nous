@@ -176,7 +176,7 @@ export default function StudioCustomerFlow({
       }
 
       await startServerStudio(orderToken, bearerToken)
-      setStatusMsg('Traitement lancé — vous pouvez fermer cette page, un e-mail vous préviendra.')
+      setStatusMsg('Demande envoyée au moteur studio — vous pouvez fermer cette page. Un e-mail vous préviendra quand le tracé est prêt.')
       setPhase('upload')
       await reloadOrder()
     } catch (err) {
@@ -364,7 +364,7 @@ export default function StudioCustomerFlow({
         <div className="customer-card text-center space-y-3 py-8">
           <div className="customer-spinner mx-auto" aria-hidden />
           <p className="text-sm font-medium text-[#C0684A]">Confirmation du paiement Stripe…</p>
-          <p className="text-xs customer-muted">Le traitement démarre côté serveur — vous recevrez un e-mail quand le tracé est prêt.</p>
+          <p className="text-xs customer-muted">La génération démarre sur notre moteur studio — vous recevrez un e-mail quand le tracé est prêt.</p>
         </div>
       )}
 

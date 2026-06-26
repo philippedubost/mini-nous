@@ -28,8 +28,16 @@ async function parseJson(res) {
   return data
 }
 
-export async function fetchWorkerJobs(secret) {
+export async function fetchWorkerBoard(secret) {
   const res = await fetch('/api/studio-worker', { headers: workerHeaders(secret) })
+  return parseJson(res)
+}
+
+export async function fetchWorkerOrder(secret, orderId) {
+  const res = await fetch(
+    `/api/studio-worker?orderId=${encodeURIComponent(orderId)}`,
+    { headers: workerHeaders(secret) },
+  )
   return parseJson(res)
 }
 
@@ -42,7 +50,8 @@ export async function queueStudioJob(secret, orderId, { mode = 'initial', feedba
   return parseJson(res)
 }
 
-export async function tickStudioJob(secret, orderId) {
+/** Un passage moteur = une étape FAL traitée par le pico PC. */
+export async function runMotorPass(secret, orderId) {
   const res = await fetch('/api/studio-generate', {
     method: 'POST',
     headers: workerHeaders(secret),

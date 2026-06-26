@@ -1,48 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  fetchWorkerJobs,
+  fetchWorkerBoard,
   loadWorkerSecret,
   pickNextJob,
   queueStudioJob,
+  runMotorPass,
   saveWorkerSecret,
-  tickStudioJob,
 } from '../lib/studioWorker'
-
-const PHASE_LABELS = {
-  queued: 'En file',
-  step1: 'Step 1 — mise en scène',
-  step2: 'Step 2 — tracé',
-  error: 'Erreur',
-  done: 'Terminé',
-}
+import { ServerKanbanColumn } from '../components/ServerKanban'
 
 function formatTime(d = new Date()) {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
-function phaseBadge(phase) {
-  const colors = {
-    queued: 'bg-amber-900/60 text-amber-200 border-amber-700',
-    step1: 'bg-sky-900/60 text-sky-200 border-sky-700',
-    step2: 'bg-violet-900/60 text-violet-200 border-violet-700',
-    error: 'bg-red-900/60 text-red-200 border-red-700',
-  }
-  const cls = colors[phase] ?? 'bg-stone-800 text-stone-300 border-stone-700'
-  return (
-    <span className={`inline-block rounded border px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {PHASE_LABELS[phase] ?? phase ?? '—'}
-    </span>
-  )
 }
 
 export default function ServerWorkerPage() {
   const [secret, setSecret] = useState(loadWorkerSecret)
   const [secretDraft, setSecretDraft] = useState(secret)
   const [running, setRunning] = useState(true)
-  const [jobs, setJobs] = useState([])
+  const [columns, setColumns] = useState([])
+  const [byColumn, setByColumn] = useState({})
+  const [motorJobs, setMotorJobs] = useState([])
   const [stats, setStats] = useState({ pending: 0, errors: 0 })
   const [logs, setLogs] = useState([])
-  const [tickCount, setTickCount] = useState(0)
+  const [passCount, setPassCount] = useState(0)
   const [busyOrderId, setBusyOrderId] = useState(null)
   const [lastPollAt, setLastPollAt] = useState(null)
   const runningRef = useRef(running)
@@ -59,27 +39,34 @@ export default function ServerWorkerPage() {
     ].slice(0, 200))
   }, [])
 
-  const refreshJobs = useCallback(async () => {
+  const refreshBoard = useCallback(async () => {
     if (!secretRef.current) return null
-    const data = await fetchWorkerJobs(secretRef.current)
-    setJobs(data.jobs ?? [])
+    const data = await fetchWorkerBoard(secretRef.current)
+    setColumns(data.columns ?? [])
+    setByColumn(data.byColumn ?? {})
+    setMotorJobs(data.jobs ?? [])
     setStats({ pending: data.pending ?? 0, errors: data.errors ?? 0 })
     setLastPollAt(formatTime())
     return data.jobs ?? []
   }, [])
 
-  const runTickForOrder = useCallback(async (orderId, { queue = false, mode = 'initial' } = {}) => {
+  const runPassForOrder = useCallback(async (orderId, { queue = false, mode = 'initial' } = {}) => {
     if (!secretRef.current) throw new Error('Secret worker manquant')
     setBusyOrderId(orderId)
     try {
       if (queue) {
         const q = await queueStudioJob(secretRef.current, orderId, { mode })
-        pushLog(`File ${orderId.slice(0, 8)}…`, q)
+        pushLog(`Mise en file ${orderId.slice(0, 8)}…`, q)
       }
-      const result = await tickStudioJob(secretRef.current, orderId)
-      setTickCount(n => n + 1)
+      const result = await runMotorPass(secretRef.current, orderId)
+      setPassCount(n => n + 1)
+      const label = result.phase === 'step1'
+        ? 'Step 1'
+        : result.phase === 'step2'
+          ? 'Step 2'
+          : result.phase ?? 'fait'
       pushLog(
-        `Tick ${orderId.slice(0, 8)}… → ${result.phase ?? '?'}`,
+        `Passage moteur ${orderId.slice(0, 8)}… → ${label}`,
         result,
         result.error ? 'error' : 'info',
       )
@@ -106,7 +93,7 @@ export default function ServerWorkerPage() {
 
         busyRef.current = true
         try {
-          const list = await refreshJobs()
+          const list = await refreshBoard()
           const next = pickNextJob(list)
           if (!next) {
             busyRef.current = false
@@ -114,17 +101,17 @@ export default function ServerWorkerPage() {
             continue
           }
 
-          let result = await runTickForOrder(next.orderId, {
+          let result = await runPassForOrder(next.orderId, {
             queue: next.needsQueue,
-            mode: next.mode,
+            mode: next.mode ?? next.studioJob?.mode ?? 'initial',
           })
 
           while (!cancelled && runningRef.current && result?.needsContinue) {
             await new Promise(r => setTimeout(r, 800))
-            result = await runTickForOrder(next.orderId)
+            result = await runPassForOrder(next.orderId)
           }
 
-          await refreshJobs()
+          await refreshBoard()
           busyRef.current = false
           await new Promise(r => setTimeout(r, 500))
         } catch (err) {
@@ -137,7 +124,7 @@ export default function ServerWorkerPage() {
 
     loop()
     return () => { cancelled = true }
-  }, [secret, running, refreshJobs, runTickForOrder, pushLog])
+  }, [secret, running, refreshBoard, runPassForOrder, pushLog])
 
   const handleSaveSecret = (e) => {
     e.preventDefault()
@@ -146,14 +133,14 @@ export default function ServerWorkerPage() {
     pushLog('Secret enregistré localement')
   }
 
-  const handleRetry = async (job) => {
+  const handleRetry = async (order) => {
     if (!secret || busyRef.current) return
     busyRef.current = true
     try {
-      await runTickForOrder(job.orderId, { queue: true, mode: job.mode })
-      await refreshJobs()
+      await runPassForOrder(order.orderId, { queue: true, mode: order.studioJob?.mode ?? 'initial' })
+      await refreshBoard()
     } catch (err) {
-      pushLog(`Retry échoué: ${err.message}`, null, 'error')
+      pushLog(`Relance échouée : ${err.message}`, null, 'error')
     } finally {
       busyRef.current = false
     }
@@ -161,40 +148,42 @@ export default function ServerWorkerPage() {
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-['Montserrat',sans-serif]">
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-[100vw] mx-auto px-4 py-6 space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-800 pb-5">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Studio Worker</h1>
-            <p className="text-sm text-stone-400 mt-1 max-w-xl">
-              Moteur de génération tracé — lit la base Supabase et enchaîne les ticks FAL.
-              Laissez cette page ouverte sur le pico PC.
+          <div className="space-y-2 max-w-2xl">
+            <h1 className="text-2xl font-semibold tracking-tight">Moteur Studio</h1>
+            <p className="text-sm text-stone-400">
+              Cette page pilote les générations FAL. Le site client ne fait que mettre la commande en file —
+              tout le traitement (Step 1, Step 2, tracés v1→v3) passe par ici.
+            </p>
+            <p className="text-xs text-stone-500 rounded-lg border border-stone-800 bg-stone-900/50 px-3 py-2">
+              <strong className="text-stone-400">Passage moteur</strong> = une action sur FAL
+              (lancer Step 1, attendre le résultat, lancer Step 2…). Ce n&apos;est pas le client qui le fait.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setRunning(r => !r)}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                running
-                  ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                  : 'bg-stone-700 hover:bg-stone-600 text-stone-200'
-              }`}
-            >
-              {running ? '● Actif' : '○ En pause'}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setRunning(r => !r)}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              running
+                ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                : 'bg-stone-700 hover:bg-stone-600 text-stone-200'
+            }`}
+          >
+            {running ? '● Moteur actif' : '○ Moteur en pause'}
+          </button>
         </header>
 
         {!secret && (
-          <form onSubmit={handleSaveSecret} className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-4 space-y-3">
+          <form onSubmit={handleSaveSecret} className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-4 space-y-3 max-w-lg">
             <p className="text-sm text-amber-100">
-              Collez le secret <code className="text-amber-200">STUDIO_GENERATE_SECRET</code> (Vercel → Environment Variables).
+              Secret <code className="text-amber-200">STUDIO_GENERATE_SECRET</code> (Vercel → Environment Variables).
             </p>
             <input
               type="password"
               value={secretDraft}
               onChange={e => setSecretDraft(e.target.value)}
-              placeholder="Bearer secret…"
+              placeholder="Collez le secret…"
               className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm font-mono"
               autoComplete="off"
             />
@@ -205,95 +194,47 @@ export default function ServerWorkerPage() {
         )}
 
         {secret && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
             {[
-              ['En attente', stats.pending, 'text-amber-300'],
+              ['À traiter', stats.pending, 'text-amber-300'],
               ['Erreurs', stats.errors, 'text-red-300'],
-              ['Ticks', tickCount, 'text-sky-300'],
-              ['Dernier poll', lastPollAt ?? '—', 'text-stone-400 text-base'],
+              ['Passages moteur', passCount, 'text-sky-300'],
+              ['Dernier refresh', lastPollAt ?? '—', 'text-stone-400 text-base'],
             ].map(([label, value, cls]) => (
-              <div key={label} className="rounded-xl border border-stone-800 bg-stone-900/50 p-4">
-                <p className="text-xs text-stone-500 uppercase tracking-wide">{label}</p>
-                <p className={`text-2xl font-semibold mt-1 font-mono ${cls}`}>{value}</p>
+              <div key={label} className="rounded-xl border border-stone-800 bg-stone-900/50 p-3">
+                <p className="text-[10px] text-stone-500 uppercase tracking-wide">{label}</p>
+                <p className={`text-xl font-semibold mt-1 font-mono ${cls}`}>{value}</p>
               </div>
             ))}
           </div>
         )}
 
-        {secret && jobs.length > 0 && (
-          <section className="rounded-xl border border-stone-800 overflow-hidden">
-            <div className="px-4 py-3 border-b border-stone-800 bg-stone-900/80">
-              <h2 className="text-sm font-semibold text-stone-300">Jobs studio ({jobs.length})</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-stone-500 border-b border-stone-800">
-                    <th className="px-4 py-2 font-medium">Commande</th>
-                    <th className="px-4 py-2 font-medium">Email</th>
-                    <th className="px-4 py-2 font-medium">Phase</th>
-                    <th className="px-4 py-2 font-medium">Workflow</th>
-                    <th className="px-4 py-2 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobs.map(job => (
-                    <tr
-                      key={job.orderId}
-                      className={`border-b border-stone-800/60 ${
-                        busyOrderId === job.orderId ? 'bg-sky-950/30' : ''
-                      }`}
-                    >
-                      <td className="px-4 py-2 font-mono text-xs text-stone-400">
-                        {job.orderId.slice(0, 8)}…
-                      </td>
-                      <td className="px-4 py-2 text-stone-300 truncate max-w-[160px]">{job.email ?? '—'}</td>
-                      <td className="px-4 py-2">{phaseBadge(job.phase)}</td>
-                      <td className="px-4 py-2 text-stone-500 text-xs">{job.workflowStatus}</td>
-                      <td className="px-4 py-2 text-xs">
-                        {job.needsQueue && <span className="text-amber-400">file → </span>}
-                        {job.needsTick && <span className="text-sky-400">tick</span>}
-                        {job.canRetry && (
-                          <button
-                            type="button"
-                            onClick={() => handleRetry(job)}
-                            className="text-red-300 hover:text-red-200 underline"
-                          >
-                            relancer
-                          </button>
-                        )}
-                        {job.error && (
-                          <p className="text-red-400 mt-0.5 truncate max-w-[200px]" title={job.error}>
-                            {job.error}
-                          </p>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {secret && columns.length > 0 && (
+          <section className="overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="flex gap-3 min-w-max">
+              {columns.map(col => (
+                <ServerKanbanColumn
+                  key={col.key}
+                  col={col}
+                  orders={byColumn[col.key] ?? []}
+                  busyOrderId={busyOrderId}
+                  onRetry={handleRetry}
+                />
+              ))}
             </div>
           </section>
         )}
 
-        {secret && jobs.length === 0 && (
-          <p className="text-center text-stone-500 text-sm py-8">Aucun job studio en cours — en attente de commandes.</p>
-        )}
-
-        <section className="rounded-xl border border-stone-800 overflow-hidden">
+        <section className="rounded-xl border border-stone-800 overflow-hidden max-w-4xl">
           <div className="px-4 py-3 border-b border-stone-800 bg-stone-900/80 flex justify-between items-center">
-            <h2 className="text-sm font-semibold text-stone-300">Journal</h2>
-            <button
-              type="button"
-              onClick={() => setLogs([])}
-              className="text-xs text-stone-500 hover:text-stone-300"
-            >
+            <h2 className="text-sm font-semibold text-stone-300">Journal moteur</h2>
+            <button type="button" onClick={() => setLogs([])} className="text-xs text-stone-500 hover:text-stone-300">
               effacer
             </button>
           </div>
-          <div className="max-h-80 overflow-y-auto p-3 space-y-1 font-['JetBrains_Mono',monospace] text-xs">
+          <div className="max-h-64 overflow-y-auto p-3 space-y-1 font-['JetBrains_Mono',monospace] text-xs">
             {logs.length === 0 && (
-              <p className="text-stone-600 px-1 py-2">Les ticks apparaîtront ici…</p>
+              <p className="text-stone-600 px-1 py-2">Les passages moteur apparaîtront ici…</p>
             )}
             {logs.map(entry => (
               <div
@@ -306,7 +247,7 @@ export default function ServerWorkerPage() {
                 {' '}
                 {entry.message}
                 {entry.detail && (
-                  <pre className="mt-1 text-stone-500 whitespace-pre-wrap break-all">
+                  <pre className="mt-1 text-stone-500 whitespace-pre-wrap break-all text-[10px]">
                     {JSON.stringify(entry.detail, null, 0)}
                   </pre>
                 )}
