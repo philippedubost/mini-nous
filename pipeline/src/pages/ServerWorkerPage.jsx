@@ -38,7 +38,7 @@ export default function ServerWorkerPage() {
   const [allCards, setAllCards] = useState([])
   const [motorJobs, setMotorJobs] = useState([])
   const [boardTotals, setBoardTotals] = useState({ orders: 0, faces: 0 })
-  const [stats, setStats] = useState({ pending: 0, errors: 0 })
+  const [stats, setStats] = useState({ pending: 0, errors: 0, blocked24h: 0, falErrors: 0 })
   const [logs, setLogs] = useState([])
   const [passCount, setPassCount] = useState(0)
   const [busyOrderId, setBusyOrderId] = useState(null)
@@ -70,7 +70,12 @@ export default function ServerWorkerPage() {
     setMotorJobs(data.jobs ?? [])
     setWeeks(data.weeks ?? [])
     setBoardTotals({ orders: data.totalOrders ?? 0, faces: data.totalFaces ?? 0 })
-    setStats({ pending: data.pending ?? 0, errors: data.errors ?? 0 })
+    setStats({
+      pending: data.pending ?? 0,
+      errors: data.errors ?? 0,
+      blocked24h: data.blocked24h ?? 0,
+      falErrors: data.falErrors ?? 0,
+    })
     setLastPollAt(formatTime())
   }, [])
 
@@ -291,10 +296,11 @@ export default function ServerWorkerPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl">
               {[
                 ['À traiter', stats.pending, 'text-amber-300'],
-                ['Erreurs', stats.errors, 'text-red-300'],
+                ['Erreurs FAL', stats.falErrors, 'text-red-300'],
+                ['Bloquées >24h', stats.blocked24h, 'text-amber-300'],
                 ['Passages moteur', passCount, 'text-sky-300'],
                 ['Refresh', lastPollAt ?? '—', 'text-stone-400 text-base'],
               ].map(([label, value, cls]) => (

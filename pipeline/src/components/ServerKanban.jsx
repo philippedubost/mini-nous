@@ -46,7 +46,7 @@ function ServerOrderCard({
   onOpen,
 }) {
   const title = truncateDisplayName(order.displayName || order.customerName || order.email?.split('@')[0])
-  const motorCls = order.canRetry
+  const motorCls = order.hasFalError || order.canRetry
     ? MOTOR_BADGE.error
     : order.needsTick
       ? MOTOR_BADGE.needsTick
@@ -66,7 +66,9 @@ function ServerOrderCard({
       className={`rounded-xl border bg-stone-900/80 p-2.5 space-y-1.5 transition-colors cursor-pointer select-none ${
         selected ? 'border-sky-500 ring-1 ring-sky-500/40 bg-sky-950/20'
           : busy ? 'border-sky-500/60 ring-1 ring-sky-500/30'
-            : 'border-stone-700/80 hover:border-stone-600'
+            : order.hasFalError ? 'border-red-700/80 hover:border-red-600'
+              : order.isBlocked24h ? 'border-amber-800/70 hover:border-amber-700'
+                : 'border-stone-700/80 hover:border-stone-600'
       }`}
     >
       <div className="flex gap-2">
@@ -85,7 +87,13 @@ function ServerOrderCard({
 
       {motorCls && (
         <p className={`text-[10px] font-medium px-2 py-0.5 rounded border ${motorCls}`}>
-          {order.canRetry ? 'Erreur' : order.needsQueue ? 'À lancer' : 'FAL…'}
+          {order.hasFalError || order.canRetry ? 'Erreur FAL' : order.needsQueue ? 'À lancer' : 'FAL…'}
+        </p>
+      )}
+
+      {order.isBlocked24h && !order.hasFalError && (
+        <p className="text-[10px] font-medium px-2 py-0.5 rounded border bg-amber-950/50 text-amber-200 border-amber-800">
+          Bloqué {order.stuckHours}h+
         </p>
       )}
 
@@ -110,9 +118,14 @@ export function ServerKanbanColumn({
 }) {
   const faceSum = totals?.faces ?? orders.reduce((n, o) => n + (Number(o.faceCount) || 0), 0)
   const count = totals?.orders ?? orders.length
+  const errorCount = totals?.errors ?? orders.filter(o => o.hasFalError).length
+  const blockedCount = totals?.blocked24h ?? orders.filter(o => o.isBlocked24h).length
+  const hasAlerts = errorCount > 0 || blockedCount > 0
 
   return (
-    <div className="flex flex-col min-w-[200px] max-w-[220px] flex-1 rounded-xl border border-stone-800 bg-stone-900/40">
+    <div className={`flex flex-col min-w-[200px] max-w-[220px] flex-1 rounded-xl border bg-stone-900/40 ${
+      errorCount > 0 ? 'border-red-800/80' : blockedCount > 0 ? 'border-amber-800/60' : 'border-stone-800'
+    }`}>
       <div className="px-3 py-2 border-b border-stone-800/80">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold text-stone-200 leading-tight">{col.label}</p>
@@ -120,6 +133,20 @@ export function ServerKanbanColumn({
             {count} · {faceSum} pers.
           </span>
         </div>
+        {hasAlerts && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {errorCount > 0 && (
+              <span className="inline-flex items-center rounded-md bg-red-900/70 text-red-100 border border-red-700 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                {errorCount} err. FAL
+              </span>
+            )}
+            {blockedCount > 0 && (
+              <span className="inline-flex items-center rounded-md bg-amber-950/70 text-amber-200 border border-amber-800 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                {blockedCount} &gt;24h
+              </span>
+            )}
+          </div>
+        )}
         <p className="text-[10px] text-stone-600 mt-0.5 leading-snug">{col.hint}</p>
       </div>
       <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-380px)] min-h-[100px]">
