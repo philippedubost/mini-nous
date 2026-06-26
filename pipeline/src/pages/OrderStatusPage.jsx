@@ -45,6 +45,8 @@ function daysLabel(ymd) {
 export default function OrderStatusPage() {
   const [searchParams] = useSearchParams()
   const orderToken = searchParams.get('order')
+  const stripeSessionId = searchParams.get('session_id')
+  const autoParam = searchParams.get('auto') === '1'
   const { accessToken: bearerToken } = useAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -68,11 +70,19 @@ export default function OrderStatusPage() {
     }
   }, [orderToken, bearerToken])
 
+  const pollMs = !order
+    ? 30000
+    : order.isPaid === false
+      ? 5000
+      : (order.studioGenerateActive || ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order.workflowStatus))
+        ? 5000
+        : 30000
+
   useEffect(() => {
     load()
-    const t = setInterval(load, order?.isPaid === false ? 5000 : 30000)
+    const t = setInterval(load, pollMs)
     return () => clearInterval(t)
-  }, [load, order?.isPaid])
+  }, [load, pollMs])
 
   useEffect(() => {
     if (window.location.hash !== '#avis') return
@@ -82,29 +92,20 @@ export default function OrderStatusPage() {
 
   const shipLabel = order?.deliveryDateLabel ?? null
 
-  const showStudioEmbed = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
-  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioEmbed
+  const showStudioFlow = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
+  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioFlow
   const showNps = order?.isPaid
     && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
     && !order?.npsSubmittedAt
   const showShare = order?.isPaid && order?.workflowStatus === 'shipped' && !order?.mininousShareUrl
 
+  const autoStart = autoParam || (!order?.previewUrl && order?.workflowStatus === 'in_studio')
+
   return (
     <CustomerLayout
       title={order ? (order.customerFirstName ? `Bonjour ${order.customerFirstName}` : 'Votre commande') : undefined}
       subtitle={order ? `${order.packLabel} · ${order.faceCount} figurine${order.faceCount > 1 ? 's' : ''}${order.amountEur ? ` · ${order.amountEur} €` : ''}` : undefined}
-      navRight={(
-        order?.isPaid && order?.editable ? (
-          <Link
-            to={`/studio?order=${encodeURIComponent(orderToken)}`}
-            className="customer-link text-xs"
-          >
-            Studio →
-          </Link>
-        ) : (
-          <span className="customer-muted text-xs">Suivi commande</span>
-        )
-      )}
+      navRight={<span className="customer-muted text-xs">Suivi commande</span>}
     >
       {loading && (
         <p className="customer-muted text-center py-12">Chargement de votre commande…</p>
@@ -123,7 +124,7 @@ export default function OrderStatusPage() {
             <div className="customer-card space-y-3">
               <p className="font-semibold text-[#C0684A]">Paiement en attente</p>
               <p className="text-sm customer-muted">
-                Votre photo est enregistrée. Finalisez le paiement pour lancer le studio.
+                Votre photo est enregistrée. Finalisez le paiement pour lancer la création de votre tracé.
               </p>
               {order.sourcePhotoUrl && (
                 <div className="customer-photo-frame max-h-48">
@@ -170,6 +171,16 @@ export default function OrderStatusPage() {
 
           <OrderTimeline order={order} />
 
+          {showStudioFlow && (
+            <StudioCustomerFlow
+              orderToken={orderToken}
+              bearerToken={bearerToken}
+              autoStart={autoStart}
+              stripeSessionId={stripeSessionId}
+              onOrderChange={setOrder}
+            />
+          )}
+
           {showGallery && (
             <OrderCreationGallery
               sourcePhotoUrl={order.sourcePhotoUrl}
@@ -177,16 +188,6 @@ export default function OrderStatusPage() {
               previewUrl={order.previewUrl}
               lineartVersion={displayLineartVersion(order)}
               lineartVersions={order.lineartVersions ?? []}
-            />
-          )}
-
-          {showStudioEmbed && (
-            <StudioCustomerFlow
-              orderToken={orderToken}
-              bearerToken={bearerToken}
-              embedMode
-              autoStart={!order.previewUrl && order.workflowStatus === 'in_studio'}
-              onOrderChange={setOrder}
             />
           )}
 
@@ -278,15 +279,6 @@ export default function OrderStatusPage() {
               </div>
             )}
           </div>
-
-          {!order.previewUrl && order.isPaid && order.editable && order.workflowStatus === 'awaiting_photo' && (
-            <Link
-              to={`/studio?order=${encodeURIComponent(orderToken)}&auto=1`}
-              className="customer-btn-clay w-full text-center block"
-            >
-              Ouvrir le studio →
-            </Link>
-          )}
 
           {order.isPaid && ['in_production', 'shipped'].includes(order.workflowStatus) && (
             <p className="text-sm customer-muted text-center">

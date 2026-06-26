@@ -125,6 +125,7 @@ export default function StudioCustomerFlow({
 
   useEffect(() => {
     if (!order?.previewUrl || lineartUrl) return
+    if (order?.studioGenerateActive) return
     setLineartUrl(order.previewUrl)
     setPhase('review')
     setBusy(false)
@@ -133,6 +134,7 @@ export default function StudioCustomerFlow({
 
   useEffect(() => {
     if (!order?.studioGenerateActive) return
+    setLineartUrl(null)
     setBusy(true)
     setError(null)
     const phaseLabel = order.studioGeneratePhase === 'step2'

@@ -389,8 +389,9 @@ input{font-family:inherit}
 .atelier-video-wrap{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 56px rgba(44,31,20,.14);background:var(--dark);margin-top:24px}
 .atelier-video-wrap video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
 
-/* Bientôt — mode assis */
+/* Bientôt */
 .coming-soon{padding:72px 28px;background:var(--bark-pale)}
+.coming-soon-stack{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
 .coming-soon-inner{max-width:720px;margin:0 auto;text-align:center;position:relative;border-radius:24px;overflow:hidden}
 .coming-soon-inner::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(44,31,20,.12) 0%,rgba(44,31,20,.45) 50%,rgba(44,31,20,.62) 100%);pointer-events:none;z-index:1}
 .coming-soon-img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;filter:grayscale(.3) saturate(.82) brightness(.88)}
@@ -1300,10 +1301,30 @@ function AtelierLive() {
   );
 }
 
+function ComingSoonCabine() {
+  return (
+    <div className="coming-soon-inner anim-in">
+      <img src="images/cabine-mininous.webp" alt="La Cabine MiniNous — photobooth et fabrication live"
+        className="coming-soon-img" loading="lazy" draggable="false"/>
+      <div className="coming-soon-copy">
+        <div className="coming-soon-copy-box">
+          <span className="coming-soon-tag">Bientôt</span>
+          <h2>La Cabine MiniNous</h2>
+          <p>
+            Un concept de photobooth qui fabrique tes personnages en live en moins de 5&nbsp;min&nbsp;!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ComingSoonSeated() {
   return (
     <section className="coming-soon">
-      <div className="coming-soon-inner anim-in">
+      <div className="coming-soon-stack">
+        <ComingSoonCabine/>
+        <div className="coming-soon-inner anim-in anim-d1">
         <img src={IMG.assis} alt="" className="coming-soon-img" loading="lazy" draggable="false"/>
         <div className="coming-soon-copy">
           <div className="coming-soon-copy-box">
@@ -1313,6 +1334,7 @@ function ComingSoonSeated() {
               Posés sur vos étagères, les MiniNous ajustent bientôt leur pose à leur environnement.
             </p>
           </div>
+        </div>
         </div>
       </div>
     </section>
@@ -1351,7 +1373,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Comment valider le tracé avant la fabrication ?',
-    a: 'Après le paiement, nous préparons un aperçu numérique de votre tracé. Vous le validez dans le studio en ligne, ou demandez des ajustements personnage par personnage. Rien n\'est découpé tant que vous n\'avez pas donné votre accord.',
+    a: 'Après le paiement, nous préparons un aperçu numérique de votre tracé. Vous le validez sur votre page commande, ou demandez des ajustements personnage par personnage. Rien n\'est découpé tant que vous n\'avez pas donné votre accord.',
   },
   {
     q: 'Dois-je rester sur la page pendant la préparation du tracé ?',
@@ -1770,11 +1792,10 @@ function Fondateurs() {
           </div>
           <div className="fondateurs-copy anim-in anim-d1">
             <p style={{ color:'var(--text)', lineHeight:1.82, fontSize:'.96rem', marginBottom:22 }}>
-              On a créé les MiniNous pour garder une trace vivante des moments ensemble,
-              un souvenir qu&apos;on pose sur une étagère plutôt que d&apos;enfouir dans un téléphone.
-              On a combiné notre curiosité pour la fabrication numérique et notre passion du code
-              pour construire un atelier capable de lire une photo et d&apos;en sortir une figurine
-              en bois sur mesure.
+              Les MiniNous sont nés de nos explorations pour faire des cadeaux uniques à nos proches.
+              Garder une trace vivante des moments ensemble, un souvenir physique dans la maison plutôt que dans le téléphone.
+              Combinaison de notre curiosité pour la fabrication numérique et le code pour construire un atelier capable de lire une photo
+              et d&apos;en sortir une figurine en bois sur mesure.
             </p>
             <a href="https://lesfantomes.fr" target="_blank" rel="noopener noreferrer"
               className="fantomes-link">
@@ -2639,7 +2660,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             <p style={{ fontSize:'.8rem', color:'var(--clay-deep)', marginTop:12, textAlign:'center', lineHeight:1.6,
               background:'var(--clay-pale)', borderRadius:8, padding:'9px 12px' }}>
-              ✏️ Après paiement, vous validerez le tracé de vos personnages dans le Studio avant que nous lancions la fabrication.
+              ✏️ Après paiement, vous validerez le tracé de vos personnages sur votre page commande avant que nous lancions la fabrication.
             </p>
 
             {quote?.pricingNote && (
