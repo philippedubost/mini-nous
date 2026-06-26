@@ -489,6 +489,18 @@ function scrollPageTo(target = 'top', { behavior = 'auto' } = {}) {
   requestAnimationFrame(() => requestAnimationFrame(apply));
 }
 
+function formatPortEur(eur) {
+  const n = Number(eur);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.abs(n - Math.round(n)) < 0.001 ? String(Math.round(n)) : n.toFixed(2).replace('.', ',');
+}
+
+function portLabel(eur, { free = false } = {}) {
+  if (free) return 'Port offert';
+  const f = formatPortEur(eur);
+  return f ? `${f} € de port` : 'Port offert';
+}
+
 function BuildFooter({ dark, sticky }) {
   const [info, setInfo] = useState(() => window.__MININOUS_BUILD_INFO__ ?? null);
   useEffect(() => {
@@ -950,7 +962,7 @@ function PackPriceSlider({ soldOut, onStartWithFaces }) {
               <span>
                 {quote.freeShipping
                   ? 'port offert'
-                  : `+ ${Number(quote.shippingEur).toFixed(0)} € de port`}
+                  : portLabel(quote.shippingEur)}
               </span>
             </>
           ) : (
@@ -1070,7 +1082,7 @@ function PackCards({ onPackExample, onStartWithFaces }) {
               <div className="pack-price">
                 {(p.priceEur ?? p.totalEur)} € <small>TTC</small>
                 {Number(p.shippingEur) > 0 ? (
-                  <span className="pack-shipping">+ {Number(p.shippingEur).toFixed(0)} € de port · offert dès 4 pers.</span>
+                  <span className="pack-shipping">{portLabel(p.shippingEur)} · offert dès 4 pers.</span>
                 ) : (
                   <span className="pack-shipping">🎁 port offert</span>
                 )}
@@ -1401,7 +1413,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Quels sont les frais de port ?',
-    a: 'Les frais de port sont de 7 € pour les commandes de 1 à 3 personnages. Ils sont offerts à partir de 4 personnages sur la même figurine. La livraison se fait en boîte aux lettres, sans signature.',
+    a: 'Les frais de port sont de 7 € pour les commandes de 1 à 3 personnages en France métropolitaine (offerts dès 4). À l\'international : 12 € pour 1 à 3 personnages, ou 5 € à partir de 4 personnages. Livraison en boîte aux lettres, sans signature.',
   },
   {
     q: 'Le paiement est-il sécurisé ?',
@@ -2358,6 +2370,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const showcase = getShowcaseForCount(showcaseCount);
   const exampleCount = showcaseCount;
   const portEur = hasQuote ? Number(quote.shippingEur) || 0 : 0;
+  const portFrLabel = hasQuote ? portLabel(quote.shippingFrEur, { free: quote.freeShippingFr }) : '—';
+  const portIntlLabel = hasQuote ? portLabel(quote.shippingIntlEur) : '—';
   const figurinesTtc = hasQuote ? quote.figurinesTtcEur : null;
   const deliveryLabel = fridayDelivery
     ? `Réception ${deliveryDates.friday}`
@@ -2385,7 +2399,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         accessToken: session.orderToken || undefined,
         photoBase64: session.photoBase64 || undefined,
         childCount: session.childCount ?? 0,
-        fridayDelivery,
+        fridayDelivery: shippingZone === 'international' ? false : fridayDelivery,
         shippingZone,
         newsletterOptIn,
         email: email || undefined,
@@ -2564,8 +2578,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                     <div>
                       <div style={{ fontSize:'.86rem', fontWeight:600 }}>France métropolitaine</div>
                       <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
-                        {quote.freeShipping ? 'Port offert' : `${portEur.toFixed(0)} € de port`}
-                        {!quote.freeShipping && (
+                        {portFrLabel}
+                        {quote.freeShippingFr ? null : (
                           <span style={{ display:'block', marginTop:2 }}>Offert dès 4 personnages</span>
                         )}
                       </div>
@@ -2573,11 +2587,11 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   </label>
                   <label className={`paywall-delivery-opt${shippingZone === 'international' ? ' selected' : ''}`}>
                     <input type="radio" name="zone" checked={shippingZone === 'international'}
-                      onChange={() => setShippingZone('international')}/>
+                      onChange={() => { setShippingZone('international'); setFridayDelivery(false); }}/>
                     <div>
                       <div style={{ fontSize:'.86rem', fontWeight:600 }}>International</div>
                       <div style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:2 }}>
-                        +12 € · hors France métropolitaine
+                        {portIntlLabel} · hors France métropolitaine
                       </div>
                     </div>
                   </label>
@@ -2587,6 +2601,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   L&apos;adresse de livraison sera saisie sur la page de paiement Stripe.
                 </p>
 
+                {shippingZone === 'fr' && (
                 <div style={{ marginBottom:16, display:'flex', flexDirection:'column', gap:8 }}>
                   <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.88rem', color:'var(--dark)', marginBottom:4 }}>
                     Quand recevoir vos figurines ?
@@ -2616,6 +2631,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                     </div>
                   </label>
                 </div>
+                )}
 
                 <div style={{ marginBottom:16 }}>
                   <label htmlFor="paywall-email" style={{ display:'block', fontFamily:'Quicksand', fontWeight:700,
@@ -2657,7 +2673,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
               </div>
               {hasQuote && checkoutStep === 'delivery' && portEur > 0 && (
                 <p className="paywall-shipping-note">
-                  Dont {portEur.toFixed(0)} € de frais de port
+                  Dont {portLabel(quote.shippingEur)}
                   {Number(quote.expressEur) > 0 ? ` · +${quote.expressEur} € express vendredi` : ''}
                   <br />
                   Frais de port offerts dès 4 personnages

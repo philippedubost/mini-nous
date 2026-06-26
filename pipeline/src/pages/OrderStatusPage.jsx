@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
+import { fetchOrderByToken, resumeCheckout, confirmCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
 import StudioCustomerFlow from '../components/StudioCustomerFlow'
 import OrderTimeline from '../components/OrderTimeline'
@@ -53,6 +53,7 @@ export default function OrderStatusPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const confirmTried = useRef(false)
 
   const load = useCallback(async () => {
     if (!orderToken) {
@@ -88,6 +89,17 @@ export default function OrderStatusPage() {
   useEffect(() => {
     scrollPageTo('top')
   }, [orderToken])
+
+  useEffect(() => {
+    if (!orderToken || !stripeSessionId || confirmTried.current) return
+    confirmTried.current = true
+    confirmCheckout(stripeSessionId, orderToken)
+      .then(({ order: o }) => {
+        if (o) setOrder(o)
+        else load()
+      })
+      .catch(() => load())
+  }, [orderToken, stripeSessionId, load])
 
   const prevWorkflow = useRef(null)
   useEffect(() => {
