@@ -9,6 +9,7 @@ import AdminKanbanPage from './pages/AdminKanbanPage'
 import AdminGenerationsPage from './pages/AdminGenerationsPage'
 import AdminSettingsPage from './pages/AdminSettingsPage'
 import AdminGenerationPage from './pages/AdminGenerationPage'
+import AdminMetricsPage from './pages/AdminMetricsPage'
 import TraceLabPage from './pages/TraceLabPage'
 import LabLayout from './pages/LabLayout'
 import './index.css'
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Route path="commandes" element={<AdminKanbanPage />} />
               <Route path="generations" element={<AdminGenerationsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="metrics" element={<AdminMetricsPage />} />
               <Route path="g/:id" element={<AdminGenerationPage />} />
               <Route path="lab" element={<LabLayout />}>
                 <Route index element={<Navigate to="trace" replace />} />

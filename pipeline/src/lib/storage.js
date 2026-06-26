@@ -297,6 +297,10 @@ export async function markStepRunning(generationId, assetType, log) {
   }
 }
 
+export async function fetchMetrics() {
+  return apiJson('/api/metrics')
+}
+
 /** Build url map from active (selected) steps for fal input resolution */
 export function urlMapFromSteps(steps) {
   const byType = Object.fromEntries((steps ?? []).map(s => [s.asset_type, s.image_url]))

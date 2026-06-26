@@ -144,6 +144,7 @@ export default function AdminHomePage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <RouteCard to="/commandes" path="/admin/commandes" desc="Kanban — drag approved → fab → expédié." />
           <RouteCard to="/generations" path="/admin/generations" desc="Liste FAL + batch fabrication." />
+          <RouteCard to="/metrics" path="/admin/metrics" desc="Conversion funnel · liste d'attente · taux upload→paiement." />
           <RouteCard to="/settings" path="/admin/settings" desc="Prompts step1/2 + ref line art." />
           <RouteCard to="/lab/trace" path="/admin/lab/trace" desc="Test SVG / autotrace hors commande." />
           <RouteCard href="/server" path="/server" desc="Worker studio — pico PC, chaînage FAL." note="STUDIO_GENERATE_SECRET" />

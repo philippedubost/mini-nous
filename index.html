@@ -561,6 +561,103 @@ async function patchOrderDraft({ accessToken, faceCount, childCount, photoBase64
   return data;
 }
 
+function trackEvent(event, payload = {}) {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event, ...payload }),
+  }).catch(() => {});
+}
+
+function WaitlistForm({ faceCount, weekKey, compact }) {
+  const [email, setEmail] = React.useState('');
+  const [submitted, setSubmitted] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Adresse e-mail invalide');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), faceCount, weekKey }),
+      });
+      if (!res.ok) throw new Error();
+      setSubmitted(true);
+    } catch {
+      setError('Une erreur est survenue, réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div style={{ textAlign:'center', padding:compact ? '14px 16px' : '18px 20px',
+        background:'#f0faf4', borderRadius:12, border:'1.5px solid #a8dfbc' }}>
+        <p style={{ color:'#1a7a45', fontWeight:700, fontSize:'.95rem', margin:0 }}>✓ Inscription enregistrée !</p>
+        <p style={{ fontSize:'.82rem', color:'#3a6652', marginTop:4, lineHeight:1.5 }}>
+          Vous serez parmi les premiers prévenus dès la prochaine ouverture.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <form onSubmit={submit}
+        style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'stretch' }}>
+        <input
+          type="email"
+          placeholder="votre@email.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          style={{ flex:'1 1 180px', padding:'11px 13px', borderRadius:8,
+            border:'1.5px solid var(--border)', fontSize:'.9rem',
+            outline:'none', background:'#fff', color:'var(--dark)' }}
+        />
+        <button type="submit" disabled={busy} className="btn-clay"
+          style={{ padding:'11px 20px', whiteSpace:'nowrap', flexShrink:0 }}>
+          {busy ? '…' : 'Me notifier →'}
+        </button>
+      </form>
+      {error && <p style={{ color:'var(--clay-deep)', fontSize:'.82rem', marginTop:6 }}>{error}</p>}
+    </div>
+  );
+}
+
+function SoldOutBanner({ status, faceCount }) {
+  const weekKey = status?.weekKey;
+  return (
+    <div style={{ maxWidth:560, margin:'0 auto', padding:'0 4px' }}>
+      <div style={{ background:'var(--clay-pale)', borderRadius:16, padding:'28px 24px',
+        textAlign:'center', marginBottom:16, border:'1.5px solid var(--clay-light)' }}>
+        <p style={{ fontSize:'1.3rem', marginBottom:4 }}>🎉</p>
+        <p style={{ fontSize:'1.05rem', fontWeight:700, color:'var(--clay-deep)', marginBottom:8 }}>
+          Édition complète cette semaine !
+        </p>
+        <p style={{ fontSize:'.875rem', color:'var(--muted)', lineHeight:1.7, marginBottom:0 }}>
+          On fabrique à la main, en petites séries — c&rsquo;est ce qui rend chaque figurine unique.
+          <br />
+          Une nouvelle édition ouvre <strong>chaque mardi matin</strong>.
+          Laissez votre e-mail pour être notifié en avant-première.
+        </p>
+      </div>
+      <WaitlistForm faceCount={faceCount} weekKey={weekKey} />
+      <p style={{ fontSize:'.78rem', color:'var(--muted)', textAlign:'center', marginTop:10, lineHeight:1.55 }}>
+        Pas de spam · Juste une notification quand les places ouvrent
+      </p>
+    </div>
+  );
+}
+
 const FRIDAY_DELIVERY_EUR_FALLBACK = 4;
 
 function addDaysYmd(ymd, days) {
@@ -1066,7 +1163,7 @@ function PackCards({ onPackExample, onStartWithFaces }) {
         <p style={{ color:'var(--muted)', marginBottom:8, lineHeight:1.7, fontSize:'.95rem' }}>
           Fabrication artisanale sur-mesure · Réception vendredi chez vous · Places limitées
         </p>
-        <div className="pack-grid">
+        <div className="pack-grid" style={{ opacity: soldOut ? .55 : 1, pointerEvents: soldOut ? 'none' : undefined }}>
           {packs.map((p, i) => (
             <div key={p.id} className={`pack-card anim-in anim-d${i + 1}${i === 1 ? ' featured' : ''}`}>
               {i === 1 && (
@@ -1095,7 +1192,13 @@ function PackCards({ onPackExample, onStartWithFaces }) {
             </div>
           ))}
         </div>
-        <PackPriceSlider soldOut={soldOut} onStartWithFaces={onStartWithFaces} />
+        {soldOut ? (
+          <div style={{ marginTop:36 }}>
+            <SoldOutBanner status={status} />
+          </div>
+        ) : (
+          <PackPriceSlider soldOut={soldOut} onStartWithFaces={onStartWithFaces} />
+        )}
         <OfficeRevealSlider/>
       </div>
     </div>
@@ -1420,6 +1523,84 @@ const FAQ_ITEMS = [
     a: 'Oui. Le règlement passe par Stripe, une plateforme de paiement certifiée. Nous ne stockons jamais vos coordonnées bancaires sur nos serveurs.',
   },
 ];
+
+function NextEditionSection() {
+  const { status } = useWeekStatus();
+  const soldOut = status && status.remaining <= 0;
+  const weekKey = status?.weekKey;
+  const [submitted, setSubmitted] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErr('E-mail invalide');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), weekKey, source: 'landing_footer' }),
+      });
+      if (!res.ok) throw new Error();
+      setSubmitted(true);
+    } catch {
+      setErr('Une erreur est survenue, réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section style={{ padding:'72px 28px', background:'var(--forest-pale)' }}>
+      <div style={{ maxWidth:600, margin:'0 auto', textAlign:'center' }}>
+        <p style={{ fontSize:'1.5rem', marginBottom:8 }}>📬</p>
+        <h2 style={{ color:'var(--forest)', marginBottom:10, fontFamily:'Quicksand' }}>
+          {soldOut ? 'Cette édition est complète' : 'Restez au courant'}
+        </h2>
+        <p style={{ color:'var(--muted)', lineHeight:1.75, marginBottom:24, maxWidth:480, margin:'0 auto 24px' }}>
+          {soldOut
+            ? 'Une nouvelle édition ouvre chaque mardi matin — inscrivez-vous pour être notifié en avant-première et ne jamais rater une ouverture.'
+            : 'Nouvelles collections, éditions limitées, conseils cadeaux — on vous prévient quand ça arrive.'}
+        </p>
+        {submitted ? (
+          <div style={{ background:'#fff', borderRadius:14, padding:'20px 24px',
+            border:'1.5px solid var(--forest)', display:'inline-block' }}>
+            <p style={{ color:'var(--forest)', fontWeight:700, margin:0 }}>✓ Inscription enregistrée !</p>
+            <p style={{ fontSize:'.85rem', color:'var(--muted)', marginTop:4 }}>
+              On vous prévient en premier à la prochaine ouverture.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={submit}
+            style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap', maxWidth:460, margin:'0 auto' }}>
+            <input
+              type="email"
+              placeholder="votre@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={{ flex:'1 1 200px', padding:'12px 14px', borderRadius:9, border:'1.5px solid var(--border)',
+                fontSize:'.95rem', outline:'none', background:'#fff' }}
+            />
+            <button type="submit" disabled={busy} className="btn-clay"
+              style={{ padding:'12px 22px', whiteSpace:'nowrap' }}>
+              {busy ? '…' : soldOut ? 'Me notifier →' : "S'inscrire →"}
+            </button>
+          </form>
+        )}
+        {err && <p style={{ color:'var(--clay-deep)', fontSize:'.82rem', marginTop:8 }}>{err}</p>}
+        <p style={{ fontSize:'.75rem', color:'var(--muted)', marginTop:12 }}>
+          Pas de spam · Désabonnement en un clic
+        </p>
+      </div>
+    </section>
+  );
+}
 
 function FaqSection() {
   const [open, setOpen] = React.useState(null);
@@ -2021,6 +2202,9 @@ function Landing({ onPackExample, onStartWithFaces, onPhotoUpload, onDemoPhoto, 
       {/* Bientôt · mode assis */}
       <ComingSoonSeated/>
 
+      {/* Newsletter / Prochaines éditions */}
+      <NextEditionSection />
+
       {/* FAQ */}
       <FaqSection/>
 
@@ -2314,7 +2498,7 @@ function FamilyCompositionQuestion({ faceCount, childCount, max, recommendedMax,
 /* ─── STATE 3 · PAYWALL ───────────────────────────────────────── */
 function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceCountChange, onHome }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(session?.error ?? null);
   const [fridayDelivery, setFridayDelivery] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState('product');
   const [shippingZone, setShippingZone] = useState('fr');
@@ -2690,35 +2874,55 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
             {error && <p style={{ color:'var(--clay-deep)', fontSize:'.85rem', marginBottom:12 }}>{error}</p>}
 
-            {checkoutStep === 'product' ? (
+            {soldOut ? (
+              <div style={{ marginTop:4 }}>
+                <div style={{ background:'var(--clay-pale)', borderRadius:12, padding:'18px 16px',
+                  textAlign:'center', marginBottom:14, border:'1.5px solid var(--clay-light)' }}>
+                  <p style={{ fontWeight:700, color:'var(--clay-deep)', fontSize:'1rem', marginBottom:6 }}>
+                    🎉 Édition complète cette semaine
+                  </p>
+                  <p style={{ fontSize:'.85rem', color:'var(--muted)', lineHeight:1.65 }}>
+                    On fabrique à la main, en petites séries.<br/>
+                    <strong>Chaque mardi</strong>, une nouvelle édition ouvre ses portes.
+                  </p>
+                </div>
+                <WaitlistForm
+                  faceCount={faceCountForQuote}
+                  weekKey={status?.weekKey}
+                />
+                <p style={{ fontSize:'.78rem', color:'var(--muted)', textAlign:'center', marginTop:10, lineHeight:1.5 }}>
+                  Pas de spam · Un seul e-mail quand les places ouvrent
+                </p>
+              </div>
+            ) : checkoutStep === 'product' ? (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended || !hasPersonalPhoto) ? .5 : 1,
-              cursor: (soldOut || overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
+              opacity: (overRecommended || !hasPersonalPhoto) ? .5 : 1,
+              cursor: (overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
+              disabled={busy || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
               onClick={goToDelivery}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
-                : soldOut ? 'Complet cette semaine'
                 : !hasPersonalPhoto ? 'Ajoutez votre photo pour commander'
                 : 'Continuer vers la livraison →'}
             </button>
             ) : (
             <button className="btn-clay" style={{ width:'100%', padding:'16px', fontSize:'.95rem',
-              opacity: (soldOut || overRecommended || !hasPersonalPhoto) ? .5 : 1,
-              cursor: (soldOut || overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
-              disabled={busy || soldOut || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
+              opacity: (overRecommended || !hasPersonalPhoto) ? .5 : 1,
+              cursor: (overRecommended || !hasPersonalPhoto) ? 'not-allowed' : 'pointer' }}
+              disabled={busy || overRecommended || !hasQuote || quoteLoading || !hasPersonalPhoto}
               onClick={pay}>
               {overRecommended ? `Réduire à ${maxFaces} personnages ou moins`
-                : soldOut ? 'Complet cette semaine'
                 : !hasPersonalPhoto ? 'Ajoutez votre photo pour commander'
                 : busy ? 'Redirection…'
                 : ctaTransform}
             </button>
             )}
 
+            {!soldOut && (
             <p style={{ fontSize:'.8rem', color:'var(--clay-deep)', marginTop:12, textAlign:'center', lineHeight:1.6,
               background:'var(--clay-pale)', borderRadius:8, padding:'9px 12px' }}>
               ✏️ Après paiement, vous validerez le tracé de vos personnages sur votre page commande avant que nous lancions la fabrication.
             </p>
+            )}
 
             {quote?.pricingNote && (
               <p style={{ fontSize:'.72rem', color:'var(--muted)', marginTop:10, textAlign:'center', lineHeight:1.55 }}>
@@ -3302,6 +3506,7 @@ function App() {
 
       let orderToken = null;
       let orderStatusUrl = null;
+      let uploadError = null;
       try {
         const draft = await startOrderDraft({
           faceCount: initialCount,
@@ -3315,9 +3520,11 @@ function App() {
         }
       } catch (err) {
         console.warn('[order-start]', err);
-        setPhotoBusyUrl(null);
-        alert('La photo n\'a pas pu être enregistrée sur le serveur. Réessayez ou vérifiez votre connexion avant de payer.');
-        return;
+        const isSoldOut = err.message?.includes('complète') || err.message?.includes('Édition');
+        if (!isSoldOut) {
+          uploadError = err.message || 'La photo n\'a pas pu être enregistrée. Réessayez.';
+        }
+        // soldOut : on navigue quand même vers le paywall — le composant montrera la liste d'attente
       }
 
       setSelectedPack('famille');
@@ -3331,7 +3538,7 @@ function App() {
         childCount: initialChildren,
         showcaseCount,
         isDemoExample: false,
-        error: null,
+        error: uploadError,
         orderToken,
         orderStatusUrl,
       });
