@@ -13,6 +13,7 @@ import {
   fetchOrderByToken, linkOrderGeneration, orderAction, confirmCheckout,
   submitRevision, selectLineartVersion, startServerStudio,
 } from '../lib/storage'
+import { scrollPageTo } from '../lib/scrollPage'
 
 function phaseForOrder(order) {
   if (!order.isPaid) return 'awaiting_payment'
@@ -130,7 +131,8 @@ export default function StudioCustomerFlow({
     setPhase('review')
     setBusy(false)
     setStatusMsg(null)
-  }, [order?.previewUrl, lineartUrl])
+    scrollPageTo('top')
+  }, [order?.previewUrl, lineartUrl, order?.studioGenerateActive])
 
   useEffect(() => {
     if (!order?.studioGenerateActive) return

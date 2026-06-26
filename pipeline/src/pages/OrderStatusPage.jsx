@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { fetchOrderByToken, resumeCheckout } from '../lib/storage'
 import CustomerLayout from '../components/CustomerLayout'
@@ -11,6 +11,7 @@ import { displayLineartVersion } from '../lib/studioFlow'
 import NpsSurvey from '../components/NpsSurvey'
 import MiniNousShareProgram from '../components/MiniNousShareProgram'
 import { useAuth } from '../context/AuthContext'
+import { scrollPageTo } from '../lib/scrollPage'
 
 function formatDate(iso) {
   if (!iso) return null
@@ -83,6 +84,19 @@ export default function OrderStatusPage() {
     const t = setInterval(load, pollMs)
     return () => clearInterval(t)
   }, [load, pollMs])
+
+  useEffect(() => {
+    scrollPageTo('top')
+  }, [orderToken])
+
+  const prevWorkflow = useRef(null)
+  useEffect(() => {
+    if (loading || !order) return
+    const wf = order.workflowStatus
+    if (prevWorkflow.current === wf) return
+    prevWorkflow.current = wf
+    scrollPageTo('top')
+  }, [loading, order, order?.workflowStatus])
 
   useEffect(() => {
     if (window.location.hash !== '#avis') return

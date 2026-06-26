@@ -469,6 +469,26 @@ input{font-family:inherit}
 /** @jsx React.createElement */
 const { useState, useEffect, useRef, useCallback } = React;
 
+function scrollPageTo(target = 'top', { behavior = 'auto' } = {}) {
+  const NAV_OFFSET = 76;
+  const apply = () => {
+    if (target === 'top') {
+      window.scrollTo({ top: 0, left: 0, behavior });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      return;
+    }
+    const el = typeof target === 'string' ? document.getElementById(target) : target;
+    if (!el) {
+      window.scrollTo({ top: 0, left: 0, behavior });
+      return;
+    }
+    const y = el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+    window.scrollTo({ top: Math.max(0, y), left: 0, behavior });
+  };
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+}
+
 function BuildFooter({ dark, sticky }) {
   const [info, setInfo] = useState(() => window.__MININOUS_BUILD_INFO__ ?? null);
   useEffect(() => {
@@ -1816,6 +1836,7 @@ function Fondateurs() {
 
 /* ─── STATE 1 · LANDING ───────────────────────────────────────── */
 function Landing({ onPackExample, onStartWithFaces, onPhotoUpload, onDemoPhoto, onHome }) {
+  useEffect(() => { scrollPageTo('top'); }, []);
   return (
     <div className="screen" style={{ background:'var(--cream)' }}>
       <FomoBar />
@@ -2287,14 +2308,33 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
   const [shippingZone, setShippingZone] = useState('fr');
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
+  const prevPhotoKey = useRef(null);
+
+  const scrollPaywallFocus = useCallback((step) => {
+    if (step === 'delivery') {
+      scrollPageTo('paywall-checkout');
+      return;
+    }
+    const hasPhoto = !!session?.photoBase64 && !session?.isDemoExample;
+    const composition = session?.enterVia === 'upload' && hasPhoto;
+    if (composition) scrollPageTo('paywall-composition');
+    else if (hasPhoto) scrollPageTo('paywall-checkout');
+    else scrollPageTo('top');
+  }, [session?.photoBase64, session?.isDemoExample, session?.enterVia]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    scrollPaywallFocus(checkoutStep);
+  }, [checkoutStep, scrollPaywallFocus]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [checkoutStep]);
+    const key = session?.photoBase64 ? `${session.photoBase64.length}-${session.enterVia}` : null;
+    if (!key || key === prevPhotoKey.current || session?.isDemoExample) return;
+    prevPhotoKey.current = key;
+    if (checkoutStep === 'product') {
+      const t = setTimeout(() => scrollPaywallFocus('product'), 80);
+      return () => clearTimeout(t);
+    }
+  }, [session?.photoBase64, session?.enterVia, session?.isDemoExample, checkoutStep, scrollPaywallFocus]);
   const soldOut = status && status.remaining <= 0;
   const maxFaces = status?.maxFaces ?? 8;
   const fridayEur = Number(status?.fridayDeliveryEur) || FRIDAY_DELIVERY_EUR_FALLBACK;
@@ -2376,10 +2416,10 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
         </div>
       </nav>
 
-      <div className="two-col" style={{ maxWidth:1100, margin:'0 auto', padding:'44px 28px',
+      <div id="paywall-top" className="two-col" style={{ maxWidth:1100, margin:'0 auto', padding:'44px 28px',
         display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'start' }}>
 
-        <div>
+        <div className="paywall-col-visual">
           {isExampleMode && (
             <div style={{ marginBottom:16 }}>
               <TryMyPhotoButton onFile={onPhotoUpload} />
@@ -2387,7 +2427,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
           )}
 
           {showComposition && (
-            <div style={{ marginBottom:18 }}>
+            <div id="paywall-composition" style={{ marginBottom:18 }}>
               <FamilyCompositionQuestion
                 faceCount={session.faceCount ?? 2}
                 childCount={session.childCount ?? 0}
@@ -2441,7 +2481,8 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
           </div>
         </div>
 
-        <div className={overRecommended ? 'paywall-dimmed' : undefined} style={{ position:'sticky', top:80 }}>
+        <div id="paywall-checkout" className={overRecommended ? 'paywall-dimmed paywall-col-checkout' : 'paywall-col-checkout'}
+          style={{ position:'sticky', top:80 }}>
           <div style={{ background:'#fff', borderRadius:24, padding:34,
             boxShadow:'0 16px 48px rgba(44,31,20,.09)' }}>
             {hasQuote ? (
@@ -2510,7 +2551,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
                   <p style={{ fontFamily:'Quicksand', fontWeight:700, fontSize:'.95rem', color:'var(--dark)', margin:0 }}>
                     Livraison
                   </p>
-                  <button type="button" onClick={() => setCheckoutStep('product')}
+                  <button type="button" onClick={() => { setCheckoutStep('product'); scrollPageTo('paywall-checkout'); }}
                     style={{ background:'none', border:'none', color:'var(--clay)', fontSize:'.78rem', fontWeight:600, cursor:'pointer' }}>
                     ← Retour
                   </button>
@@ -2691,6 +2732,7 @@ function Paywall({ packDef, status, session, onPhotoUpload, onDemoPhoto, onFaceC
 
 /* ─── STATE 4 · EDITOR ────────────────────────────────────────── */
 function Editor({ go, onHome }) {
+  useEffect(() => { scrollPageTo('top'); }, []);
   const [sel, setSel] = useState(null);
   const [regens, setRegens] = useState(3);
   const [regen, setRegen] = useState(false);
@@ -2923,6 +2965,7 @@ function Editor({ go, onHome }) {
 
 /* ─── STATE 5 · SUCCESS ───────────────────────────────────────── */
 function Success() {
+  useEffect(() => { scrollPageTo('top'); }, []);
   const today = new Date();
   const fmt = d => d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
   const add = n => { const d = new Date(today); d.setDate(d.getDate() + n); return fmt(d); };
@@ -3116,7 +3159,7 @@ function App() {
     } else if (next === 'landing' && path === paywallPath) {
       window.history.pushState({ mininous: 'landing' }, '', '/');
     }
-    window.scrollTo(0, 0);
+    scrollPageTo('top');
   }, [paywallPath]);
 
   useEffect(() => {
@@ -3124,7 +3167,7 @@ function App() {
       const onPaywall = window.location.pathname.replace(/\/$/, '') === paywallPath;
       setState(onPaywall ? 'pricing' : 'landing');
       setTick(t => t + 1);
-      window.scrollTo(0, 0);
+      scrollPageTo('top');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -3278,7 +3321,10 @@ function App() {
       });
       setTick(t => t + 1);
       go('pricing');
-      requestAnimationFrame(() => requestAnimationFrame(() => setPhotoBusyUrl(null)));
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        setPhotoBusyUrl(null);
+        scrollPageTo(enterVia === 'upload' ? 'paywall-composition' : 'top');
+      }));
     } catch {
       setPhotoBusyUrl(null);
       alert('Impossible de lire cette image. Essayez un autre fichier.');

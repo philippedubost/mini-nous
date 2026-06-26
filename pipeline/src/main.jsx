@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { SettingsProvider } from './context/SettingsContext'
 import PipelinePage from './pages/PipelinePage'
@@ -15,13 +15,23 @@ import NewOrderPage from './pages/NewOrderPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentCancelPage from './pages/PaymentCancelPage'
 import TestFlowPage from './pages/TestFlowPage'
+import { scrollPageTo } from './lib/scrollPage'
 import './index.css'
+
+function ScrollRestoration() {
+  const location = useLocation()
+  useEffect(() => {
+    scrollPageTo('top')
+  }, [location.pathname, location.search])
+  return null
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthProvider>
       <SettingsProvider>
       <BrowserRouter basename="/pipeline">
+        <ScrollRestoration />
         <Routes>
           <Route path="/" element={<Navigate to="/compte" replace />} />
           <Route path="/studio" element={<StudioPage />} />
