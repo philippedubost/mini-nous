@@ -446,7 +446,7 @@ input{font-family:inherit}
 
 /* Fondateurs */
 .fondateurs-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:48px;align-items:center}
-.fondateurs-photo{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:1/1;box-shadow:0 20px 56px rgba(44,31,20,.12);background:var(--bark-pale)}
+.fondateurs-photo{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/3;box-shadow:0 20px 56px rgba(44,31,20,.12);background:var(--bark-pale)}
 .fondateurs-photo img{position:relative;z-index:1}
 .fondateurs-placeholder{z-index:0 !important}
 .fondateurs-photo:has(img[style*="display:none"]) .fondateurs-placeholder,
@@ -456,7 +456,7 @@ input{font-family:inherit}
 .fantomes-link:hover{border-color:var(--bark);background:var(--cream);transform:translateY(-2px);box-shadow:0 8px 24px rgba(122,92,56,.14)}
 @media(max-width:768px){
   .fondateurs-grid{grid-template-columns:1fr;gap:28px}
-  .fondateurs-photo{max-width:320px;margin:0 auto;aspect-ratio:1/1}
+  .fondateurs-photo{max-width:420px;margin:0 auto;aspect-ratio:4/3}
   .fondateurs-copy{align-items:center;text-align:center}
   .fantomes-link{margin:0 auto}
 }
@@ -892,10 +892,13 @@ const PACK_CTA = {
   grande_famille: 'Grande Famille →',
 };
 
+const SLIDER_FACE_LABELS = { 1: 'Solo', 2: 'Duo', 3: 'Trio' };
+
 function PackPriceSlider({ soldOut, onStartWithFaces }) {
   const [faces, setFaces] = useState(4);
   const { quote, loading } = useQuote(faces, false, 'fr');
-  const label = faces === 1 ? '1 personnage' : `${faces} personnages`;
+  const label = SLIDER_FACE_LABELS[faces]
+    ?? (faces === 1 ? '1 personnage' : `${faces} personnages`);
 
   return (
     <div className="pack-price-slider-wrap anim-in anim-d3">
@@ -922,9 +925,11 @@ function PackPriceSlider({ soldOut, onStartWithFaces }) {
             <span>…</span>
           ) : quote?.ok ? (
             <>
-              <strong>{quote.totalEur} € <small>TTC</small></strong>
+              <strong>{quote.productEur} € <small>TTC</small></strong>
               <span>
-                {quote.freeShipping ? 'port offert' : `+ ${Number(quote.shippingEur).toFixed(0)} € de port`}
+                {quote.freeShipping
+                  ? 'port offert'
+                  : `+ ${Number(quote.shippingEur).toFixed(0)} € de port`}
               </span>
             </>
           ) : (
@@ -932,9 +937,6 @@ function PackPriceSlider({ soldOut, onStartWithFaces }) {
           )}
         </p>
       </div>
-      {quote?.ok && quote.pricingNote && (
-        <p className="pack-slider-note">{quote.pricingNote}</p>
-      )}
       <button
         type="button"
         className="btn-clay"
