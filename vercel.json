@@ -1,14 +1,16 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install && cd pipeline && npm install",
+  "installCommand": "npm install --include=optional && cd pipeline && npm install",
   "outputDirectory": "dist",
   "framework": null,
   "functions": {
     "api/index.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/@img/**"
     },
     "api/stripe-webhook.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "node_modules/@img/**"
     }
   },
   "redirects": [
