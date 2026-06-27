@@ -12,6 +12,7 @@ import {
   errorKindLabel,
   formatColumnErrorSummary,
 } from '../lib/serverKanbanActions'
+import { isMotorLockHeldByOther } from '../lib/studioWorker'
 
 function EyeIcon() {
   return (
@@ -117,6 +118,7 @@ function ServerOrderCard({
   order,
   busy,
   selected,
+  workerId,
   onSelect,
   onContextMenu,
   onOpen,
@@ -126,6 +128,7 @@ function ServerOrderCard({
   const clientUrl = clientOrderUrl(order)
   const isLaserMotor = order.column === 'validated_fabrication' && !order.hasLaserSvg
   const hasError = order.hasAnyError || order.hasFalError || order.hasLaserError || order.hasGenerationError
+  const lockedByOther = workerId && isMotorLockHeldByOther(order.motorLock, workerId)
   const motorCls = hasError
     ? MOTOR_BADGE.error
     : order.needsTick
@@ -207,6 +210,15 @@ function ServerOrderCard({
         </p>
       )}
 
+      {lockedByOther && (
+        <p
+          className="text-[10px] font-medium px-2 py-0.5 rounded border bg-stone-800/80 text-stone-300 border-stone-600 w-fit"
+          title={order.motorLock?.ip || undefined}
+        >
+          🔒 {order.motorLock?.label || 'autre serveur'}
+        </p>
+      )}
+
       {order.hasLaserSvg && (
         <p className="text-[10px] font-medium px-2 py-0.5 rounded border bg-violet-500/15 text-violet-300 border-violet-500/30 w-fit">
           SVG ✓
@@ -244,6 +256,7 @@ export function ServerKanbanColumn({
   totals,
   busyOrderId,
   selectedIds,
+  workerId,
   onSelect,
   onContextMenu,
   onOpen,
@@ -291,6 +304,7 @@ export function ServerKanbanColumn({
               order={o}
               busy={busyOrderId === o.orderId}
               selected={selectedIds.has(o.orderId)}
+              workerId={workerId}
               onSelect={onSelect}
               onContextMenu={onContextMenu}
               onOpen={onOpen}
@@ -308,13 +322,15 @@ export function ServerKanbanBoard({
   columnTotals,
   busyOrderId,
   selectedIds,
+  workerId,
+  orderDetailPath = '/c',
   onSelect,
   onContextMenu,
   onBoardMouseDown,
   selectRect,
 }) {
   const navigate = useNavigate()
-  const openOrder = id => navigate(`/c/${id}`)
+  const openOrder = id => navigate(`${orderDetailPath}/${id}`)
 
   return (
     <div
@@ -343,6 +359,7 @@ export function ServerKanbanBoard({
             totals={columnTotals?.[col.key]}
             busyOrderId={busyOrderId}
             selectedIds={selectedIds}
+            workerId={workerId}
             onSelect={onSelect}
             onContextMenu={onContextMenu}
             onOpen={openOrder}

@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
+  claimMotorJob,
+  claimNextMotorJob,
   fetchWorkerBoard,
-  loadWorkerSecret,
-  pickNextJob,
-  queueStudioJob,
+  getOrCreateWorkerId,
+  loadWorkerSecret,queueStudioJob,
+  releaseMotorJob,
+  renewMotorJob,
   runMotorPass,
   runWorkerBulkAction,
   saveWorkerSecret,
@@ -31,7 +35,15 @@ function formatWeekLabel(w) {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+function useOrderDetailPath() {
+  const { pathname } = useLocation()
+  if (pathname.startsWith('/serveur')) return '/serveur/c'
+  return '/c'
+}
+
 export default function ServerWorkerPage() {
+  const orderDetailPath = useOrderDetailPath()
+  const workerId = useMemo(() => getOrCreateWorkerId(), [])
   const [secret, setSecret] = useState(loadWorkerSecret)
   const [secretDraft, setSecretDraft] = useState(secret)
   const [running, setRunning] = useState(true)
@@ -75,6 +87,23 @@ export default function ServerWorkerPage() {
 
   const clearMotorSkip = useCallback((orderIds) => {
     for (const id of orderIds ?? []) skippedMotorRef.current.delete(id)
+  }, [])
+
+  const withMotorLock = useCallback(async (orderId, fn) => {
+    if (!secretRef.current || !orderId) return fn()
+    const claim = await claimMotorJob(secretRef.current, orderId)
+    if (!claim?.claimed) {
+      throw new Error(`Job verrouillé par ${claim?.holder?.label || 'un autre serveur'}`)
+    }
+    const renewTimer = setInterval(() => {
+      renewMotorJob(secretRef.current, orderId).catch(() => {})
+    }, 120_000)
+    try {
+      return await fn()
+    } finally {
+      clearInterval(renewTimer)
+      await releaseMotorJob(secretRef.current, orderId).catch(() => {})
+    }
   }, [])
 
   const motorPassLabel = useCallback((result, { isLaser = false } = {}) => {
@@ -213,47 +242,49 @@ export default function ServerWorkerPage() {
 
     try {
       for (const id of orderIds) {
-        setBusyOrderId(id)
-        const q = await queueStudioJob(secretRef.current, id, { mode: 'initial' })
-        if (q.skipped) {
-          throw new Error(
-            q.reason === 'not_paid'
-              ? 'Paiement requis avant de lancer le tracé'
-              : `Mise en file ignorée (${q.reason})`,
-          )
-        }
-        pushLog(`Tracé v1 lancé · ${logRef(id)}`, q)
-
-        let result = await runMotorPass(secretRef.current, id)
-        setPassCount(n => n + 1)
-
-        const applyOptimistic = (r) => {
-          const ov = optimisticFromMotorResult(r)
-          if (!ov) {
-            setOptimistic(prev => {
-              const next = { ...prev }
-              delete next[id]
-              return next
-            })
-            return
+        await withMotorLock(id, async () => {
+          setBusyOrderId(id)
+          const q = await queueStudioJob(secretRef.current, id, { mode: 'initial' })
+          if (q.skipped) {
+            throw new Error(
+              q.reason === 'not_paid'
+                ? 'Paiement requis avant de lancer le tracé'
+                : `Mise en file ignorée (${q.reason})`,
+            )
           }
-          setOptimistic(prev => ({ ...prev, [id]: ov }))
-        }
+          pushLog(`Tracé v1 lancé · ${logRef(id)}`, q)
 
-        applyOptimistic(result)
-        const label = result.phase === 'step1' ? 'Step 1' : result.phase === 'step2' ? 'Step 2' : result.phase ?? 'fait'
-        pushLog(`Passage moteur · ${logRef(id)} → ${label}`, result, result.error ? 'error' : 'info')
-
-        while (result?.needsContinue && !result?.error && result?.phase !== 'error') {
-          await new Promise(r => setTimeout(r, 800))
-          result = await runMotorPass(secretRef.current, id)
+          let result = await runMotorPass(secretRef.current, id)
           setPassCount(n => n + 1)
-          applyOptimistic(result)
-        }
 
-        if (result?.error || result?.phase === 'error') {
-          pushLog(`${logRef(id)} — ${result.error || 'Erreur moteur'}`, result, 'error')
-        }
+          const applyOptimistic = (r) => {
+            const ov = optimisticFromMotorResult(r)
+            if (!ov) {
+              setOptimistic(prev => {
+                const next = { ...prev }
+                delete next[id]
+                return next
+              })
+              return
+            }
+            setOptimistic(prev => ({ ...prev, [id]: ov }))
+          }
+
+          applyOptimistic(result)
+          const label = result.phase === 'step1' ? 'Step 1' : result.phase === 'step2' ? 'Step 2' : result.phase ?? 'fait'
+          pushLog(`Passage moteur · ${logRef(id)} → ${label}`, result, result.error ? 'error' : 'info')
+
+          while (result?.needsContinue && !result?.error && result?.phase !== 'error') {
+            await new Promise(r => setTimeout(r, 800))
+            result = await runMotorPass(secretRef.current, id)
+            setPassCount(n => n + 1)
+            applyOptimistic(result)
+          }
+
+          if (result?.error || result?.phase === 'error') {
+            pushLog(`${logRef(id)} — ${result.error || 'Erreur moteur'}`, result, 'error')
+          }
+        })
       }
     } catch (err) {
       pushLog(err.message, null, 'error')
@@ -264,7 +295,7 @@ export default function ServerWorkerPage() {
       await refreshBoard()
       setOptimistic({})
     }
-  }, [pushLog, refreshBoard, clearMotorSkip, logRef])
+  }, [pushLog, refreshBoard, clearMotorSkip, logRef, withMotorLock])
 
   const runAction = useCallback(async (action, orderIds) => {
     if (!secretRef.current || !orderIds.length) return
@@ -280,17 +311,19 @@ export default function ServerWorkerPage() {
       busyRef.current = true
       try {
         for (const id of orderIds) {
-          setBusyOrderId(id)
-          const card = allCards.find(c => c.orderId === id)
-          const result = await runClientLaserPassForOrder(card ?? { orderId: id, generationId: null }, {
-            onProgress: log => pushLog(`Laser · ${logRef(id)} — ${log}`),
+          await withMotorLock(id, async () => {
+            setBusyOrderId(id)
+            const card = allCards.find(c => c.orderId === id)
+            const result = await runClientLaserPassForOrder(card ?? { orderId: id, generationId: null }, {
+              onProgress: log => pushLog(`Laser · ${logRef(id)} — ${log}`),
+            })
+            pushLog(
+              `Laser · ${logRef(id)} → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
+              result,
+              result.error ? 'error' : 'info',
+            )
+            if (result.error) skipMotorOrder(id, result.error)
           })
-          pushLog(
-            `Laser · ${logRef(id)} → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
-            result,
-            result.error ? 'error' : 'info',
-          )
-          if (result.error) skipMotorOrder(id, result.error)
         }
         setSelectedIds(new Set())
         await refreshBoard()
@@ -325,7 +358,7 @@ export default function ServerWorkerPage() {
     } finally {
       busyRef.current = false
     }
-  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder, allCards, logRef])
+  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder, allCards, logRef, withMotorLock])
 
   const requestAction = useCallback((action, orderIds) => {
     if (action === 'delete') {
@@ -382,14 +415,24 @@ export default function ServerWorkerPage() {
 
         busyRef.current = true
         let next = null
+        let renewTimer = null
         try {
-          const list = await refreshBoard()
-          next = pickNextJob(list, { skipIds: skippedMotorRef.current })
-          if (!next) {
+          const skipOrderIds = [...skippedMotorRef.current.keys()]
+          const claim = await claimNextMotorJob(secretRef.current, {
+            weekKey: weekKeyRef.current || null,
+            skipOrderIds,
+          })
+          if (!claim?.job) {
+            await refreshBoard()
             busyRef.current = false
             await new Promise(r => setTimeout(r, 3000))
             continue
           }
+
+          next = claim.job
+          renewTimer = setInterval(() => {
+            renewMotorJob(secretRef.current, next.orderId).catch(() => {})
+          }, 120_000)
 
           let result = await runPassForOrder(next, {
             queue: next.needsQueue,
@@ -417,6 +460,11 @@ export default function ServerWorkerPage() {
           }
           busyRef.current = false
           await new Promise(r => setTimeout(r, 2000))
+        } finally {
+          if (renewTimer) clearInterval(renewTimer)
+          if (next?.orderId) {
+            await releaseMotorJob(secretRef.current, next.orderId).catch(() => {})
+          }
         }
       }
     }
@@ -462,6 +510,11 @@ export default function ServerWorkerPage() {
             <p className="text-sm text-stone-400">
               Kanban atelier — sélection (clic, Maj+clic, rectangle Maj+glisser), clic droit pour les actions.
               Double-clic pour ouvrir le détail.
+              {workerId && (
+                <span className="block text-[11px] text-stone-500 mt-1 font-mono">
+                  Worker {workerId}
+                </span>
+              )}
             </p>
           </div>
           <ServerBtn
@@ -574,6 +627,8 @@ export default function ServerWorkerPage() {
                 columnTotals={displayBoard.columnTotals}
                 busyOrderId={busyOrderId}
                 selectedIds={selectedIds}
+                workerId={workerId}
+                orderDetailPath={orderDetailPath}
                 onSelect={handleCardSelect}
                 onContextMenu={(e, order) => {
                   e.preventDefault()
