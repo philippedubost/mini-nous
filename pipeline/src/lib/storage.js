@@ -216,17 +216,6 @@ export async function fetchGenerations() {
   return generations
 }
 
-export async function fetchAdminBoard() {
-  return apiJson('/api/admin-board')
-}
-
-export async function updateAdminWorkflow(orderId, workflowStatus) {
-  return apiJson('/api/admin-board', {
-    method: 'PATCH',
-    body: JSON.stringify({ orderId, workflowStatus }),
-  })
-}
-
 export async function fetchProductionWeeks() {
   return apiJson('/api/production-weeks')
 }

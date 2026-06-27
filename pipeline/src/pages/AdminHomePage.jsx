@@ -126,7 +126,7 @@ export default function AdminHomePage() {
 
       <FlowPanel
         title="3 · Statuts commande"
-        subtitle="Machine à états — ce que voit le client et ce que l’admin peut drag sur le kanban."
+        subtitle="Machine à états — ce que voit le client et ce que le kanban serveur pilote."
       >
         <FlowStepper steps={[
           { id: 'pending', tone: 'shop', label: 'pending', hint: 'Brouillon paywall', tag: 'Avant paiement' },
@@ -135,8 +135,8 @@ export default function AdminHomePage() {
           { id: 'pending_validation', tone: 'pipeline', label: 'pending_validation', hint: 'Tracé prêt', arrowLabel: 'email' },
           { id: 'revision', tone: 'pipeline', label: 'revision_requested', hint: 'Équipe 24h', arrowLabel: 'ajust. v2' },
           { id: 'approved', tone: 'pipeline', label: 'approved', hint: 'Client OK', arrowLabel: 'valide' },
-          { id: 'production', tone: 'fab', label: 'in_production', hint: 'Atelier', arrowLabel: 'admin drag' },
-          { id: 'shipped', tone: 'admin', label: 'shipped', hint: 'Colis parti', arrowLabel: 'admin drag' },
+          { id: 'production', tone: 'fab', label: 'in_production', hint: 'Atelier', arrowLabel: 'serveur' },
+          { id: 'shipped', tone: 'admin', label: 'shipped', hint: 'Colis parti', arrowLabel: 'kanban serveur' },
         ]} />
       </FlowPanel>
 
