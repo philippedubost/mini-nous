@@ -7,6 +7,8 @@ import {
   adminOrderDetailUrl,
   clientOrderUrl,
   formatErrorLogAt,
+  orderHasClearableErrors,
+  CLEAR_ERRORS_ACTION,
 } from '../lib/serverKanbanActions'
 
 function EyeIcon() {
@@ -347,12 +349,19 @@ export function ServerKanbanBoard({
   )
 }
 
-export function buildContextMenu(e, order, selectedIds) {
+export function buildContextMenu(e, order, selectedIds, allCards = []) {
   const orderIds = selectedIds.has(order.orderId) && selectedIds.size > 1
     ? [...selectedIds]
     : [order.orderId]
-  const actions = contextActionsForColumn(order.column, order)
-  return { x: e.clientX, y: e.clientY, orderIds, order, actions, column: order.column }
+  const targets = orderIds.map(id => allCards.find(c => c.orderId === id) ?? order)
+  const primary = targets[0] ?? order
+  const actions = [...contextActionsForColumn(primary.column, primary)]
+  if (orderIds.length > 1 && targets.some(orderHasClearableErrors)) {
+    if (!actions.some(a => a.id === 'clear_errors')) {
+      actions.splice(actions.length - 1, 0, CLEAR_ERRORS_ACTION)
+    }
+  }
+  return { x: e.clientX, y: e.clientY, orderIds, order: primary, actions, column: primary.column }
 }
 
 export function bulkActionsForSelection(cards, selectedIds) {
@@ -360,6 +369,15 @@ export function bulkActionsForSelection(cards, selectedIds) {
   const selected = cards.filter(c => selectedIds.has(c.orderId))
   const columns = new Set(selected.map(c => c.column))
   const actions = [{ id: 'delete', label: 'Supprimer la sélection', danger: true }]
+  const withErrors = selected.filter(orderHasClearableErrors)
+  if (withErrors.length) {
+    actions.unshift({
+      id: 'clear_errors',
+      label: withErrors.length === selected.length
+        ? `Effacer les erreurs (${withErrors.length})`
+        : `Effacer les erreurs (${withErrors.length}/${selected.length})`,
+    })
+  }
   if (columns.size === 1) {
     const col = [...columns][0]
     const specific = (contextActionsForColumn(col) ?? []).filter(a => a.id !== 'delete')

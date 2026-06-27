@@ -16,6 +16,8 @@ export const CONTEXT_ACTIONS_BY_COLUMN = {
 
 export const DELETE_ACTION = { id: 'delete', label: 'Supprimer', danger: true }
 
+export const CLEAR_ERRORS_ACTION = { id: 'clear_errors', label: 'Effacer les erreurs' }
+
 export const OPEN_ADMIN_ACTION = { id: 'open_admin', label: 'Voir page commande admin' }
 export const OPEN_CLIENT_ACTION = { id: 'open_client', label: 'Voir page commande client' }
 
@@ -24,9 +26,25 @@ export function clientOrderUrl(order) {
   return `/pipeline/commande?order=${encodeURIComponent(order.accessToken)}`
 }
 
+export function orderHasClearableErrors(order) {
+  if (!order) return false
+  return !!(
+    order.hasFalError
+    || order.studioJob?.phase === 'error'
+    || order.studioJob?.error
+    || order.studioLaser?.phase === 'error'
+    || order.studioLaser?.error
+    || order.generationError
+    || (order.errorLog?.length ?? 0) > 0
+  )
+}
+
 export function contextActionsForColumn(column, order = null) {
-  const specific = CONTEXT_ACTIONS_BY_COLUMN[column] ?? []
+  const specific = [...(CONTEXT_ACTIONS_BY_COLUMN[column] ?? [])]
   const nav = []
+  if (order && orderHasClearableErrors(order)) {
+    specific.push(CLEAR_ERRORS_ACTION)
+  }
   if (order && adminOrderDetailUrl(order)) nav.push(OPEN_ADMIN_ACTION)
   if (order && clientOrderUrl(order)) nav.push(OPEN_CLIENT_ACTION)
   return [...specific, ...nav, DELETE_ACTION]

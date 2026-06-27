@@ -294,11 +294,18 @@ export default function ServerWorkerPage() {
       return
     }
 
+    if (action === 'clear_errors') {
+      clearMotorSkip(orderIds)
+    }
+
     busyRef.current = true
     try {
       const res = await runWorkerBulkAction(secretRef.current, action, orderIds)
+      const label = action === 'clear_errors'
+        ? `Erreurs effacées · ${orderIds.length} carte(s)`
+        : `Action ${action} · ${orderIds.length} carte(s)`
       pushLog(
-        `Action ${action} · ${orderIds.length} carte(s)`,
+        label,
         res,
         res.failed ? 'error' : 'info',
       )
@@ -550,7 +557,12 @@ export default function ServerWorkerPage() {
                   if (!selectedIds.has(order.orderId)) {
                     setSelectedIds(new Set([order.orderId]))
                   }
-                  setContextMenu(buildContextMenu(e, order, selectedIds.has(order.orderId) ? selectedIds : new Set([order.orderId])))
+                  setContextMenu(buildContextMenu(
+                    e,
+                    order,
+                    selectedIds.has(order.orderId) ? selectedIds : new Set([order.orderId]),
+                    allCards,
+                  ))
                 }}
                 onBoardMouseDown={onBoardMouseDown}
                 selectRect={selectRect}
