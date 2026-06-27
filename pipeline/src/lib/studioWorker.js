@@ -79,8 +79,17 @@ export async function runLaserPass(secret, orderId) {
   return parseJson(res)
 }
 
-export function pickNextJob(jobs) {
-  const actionable = (jobs ?? []).filter(j => j.needsTick || j.needsQueue)
+/** Carte éligible au moteur auto (hors erreurs et skips session). */
+export function isMotorActionable(job, skipIds = null) {
+  if (!job?.needsTick && !job?.needsQueue) return false
+  if (skipIds?.has(job.orderId)) return false
+  if (job.studioJob?.phase === 'error') return false
+  if (job.studioLaser?.phase === 'error') return false
+  return true
+}
+
+export function pickNextJob(jobs, { skipIds = null } = {}) {
+  const actionable = (jobs ?? []).filter(j => isMotorActionable(j, skipIds))
   if (!actionable.length) return null
   actionable.sort((a, b) => String(a.updatedAt).localeCompare(String(b.updatedAt)))
   return actionable.find(j => j.needsTick) ?? actionable[0]

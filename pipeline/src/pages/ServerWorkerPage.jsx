@@ -58,10 +58,30 @@ export default function ServerWorkerPage() {
   const secretRef = useRef(secret)
   const weekKeyRef = useRef(weekKey)
   const busyRef = useRef(false)
+  /** orderId → message d'erreur — évite de reboucler sur une carte buggée dans la session. */
+  const skippedMotorRef = useRef(new Map())
 
   runningRef.current = running
   secretRef.current = secret
   weekKeyRef.current = weekKey
+
+  const skipMotorOrder = useCallback((orderId, reason) => {
+    if (!orderId || !reason) return
+    skippedMotorRef.current.set(orderId, String(reason))
+  }, [])
+
+  const clearMotorSkip = useCallback((orderIds) => {
+    for (const id of orderIds ?? []) skippedMotorRef.current.delete(id)
+  }, [])
+
+  const motorPassLabel = useCallback((result, { isLaser = false } = {}) => {
+    if (result?.error) return result.error
+    if (result?.log) return result.log
+    if (result?.phase === 'done') return isLaser ? 'SVG prêt' : 'fait'
+    if (result?.phase === 'step1') return 'Step 1'
+    if (result?.phase === 'step2') return 'Step 2'
+    return result?.phase ?? 'fait'
+  }, [])
 
   const pushLog = useCallback((message, detail = null, level = 'info') => {
     setLogs(prev => [
@@ -136,13 +156,24 @@ export default function ServerWorkerPage() {
       if (isLaser) {
         if (queue) {
           const q = await queueLaserJob(secretRef.current, orderId, { force: true })
-          if (q.skipped) pushLog(`Laser ignoré (${q.reason})`, q)
-          else pushLog(`Laser en file ${orderId.slice(0, 8)}…`, q)
+          if (q.skipped) {
+            const msg = q.reason === 'already_done'
+              ? 'SVG laser déjà présent'
+              : q.reason === 'laser_error'
+                ? (q.error || 'Erreur laser — relancer manuellement')
+                : `Mise en file ignorée (${q.reason})`
+            throw new Error(msg)
+          }
+          pushLog(`Laser en file ${orderId.slice(0, 8)}…`, q)
         }
         const result = await runLaserPass(secretRef.current, orderId)
         setPassCount(n => n + 1)
-        const label = result.log || result.phase || 'fait'
+        const label = motorPassLabel(result, { isLaser: true })
         pushLog(`Passage laser → ${label}`, result, result.error ? 'error' : 'info')
+        if (result.error || result.phase === 'error') {
+          skipMotorOrder(orderId, result.error || label)
+          pushLog(`⏭ Ignoré ${orderId.slice(0, 8)}… — ${result.error || label}`, null, 'error')
+        }
         return result
       }
 
@@ -158,16 +189,21 @@ export default function ServerWorkerPage() {
       }
       const result = await runMotorPass(secretRef.current, orderId)
       setPassCount(n => n + 1)
-      const label = result.phase === 'step1' ? 'Step 1' : result.phase === 'step2' ? 'Step 2' : result.phase ?? 'fait'
+      const label = motorPassLabel(result)
       pushLog(`Passage moteur → ${label}`, result, result.error ? 'error' : 'info')
+      if (result.error || result.phase === 'error') {
+        skipMotorOrder(orderId, result.error || label)
+        pushLog(`⏭ Ignoré ${orderId.slice(0, 8)}… — ${result.error || label}`, null, 'error')
+      }
       return result
     } finally {
       setBusyOrderId(null)
     }
-  }, [pushLog])
+  }, [pushLog, skipMotorOrder, motorPassLabel])
 
   const launchTraceV1Flow = useCallback(async (orderIds) => {
     if (!secretRef.current || !orderIds.length) return
+    clearMotorSkip(orderIds)
 
     setOptimistic(prev => {
       const next = { ...prev }
@@ -230,7 +266,7 @@ export default function ServerWorkerPage() {
       await refreshBoard()
       setOptimistic({})
     }
-  }, [pushLog, refreshBoard])
+  }, [pushLog, refreshBoard, clearMotorSkip])
 
   const runAction = useCallback(async (action, orderIds) => {
     if (!secretRef.current || !orderIds.length) return
@@ -242,6 +278,7 @@ export default function ServerWorkerPage() {
     }
 
     if (action === 'launch_laser') {
+      clearMotorSkip(orderIds)
       busyRef.current = true
       try {
         for (const id of orderIds) {
@@ -249,10 +286,11 @@ export default function ServerWorkerPage() {
           await queueLaserJob(secretRef.current, id, { force: true })
           const result = await runLaserPass(secretRef.current, id)
           pushLog(
-            `Laser · ${id.slice(0, 8)}… → ${result.phase ?? 'fait'}`,
+            `Laser · ${id.slice(0, 8)}… → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
             result,
             result.error ? 'error' : 'info',
           )
+          if (result.error) skipMotorOrder(id, result.error)
         }
         setSelectedIds(new Set())
         await refreshBoard()
@@ -280,7 +318,7 @@ export default function ServerWorkerPage() {
     } finally {
       busyRef.current = false
     }
-  }, [pushLog, refreshBoard, launchTraceV1Flow])
+  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder])
 
   const requestAction = useCallback((action, orderIds) => {
     if (action === 'delete') {
@@ -336,9 +374,10 @@ export default function ServerWorkerPage() {
         }
 
         busyRef.current = true
+        let next = null
         try {
           const list = await refreshBoard()
-          const next = pickNextJob(list)
+          next = pickNextJob(list, { skipIds: skippedMotorRef.current })
           if (!next) {
             busyRef.current = false
             await new Promise(r => setTimeout(r, 3000))
@@ -350,7 +389,10 @@ export default function ServerWorkerPage() {
             mode: next.mode ?? next.studioJob?.mode ?? 'initial',
           })
 
-          while (!cancelled && runningRef.current && result?.needsContinue) {
+          while (
+            !cancelled && runningRef.current
+            && result?.needsContinue && !result?.error && result?.phase !== 'error'
+          ) {
             await new Promise(r => setTimeout(r, 800))
             result = await runPassForOrder(next)
           }
@@ -359,16 +401,22 @@ export default function ServerWorkerPage() {
           busyRef.current = false
           await new Promise(r => setTimeout(r, 500))
         } catch (err) {
-          pushLog(err.message, null, 'error')
+          const msg = err instanceof Error ? err.message : String(err)
+          if (next?.orderId) {
+            skipMotorOrder(next.orderId, msg)
+            pushLog(`⏭ Ignoré ${next.orderId.slice(0, 8)}… — ${msg}`, null, 'error')
+          } else {
+            pushLog(msg, null, 'error')
+          }
           busyRef.current = false
-          await new Promise(r => setTimeout(r, 5000))
+          await new Promise(r => setTimeout(r, 2000))
         }
       }
     }
 
     loop()
     return () => { cancelled = true }
-  }, [secret, running, weekKey, refreshBoard, runPassForOrder, pushLog])
+  }, [secret, running, weekKey, refreshBoard, runPassForOrder, pushLog, skipMotorOrder])
 
   useEffect(() => {
     if (!secret) return

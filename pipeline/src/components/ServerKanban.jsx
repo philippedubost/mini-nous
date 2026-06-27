@@ -19,11 +19,13 @@ function EyeIcon() {
 
 function ErrorLogPanel({ order }) {
   const log = order.errorLog?.length ? order.errorLog : (
-    order.studioJob?.error
-      ? [{ at: order.studioJob.updatedAt, step: order.studioJob.phase, message: order.studioJob.error }]
-      : order.generationError
-        ? [{ at: order.updatedAt, message: order.generationError, source: 'generation' }]
-        : []
+    order.studioLaser?.error
+      ? [{ at: order.studioLaser.updatedAt, step: 'laser', message: order.studioLaser.error }]
+      : order.studioJob?.error
+        ? [{ at: order.studioJob.updatedAt, step: order.studioJob.phase, message: order.studioJob.error }]
+        : order.generationError
+          ? [{ at: order.updatedAt, message: order.generationError, source: 'generation' }]
+          : []
   )
   if (!log.length) return null
 
@@ -153,7 +155,7 @@ function ServerOrderCard({
       <div className="flex gap-2">
         <div className="w-10 h-10 rounded-md bg-white shrink-0 overflow-hidden flex items-center justify-center border border-stone-700">
           {order.thumbUrl
-            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" draggable={false} loading="lazy" decoding="async" fetchPriority="low" />
+            ? <img src={order.thumbUrl} alt="" className="w-full h-full object-cover" draggable={false} loading="lazy" decoding="async" fetchpriority="low" />
             : <span className="text-[9px] text-stone-400 text-center leading-tight px-0.5">photo</span>}
         </div>
         <div className="min-w-0 flex-1">
@@ -224,7 +226,7 @@ function ServerOrderCard({
         </p>
       )}
 
-      {(order.hasFalError || order.errorLog?.length > 0) && (
+      {(order.hasFalError || order.studioLaser?.phase === 'error' || order.errorLog?.length > 0) && (
         <ErrorLogPanel order={order} />
       )}
     </article>

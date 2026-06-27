@@ -22,6 +22,10 @@ export default defineConfig({
     host: '127.0.0.1',
     port: DEV_PORT,
     strictPort: true,
+    hmr: {
+      host: 'localhost',
+      clientPort: API_PORT,
+    },
     proxy: {
       '/api': { target: `http://127.0.0.1:${API_PORT}`, changeOrigin: true },
     },

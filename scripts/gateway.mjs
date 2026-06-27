@@ -83,6 +83,39 @@ function proxySpa(req, res, vitePort, { stripPrefix, spaFile }) {
   return proxy(req, res, vitePort)
 }
 
+function proxyWebSocket(req, socket, head, port) {
+  const proxyReq = httpRequest({
+    hostname: '127.0.0.1',
+    port,
+    path: req.url,
+    method: req.method,
+    headers: { ...req.headers, host: `127.0.0.1:${port}` },
+  })
+
+  proxyReq.on('upgrade', (res, proxySocket, proxyHead) => {
+    let responseHeader = `HTTP/1.1 ${res.statusCode} ${res.statusMessage}\r\n`
+    for (const [key, value] of Object.entries(res.headers)) {
+      responseHeader += `${key}: ${Array.isArray(value) ? value.join(', ') : value}\r\n`
+    }
+    responseHeader += '\r\n'
+    socket.write(responseHeader)
+    proxySocket.write(proxyHead)
+    proxySocket.pipe(socket)
+    socket.pipe(proxySocket)
+    proxySocket.on('error', () => socket.destroy())
+    socket.on('error', () => proxySocket.destroy())
+  })
+
+  proxyReq.on('error', () => socket.destroy())
+  proxyReq.end()
+}
+
+function shouldProxyWebSocket(url = '') {
+  const path = url.split('?')[0] || ''
+  if (path === '/' && url.includes('token=')) return true
+  return isViteDevAsset(path)
+}
+
 export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
   async function resolveHandler(name) {
     if (devReload) {
@@ -131,6 +164,13 @@ export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
   })
 
   return new Promise((resolve, reject) => {
+    server.on('upgrade', (req, socket, head) => {
+      if (!shouldProxyWebSocket(req.url)) {
+        socket.destroy()
+        return
+      }
+      proxyWebSocket(req, socket, head, vitePort)
+    })
     server.listen(port, '127.0.0.1', () => resolve(server))
     server.on('error', reject)
   })
