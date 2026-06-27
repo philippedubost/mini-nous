@@ -57,9 +57,9 @@ async function requirePort(port, label) {
   throw new Error(`${label} : le port ${port} est déjà utilisé. Arrêtez l'autre serveur (Ctrl+C) puis relancez.`)
 }
 
-async function loadApiRoutes() {
+async function loadApiRouteNames() {
   const { routes } = await import(pathToFileURL(join(rootDir, 'lib/api/router.js')).href)
-  return routes
+  return Object.keys(routes).sort()
 }
 
 async function main() {
@@ -80,8 +80,8 @@ async function main() {
   await requirePort(PORT, 'Gateway')
   await requirePort(VITE_PORT, 'Vite (interne)')
 
-  const apiRoutes = await loadApiRoutes()
-  console.log(`  API routes: ${Object.keys(apiRoutes).sort().join(', ')}`)
+  const apiRouteNames = await loadApiRouteNames()
+  console.log(`  API routes: ${apiRouteNames.join(', ')}`)
 
   const vite = spawn('npm', ['run', 'dev'], {
     cwd: pipelineDir,
@@ -99,7 +99,7 @@ async function main() {
 
   await waitForVite(VITE_PORT)
 
-  await startGateway({ port: PORT, vitePort: VITE_PORT, apiRoutes, devReload: true })
+  await startGateway({ port: PORT, vitePort: VITE_PORT, devReload: true })
 
   console.log('')
   console.log(`  Mini-Nous → http://localhost:${PORT}`)

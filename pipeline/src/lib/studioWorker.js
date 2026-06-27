@@ -23,8 +23,15 @@ function workerHeaders(secret) {
 }
 
 async function parseJson(res) {
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`)
+  const text = await res.text()
+  let data = {}
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch { /* réponse non-JSON (crash Vercel, HTML…) */ }
+  if (!res.ok) {
+    const detail = data.error || (text && !text.startsWith('<') ? text.slice(0, 300) : null)
+    throw new Error(detail || `Erreur HTTP ${res.status}`)
+  }
   return data
 }
 

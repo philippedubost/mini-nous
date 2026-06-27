@@ -116,15 +116,12 @@ function shouldProxyWebSocket(url = '') {
   return isViteDevAsset(path)
 }
 
-export function startGateway({ port, vitePort, apiRoutes, devReload = false }) {
+export function startGateway({ port, vitePort, devReload = false }) {
+  const routerHref = pathToFileURL(join(root, 'lib/api/router.js')).href
+
   async function resolveHandler(name) {
-    if (devReload) {
-      const { routes } = await import(
-        `${pathToFileURL(join(root, 'lib/api/router.js')).href}?r=${Date.now()}`
-      )
-      return routes[name]
-    }
-    return apiRoutes[name]
+    const mod = await import(devReload ? `${routerHref}?r=${Date.now()}` : routerHref)
+    return mod.resolveHandler(name)
   }
 
   const server = createServer(async (req, res) => {
