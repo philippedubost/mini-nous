@@ -9,6 +9,8 @@ import {
   formatErrorLogAt,
   orderHasClearableErrors,
   CLEAR_ERRORS_ACTION,
+  errorKindLabel,
+  formatColumnErrorSummary,
 } from '../lib/serverKanbanActions'
 
 function EyeIcon() {
@@ -123,15 +125,16 @@ function ServerOrderCard({
   const adminUrl = adminOrderDetailUrl(order)
   const clientUrl = clientOrderUrl(order)
   const isLaserMotor = order.column === 'validated_fabrication' && !order.hasLaserSvg
-  const motorCls = order.hasFalError || order.canRetry
+  const hasError = order.hasAnyError || order.hasFalError || order.hasLaserError || order.hasGenerationError
+  const motorCls = hasError
     ? MOTOR_BADGE.error
     : order.needsTick
       ? MOTOR_BADGE.needsTick
       : order.needsQueue
         ? MOTOR_BADGE.needsQueue
         : null
-  const motorLabel = order.hasFalError || order.canRetry
-    ? (isLaserMotor ? 'Erreur laser' : 'Erreur FAL')
+  const motorLabel = hasError
+    ? errorKindLabel(order.errorKind)
     : order.needsQueue
       ? (isLaserMotor ? 'SVG à générer' : 'À lancer')
       : (isLaserMotor ? 'Laser…' : 'FAL…')
@@ -149,7 +152,7 @@ function ServerOrderCard({
         order._processing ? 'server-card-processing border-sky-600/70'
           : selected ? 'border-sky-500 ring-1 ring-sky-500/40 bg-sky-950/20'
             : busy ? 'border-sky-500/60 ring-1 ring-sky-500/30'
-              : order.hasFalError ? 'border-red-700/80 hover:border-red-600'
+              : hasError ? 'border-red-700/80 hover:border-red-600'
                 : order.isBlocked24h ? 'border-amber-800/70 hover:border-amber-700'
                   : 'border-stone-700/80 hover:border-stone-600'
       }`}
@@ -222,13 +225,13 @@ function ServerOrderCard({
         </p>
       )}
 
-      {order.isBlocked24h && !order.hasFalError && (
+      {order.isBlocked24h && !hasError && (
         <p className="text-[10px] font-medium px-2 py-0.5 rounded border bg-amber-950/50 text-amber-200 border-amber-800">
           Bloqué {order.stuckHours}h+
         </p>
       )}
 
-      {(order.hasFalError || order.studioLaser?.phase === 'error' || order.errorLog?.length > 0) && (
+      {(hasError || order.errorLog?.length > 0) && (
         <ErrorLogPanel order={order} />
       )}
     </article>
@@ -247,7 +250,8 @@ export function ServerKanbanColumn({
 }) {
   const faceSum = totals?.faces ?? orders.reduce((n, o) => n + (Number(o.faceCount) || 0), 0)
   const count = totals?.orders ?? orders.length
-  const errorCount = totals?.errors ?? orders.filter(o => o.hasFalError).length
+  const errorCount = totals?.errors ?? orders.filter(o => o.hasAnyError || o.hasFalError).length
+  const errorSummary = formatColumnErrorSummary(orders) ?? (errorCount > 0 ? `${errorCount} erreur${errorCount > 1 ? 's' : ''}` : null)
   const blockedCount = totals?.blocked24h ?? orders.filter(o => o.isBlocked24h).length
   const hasAlerts = errorCount > 0 || blockedCount > 0
 
@@ -264,9 +268,9 @@ export function ServerKanbanColumn({
         </div>
         {hasAlerts && (
           <div className="flex flex-wrap gap-1 mt-1.5">
-            {errorCount > 0 && (
+            {errorSummary && (
               <span className="inline-flex items-center rounded-md bg-red-900/70 text-red-100 border border-red-700 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
-                {errorCount} err. FAL
+                {errorSummary}
               </span>
             )}
             {blockedCount > 0 && (

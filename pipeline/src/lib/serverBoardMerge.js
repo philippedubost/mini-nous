@@ -33,7 +33,7 @@ export function mergeBoardOptimistic(
     nextByColumn[card.column].push(card)
     nextTotals[card.column].orders += 1
     nextTotals[card.column].faces += Number(card.faceCount) || 0
-    if (card.hasFalError) nextTotals[card.column].errors += 1
+    if (card.hasAnyError) nextTotals[card.column].errors += 1
     if (card.isBlocked24h) nextTotals[card.column].blocked24h += 1
   }
 

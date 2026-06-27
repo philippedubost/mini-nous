@@ -3,10 +3,11 @@ import { useCallback, useEffect, useState } from 'react'
 const VARIANTS = {
   default: 'bg-stone-800 text-stone-200 hover:bg-stone-700',
   primary: 'bg-amber-700 hover:bg-amber-600 text-white',
-  danger: 'bg-red-900/70 text-red-100 hover:bg-red-800/70',
+  danger: 'bg-red-900/70 text-red-100 hover:bg-red-800/70 border border-red-700/60',
   ghost: 'bg-transparent text-stone-500 hover:text-stone-200 hover:bg-stone-800/60',
   success: 'bg-emerald-700 hover:bg-emerald-600 text-white',
   muted: 'bg-stone-700 hover:bg-stone-600 text-stone-200',
+  toolbar: 'bg-stone-800 text-stone-100 hover:bg-stone-700 border border-stone-600 hover:border-stone-500 shadow-sm hover:shadow-md',
 }
 
 export function ServerBtn({

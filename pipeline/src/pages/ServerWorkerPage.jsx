@@ -9,6 +9,7 @@ import {
   saveWorkerSecret,
 } from '../lib/studioWorker'
 import { runClientLaserPassForOrder } from '../lib/clientLaserPass'
+import { orderLogRef } from '../lib/serverKanbanActions'
 import {
   ServerKanbanBoard,
   ServerContextMenu,
@@ -42,7 +43,10 @@ export default function ServerWorkerPage() {
   const [allCards, setAllCards] = useState([])
   const [motorJobs, setMotorJobs] = useState([])
   const [boardTotals, setBoardTotals] = useState({ orders: 0, faces: 0 })
-  const [stats, setStats] = useState({ pending: 0, errors: 0, blocked24h: 0, falErrors: 0 })
+  const [stats, setStats] = useState({
+    pending: 0, errors: 0, blocked24h: 0,
+    falErrors: 0, laserErrors: 0, generationErrors: 0, totalErrors: 0,
+  })
   const [logs, setLogs] = useState([])
   const [passCount, setPassCount] = useState(0)
   const [busyOrderId, setBusyOrderId] = useState(null)
@@ -82,6 +86,8 @@ export default function ServerWorkerPage() {
     return result?.phase ?? 'fait'
   }, [])
 
+  const logRef = useCallback((orderId) => orderLogRef(orderId, allCards), [allCards])
+
   const pushLog = useCallback((message, detail = null, level = 'info') => {
     setLogs(prev => [
       { id: `${Date.now()}-${Math.random()}`, at: formatTime(), message, detail, level },
@@ -102,6 +108,9 @@ export default function ServerWorkerPage() {
       errors: data.errors ?? 0,
       blocked24h: data.blocked24h ?? 0,
       falErrors: data.falErrors ?? 0,
+      laserErrors: data.laserErrors ?? 0,
+      generationErrors: data.generationErrors ?? 0,
+      totalErrors: data.totalErrors ?? data.falErrors ?? 0,
     })
     setLastPollAt(formatTime())
   }, [])
@@ -154,14 +163,14 @@ export default function ServerWorkerPage() {
     try {
       if (isLaser) {
         const result = await runClientLaserPassForOrder(order, {
-          onProgress: log => pushLog(`Laser · ${orderId.slice(0, 8)}… — ${log}`),
+          onProgress: log => pushLog(`Laser · ${logRef(orderId)} — ${log}`),
         })
         setPassCount(n => n + 1)
         const label = motorPassLabel(result, { isLaser: true })
-        pushLog(`Passage laser → ${label}`, result, result.error ? 'error' : 'info')
+        pushLog(`Passage laser · ${logRef(orderId)} → ${label}`, result, result.error ? 'error' : 'info')
         if (result.error || result.phase === 'error') {
           skipMotorOrder(orderId, result.error || label)
-          pushLog(`⏭ Ignoré ${orderId.slice(0, 8)}… — ${result.error || label}`, null, 'error')
+          pushLog(`⏭ Ignoré ${logRef(orderId)} — ${result.error || label}`, null, 'error')
         }
         return result
       }
@@ -174,21 +183,21 @@ export default function ServerWorkerPage() {
             : `Mise en file ignorée (${q.reason})`
           throw new Error(msg)
         }
-        pushLog(`Mise en file ${orderId.slice(0, 8)}…`, q)
+        pushLog(`Mise en file · ${logRef(orderId)}`, q)
       }
       const result = await runMotorPass(secretRef.current, orderId)
       setPassCount(n => n + 1)
       const label = motorPassLabel(result)
-      pushLog(`Passage moteur → ${label}`, result, result.error ? 'error' : 'info')
+      pushLog(`Passage moteur · ${logRef(orderId)} → ${label}`, result, result.error ? 'error' : 'info')
       if (result.error || result.phase === 'error') {
         skipMotorOrder(orderId, result.error || label)
-        pushLog(`⏭ Ignoré ${orderId.slice(0, 8)}… — ${result.error || label}`, null, 'error')
+        pushLog(`⏭ Ignoré ${logRef(orderId)} — ${result.error || label}`, null, 'error')
       }
       return result
     } finally {
       setBusyOrderId(null)
     }
-  }, [pushLog, skipMotorOrder, motorPassLabel])
+  }, [pushLog, skipMotorOrder, motorPassLabel, logRef])
 
   const launchTraceV1Flow = useCallback(async (orderIds) => {
     if (!secretRef.current || !orderIds.length) return
@@ -213,7 +222,7 @@ export default function ServerWorkerPage() {
               : `Mise en file ignorée (${q.reason})`,
           )
         }
-        pushLog(`Tracé v1 lancé · ${id.slice(0, 8)}…`, q)
+        pushLog(`Tracé v1 lancé · ${logRef(id)}`, q)
 
         let result = await runMotorPass(secretRef.current, id)
         setPassCount(n => n + 1)
@@ -233,7 +242,7 @@ export default function ServerWorkerPage() {
 
         applyOptimistic(result)
         const label = result.phase === 'step1' ? 'Step 1' : result.phase === 'step2' ? 'Step 2' : result.phase ?? 'fait'
-        pushLog(`Passage moteur → ${label}`, result, result.error ? 'error' : 'info')
+        pushLog(`Passage moteur · ${logRef(id)} → ${label}`, result, result.error ? 'error' : 'info')
 
         while (result?.needsContinue && !result?.error && result?.phase !== 'error') {
           await new Promise(r => setTimeout(r, 800))
@@ -243,7 +252,7 @@ export default function ServerWorkerPage() {
         }
 
         if (result?.error || result?.phase === 'error') {
-          pushLog(result.error || 'Erreur FAL', result, 'error')
+          pushLog(`${logRef(id)} — ${result.error || 'Erreur moteur'}`, result, 'error')
         }
       }
     } catch (err) {
@@ -255,7 +264,7 @@ export default function ServerWorkerPage() {
       await refreshBoard()
       setOptimistic({})
     }
-  }, [pushLog, refreshBoard, clearMotorSkip])
+  }, [pushLog, refreshBoard, clearMotorSkip, logRef])
 
   const runAction = useCallback(async (action, orderIds) => {
     if (!secretRef.current || !orderIds.length) return
@@ -274,10 +283,10 @@ export default function ServerWorkerPage() {
           setBusyOrderId(id)
           const card = allCards.find(c => c.orderId === id)
           const result = await runClientLaserPassForOrder(card ?? { orderId: id, generationId: null }, {
-            onProgress: log => pushLog(`Laser · ${id.slice(0, 8)}… — ${log}`),
+            onProgress: log => pushLog(`Laser · ${logRef(id)} — ${log}`),
           })
           pushLog(
-            `Laser · ${id.slice(0, 8)}… → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
+            `Laser · ${logRef(id)} → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
             result,
             result.error ? 'error' : 'info',
           )
@@ -316,7 +325,7 @@ export default function ServerWorkerPage() {
     } finally {
       busyRef.current = false
     }
-  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder, allCards])
+  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder, allCards, logRef])
 
   const requestAction = useCallback((action, orderIds) => {
     if (action === 'delete') {
@@ -402,7 +411,7 @@ export default function ServerWorkerPage() {
           const msg = err instanceof Error ? err.message : String(err)
           if (next?.orderId) {
             skipMotorOrder(next.orderId, msg)
-            pushLog(`⏭ Ignoré ${next.orderId.slice(0, 8)}… — ${msg}`, null, 'error')
+            pushLog(`⏭ Ignoré ${logRef(next.orderId)} — ${msg}`, null, 'error')
           } else {
             pushLog(msg, null, 'error')
           }
@@ -414,7 +423,7 @@ export default function ServerWorkerPage() {
 
     loop()
     return () => { cancelled = true }
-  }, [secret, running, weekKey, refreshBoard, runPassForOrder, pushLog, skipMotorOrder])
+  }, [secret, running, weekKey, refreshBoard, runPassForOrder, pushLog, skipMotorOrder, logRef])
 
   useEffect(() => {
     if (!secret) return
@@ -509,7 +518,7 @@ export default function ServerWorkerPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl">
               {[
                 ['À traiter', stats.pending, 'text-amber-300'],
-                ['Erreurs FAL', stats.falErrors, 'text-red-300'],
+                ['Erreurs', stats.totalErrors, 'text-red-300'],
                 ['Bloquées >24h', stats.blocked24h, 'text-amber-300'],
                 ['Passages moteur', passCount, 'text-sky-300'],
                 ['Refresh', lastPollAt ?? '—', 'text-stone-400 text-base'],
@@ -517,28 +526,42 @@ export default function ServerWorkerPage() {
                 <div key={label} className="rounded-xl border border-stone-800 bg-stone-900/50 p-3">
                   <p className="text-[10px] text-stone-500 uppercase tracking-wide">{label}</p>
                   <p className={`text-xl font-semibold mt-1 font-mono ${cls}`}>{value}</p>
+                  {label === 'Erreurs' && stats.totalErrors > 0 && (
+                    <p className="text-[9px] text-stone-500 mt-1 leading-snug">
+                      {stats.falErrors ? `${stats.falErrors} FAL` : ''}
+                      {stats.falErrors && stats.laserErrors ? ' · ' : ''}
+                      {stats.laserErrors ? `${stats.laserErrors} laser` : ''}
+                      {(stats.falErrors || stats.laserErrors) && stats.generationErrors ? ' · ' : ''}
+                      {stats.generationErrors ? `${stats.generationErrors} autre` : ''}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
 
             {selectedIds.size > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-800/60 bg-sky-950/30 px-4 py-3">
-                <span className="text-sm text-sky-200 font-medium">{selectedIds.size} sélectionnée(s)</span>
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-sky-700/50 bg-sky-950/40 px-5 py-4 shadow-lg">
+                <span className="text-sm text-sky-100 font-semibold shrink-0">
+                  {selectedIds.size} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+                </span>
+                <div className="flex flex-wrap items-center gap-2.5 flex-1">
                 {bulkActions.map(a => (
                   <ServerBtn
                     key={a.id}
-                    variant={a.danger ? 'danger' : 'default'}
+                    variant={a.danger ? 'danger' : 'toolbar'}
+                    className="min-h-[44px] px-5 py-3 text-sm font-semibold"
                     onClick={() => requestAction(a.id, [...selectedIds])}
                   >
                     {a.label}
                   </ServerBtn>
                 ))}
+                </div>
                 <ServerBtn
                   variant="ghost"
-                  className="ml-auto"
+                  className="min-h-[44px] px-4 py-2 text-sm shrink-0"
                   onClick={() => setSelectedIds(new Set())}
                 >
-                  Effacer
+                  Effacer sélection
                 </ServerBtn>
               </div>
             )}

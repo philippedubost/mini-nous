@@ -29,14 +29,57 @@ export function clientOrderUrl(order) {
 export function orderHasClearableErrors(order) {
   if (!order) return false
   return !!(
-    order.hasFalError
+    order.hasAnyError
+    || order.hasFalError
+    || order.hasLaserError
+    || order.hasGenerationError
     || order.studioJob?.phase === 'error'
-    || order.studioJob?.error
     || order.studioLaser?.phase === 'error'
-    || order.studioLaser?.error
     || order.generationError
     || (order.errorLog?.length ?? 0) > 0
   )
+}
+
+/** Référence lisible pour le journal moteur : email tronqué · id court. */
+export function orderLogRef(orderId, cards = []) {
+  const shortId = orderId?.slice(0, 8) ?? '????'
+  const card = cards.find(c => c.orderId === orderId)
+  if (!card?.email) return `${shortId}…`
+  return `${truncateDisplayName(card.email, 22)} · ${shortId}…`
+}
+
+export const ERROR_KIND_LABELS = {
+  fal: 'Erreur FAL',
+  laser: 'Erreur laser',
+  generation: 'Erreur génération',
+  studio: 'Erreur',
+}
+
+export function errorKindLabel(kind) {
+  return ERROR_KIND_LABELS[kind] ?? 'Erreur'
+}
+
+export function formatColumnErrorSummary(orders = []) {
+  let fal = 0
+  let laser = 0
+  let gen = 0
+  for (const o of orders) {
+    if (!o.hasAnyError && !o.hasFalError && !o.hasLaserError && !o.hasGenerationError) continue
+    const kind = o.errorKind
+      ?? (o.hasLaserError ? 'laser' : o.hasFalError ? 'fal' : o.hasGenerationError ? 'generation' : 'studio')
+    if (kind === 'fal') fal += 1
+    else if (kind === 'laser') laser += 1
+    else gen += 1
+  }
+  const total = fal + laser + gen
+  if (!total) return null
+  const parts = []
+  if (fal) parts.push(`${fal} FAL`)
+  if (laser) parts.push(`${laser} laser`)
+  if (gen) parts.push(`${gen} autre`)
+  return parts.length === 1 && total === 1
+    ? parts[0]
+    : `${total} err. · ${parts.join(' · ')}`
 }
 
 export function contextActionsForColumn(column, order = null) {
