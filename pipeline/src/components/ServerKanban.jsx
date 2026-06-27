@@ -118,6 +118,7 @@ function ServerOrderCard({
   const title = truncateDisplayName(order.email, 22)
   const adminUrl = adminOrderDetailUrl(order)
   const clientUrl = clientOrderUrl(order)
+  const isLaserMotor = order.column === 'validated_fabrication' && !order.hasLaserSvg
   const motorCls = order.hasFalError || order.canRetry
     ? MOTOR_BADGE.error
     : order.needsTick
@@ -125,6 +126,11 @@ function ServerOrderCard({
       : order.needsQueue
         ? MOTOR_BADGE.needsQueue
         : null
+  const motorLabel = order.hasFalError || order.canRetry
+    ? (isLaserMotor ? 'Erreur laser' : 'Erreur FAL')
+    : order.needsQueue
+      ? (isLaserMotor ? 'SVG à générer' : 'À lancer')
+      : (isLaserMotor ? 'Laser…' : 'FAL…')
 
   return (
     <article
@@ -190,7 +196,19 @@ function ServerOrderCard({
 
       {motorCls && !order._processing && (
         <p className={`text-[10px] font-medium px-2 py-0.5 rounded border ${motorCls}`}>
-          {order.hasFalError || order.canRetry ? 'Erreur FAL' : order.needsQueue ? 'À lancer' : 'FAL…'}
+          {motorLabel}
+        </p>
+      )}
+
+      {order.hasLaserSvg && (
+        <p className="text-[10px] font-medium px-2 py-0.5 rounded border bg-violet-500/15 text-violet-300 border-violet-500/30 w-fit">
+          SVG ✓
+        </p>
+      )}
+
+      {order.studioLaser?.log && order.studioLaser?.phase === 'running' && (
+        <p className="text-[10px] text-stone-400 truncate" title={order.studioLaser.log}>
+          {order.studioLaser.log}
         </p>
       )}
 

@@ -22,8 +22,9 @@
     "@fal-ai/client": "^1.4.0",
     "@supabase/supabase-js": "^2.97.0",
     "@xmldom/xmldom": "^0.9.10",
-    "stripe": "^17.7.0",
     "sharp": "^0.35.1",
+    "skeleton-tracing-js": "^1.0.4",
+    "stripe": "^17.7.0",
     "ws": "^8.21.0"
   },
   "devDependencies": {

@@ -4,7 +4,9 @@ import {
   loadWorkerSecret,
   pickNextJob,
   queueStudioJob,
+  queueLaserJob,
   runMotorPass,
+  runLaserPass,
   runWorkerBulkAction,
   saveWorkerSecret,
 } from '../lib/studioWorker'
@@ -122,10 +124,28 @@ export default function ServerWorkerPage() {
     })
   }, [])
 
-  const runPassForOrder = useCallback(async (orderId, { queue = false, mode = 'initial' } = {}) => {
+  const runPassForOrder = useCallback(async (order, { queue = false, mode = 'initial' } = {}) => {
+    const orderId = typeof order === 'string' ? order : order.orderId
+    const isLaser = typeof order === 'object'
+      && order.column === 'validated_fabrication'
+      && !order.hasLaserSvg
+
     if (!secretRef.current) throw new Error('Mot de passe atelier manquant')
     setBusyOrderId(orderId)
     try {
+      if (isLaser) {
+        if (queue) {
+          const q = await queueLaserJob(secretRef.current, orderId, { force: true })
+          if (q.skipped) pushLog(`Laser ignoré (${q.reason})`, q)
+          else pushLog(`Laser en file ${orderId.slice(0, 8)}…`, q)
+        }
+        const result = await runLaserPass(secretRef.current, orderId)
+        setPassCount(n => n + 1)
+        const label = result.log || result.phase || 'fait'
+        pushLog(`Passage laser → ${label}`, result, result.error ? 'error' : 'info')
+        return result
+      }
+
       if (queue) {
         const q = await queueStudioJob(secretRef.current, orderId, { mode })
         if (q.skipped) {
@@ -221,6 +241,30 @@ export default function ServerWorkerPage() {
       return
     }
 
+    if (action === 'launch_laser') {
+      busyRef.current = true
+      try {
+        for (const id of orderIds) {
+          setBusyOrderId(id)
+          await queueLaserJob(secretRef.current, id, { force: true })
+          const result = await runLaserPass(secretRef.current, id)
+          pushLog(
+            `Laser · ${id.slice(0, 8)}… → ${result.phase ?? 'fait'}`,
+            result,
+            result.error ? 'error' : 'info',
+          )
+        }
+        setSelectedIds(new Set())
+        await refreshBoard()
+      } catch (err) {
+        pushLog(err.message, null, 'error')
+      } finally {
+        setBusyOrderId(null)
+        busyRef.current = false
+      }
+      return
+    }
+
     busyRef.current = true
     try {
       const res = await runWorkerBulkAction(secretRef.current, action, orderIds)
@@ -301,14 +345,14 @@ export default function ServerWorkerPage() {
             continue
           }
 
-          let result = await runPassForOrder(next.orderId, {
+          let result = await runPassForOrder(next, {
             queue: next.needsQueue,
             mode: next.mode ?? next.studioJob?.mode ?? 'initial',
           })
 
           while (!cancelled && runningRef.current && result?.needsContinue) {
             await new Promise(r => setTimeout(r, 800))
-            result = await runPassForOrder(next.orderId)
+            result = await runPassForOrder(next)
           }
 
           await refreshBoard()

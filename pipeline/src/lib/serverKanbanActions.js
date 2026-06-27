@@ -6,7 +6,10 @@ export const CONTEXT_ACTIONS_BY_COLUMN = {
   trace_v1: [{ id: 'validate_trace', label: 'Valider ce tracé' }],
   trace_v2: [{ id: 'validate_trace', label: 'Valider ce tracé' }],
   trace_v3: [{ id: 'validate_trace', label: 'Valider ce tracé' }],
-  validated_fabrication: [{ id: 'fabrication_done', label: 'Fabrication finie' }],
+  validated_fabrication: [
+    { id: 'launch_laser', label: 'Générer SVG laser' },
+    { id: 'fabrication_done', label: 'Fabrication finie' },
+  ],
   fabricated: [{ id: 'mark_shipped', label: 'Enveloppe Expédiée' }],
   shipped: [{ id: 'mark_received', label: 'Enveloppe Reçue' }],
 }

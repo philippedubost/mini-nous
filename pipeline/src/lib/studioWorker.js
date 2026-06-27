@@ -61,6 +61,24 @@ export async function runMotorPass(secret, orderId) {
   return parseJson(res)
 }
 
+export async function queueLaserJob(secret, orderId, { force = false } = {}) {
+  const res = await fetch('/api/studio-laser', {
+    method: 'POST',
+    headers: workerHeaders(secret),
+    body: JSON.stringify({ orderId, queue: true, force }),
+  })
+  return parseJson(res)
+}
+
+export async function runLaserPass(secret, orderId) {
+  const res = await fetch('/api/studio-laser', {
+    method: 'POST',
+    headers: workerHeaders(secret),
+    body: JSON.stringify({ orderId }),
+  })
+  return parseJson(res)
+}
+
 export function pickNextJob(jobs) {
   const actionable = (jobs ?? []).filter(j => j.needsTick || j.needsQueue)
   if (!actionable.length) return null
