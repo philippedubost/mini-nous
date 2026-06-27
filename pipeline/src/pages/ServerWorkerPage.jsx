@@ -4,12 +4,11 @@ import {
   loadWorkerSecret,
   pickNextJob,
   queueStudioJob,
-  queueLaserJob,
   runMotorPass,
-  runLaserPass,
   runWorkerBulkAction,
   saveWorkerSecret,
 } from '../lib/studioWorker'
+import { runClientLaserPassForOrder } from '../lib/clientLaserPass'
 import {
   ServerKanbanBoard,
   ServerContextMenu,
@@ -154,19 +153,9 @@ export default function ServerWorkerPage() {
     setBusyOrderId(orderId)
     try {
       if (isLaser) {
-        if (queue) {
-          const q = await queueLaserJob(secretRef.current, orderId, { force: true })
-          if (q.skipped) {
-            const msg = q.reason === 'already_done'
-              ? 'SVG laser déjà présent'
-              : q.reason === 'laser_error'
-                ? (q.error || 'Erreur laser — relancer manuellement')
-                : `Mise en file ignorée (${q.reason})`
-            throw new Error(msg)
-          }
-          pushLog(`Laser en file ${orderId.slice(0, 8)}…`, q)
-        }
-        const result = await runLaserPass(secretRef.current, orderId)
+        const result = await runClientLaserPassForOrder(order, {
+          onProgress: log => pushLog(`Laser · ${orderId.slice(0, 8)}… — ${log}`),
+        })
         setPassCount(n => n + 1)
         const label = motorPassLabel(result, { isLaser: true })
         pushLog(`Passage laser → ${label}`, result, result.error ? 'error' : 'info')
@@ -283,8 +272,10 @@ export default function ServerWorkerPage() {
       try {
         for (const id of orderIds) {
           setBusyOrderId(id)
-          await queueLaserJob(secretRef.current, id, { force: true })
-          const result = await runLaserPass(secretRef.current, id)
+          const card = allCards.find(c => c.orderId === id)
+          const result = await runClientLaserPassForOrder(card ?? { orderId: id, generationId: null }, {
+            onProgress: log => pushLog(`Laser · ${id.slice(0, 8)}… — ${log}`),
+          })
           pushLog(
             `Laser · ${id.slice(0, 8)}… → ${result.error || (result.phase === 'done' ? 'SVG prêt' : result.phase)}`,
             result,
@@ -318,7 +309,7 @@ export default function ServerWorkerPage() {
     } finally {
       busyRef.current = false
     }
-  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder])
+  }, [pushLog, refreshBoard, launchTraceV1Flow, clearMotorSkip, skipMotorOrder, allCards])
 
   const requestAction = useCallback((action, orderIds) => {
     if (action === 'delete') {
