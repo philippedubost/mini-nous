@@ -17,6 +17,7 @@ import { scrollPageTo } from '../lib/scrollPage'
 
 function phaseForOrder(order) {
   if (!order.isPaid) return 'awaiting_payment'
+  if (order.studioGenerateActive) return 'upload'
   if (order.previewUrl && order.workflowStatus !== 'revision_requested') return 'review'
   return 'upload'
 }
@@ -34,11 +35,22 @@ function orderSyncKey(o) {
     o.previewUrl,
     o.studioGenerateActive,
     o.studioGeneratePhase,
+    o.studioGenerateMode,
     o.generationStatus,
     o.generationError,
     o.lineartVersion,
     o.lineartVersions?.length ?? 0,
   ].join('|')
+}
+
+function studioStatusLabel(order) {
+  if (order?.studioGenerateMode === 'regen') {
+    if (order.studioGeneratePhase === 'step2') return 'Regénération du tracé v2…'
+    return 'Préparation du tracé v2…'
+  }
+  if (order?.studioGeneratePhase === 'step2') return 'Traitement du tracé…'
+  if (order?.studioGeneratePhase === 'step1') return 'Mise en scène atelier…'
+  return 'Préparation de votre photo…'
 }
 
 export default function StudioCustomerFlow({
@@ -64,10 +76,14 @@ export default function StudioCustomerFlow({
 
   const applyOrder = useCallback((o) => {
     setOrder(o)
-    if (o.previewUrl) setLineartUrl(o.previewUrl)
+    if (o.studioGenerateActive) {
+      setLineartUrl(null)
+    } else if (o.previewUrl) {
+      setLineartUrl(o.previewUrl)
+    }
     const selected = o.lineartVersions?.find(v => v.isSelected)
       ?? o.lineartVersions?.[o.lineartVersions.length - 1]
-    if (selected) {
+    if (selected && !o.studioGenerateActive) {
       setSelectedVersionId(selected.versionId)
       if (o.studio?.showVersionPicker) setLineartUrl(selected.url)
     }
@@ -75,6 +91,10 @@ export default function StudioCustomerFlow({
       setError(o.generationError)
     }
     setPhase(phaseForOrder(o))
+    if (!o.studioGenerateActive) {
+      setBusy(false)
+      if (o.previewUrl) setStatusMsg(null)
+    }
     const syncKey = orderSyncKey(o)
     if (syncKey !== lastParentSyncKey.current) {
       lastParentSyncKey.current = syncKey
@@ -134,14 +154,28 @@ export default function StudioCustomerFlow({
   }, [order?.workflowStatus, reloadOrder])
 
   useEffect(() => {
-    if (!orderToken || lineartUrl || order?.previewUrl) return undefined
-    if (!order?.isPaid) return undefined
-    if (!order?.studioGenerateActive && !['in_studio', 'awaiting_photo'].includes(order?.workflowStatus)) return undefined
+    if (!orderToken || !order?.isPaid) return undefined
+    const waitingForLineart = order.studioGenerateActive
+      || order.workflowStatus === 'revision_requested'
+      || (
+        !lineartUrl
+        && !order.previewUrl
+        && ['in_studio', 'awaiting_photo'].includes(order.workflowStatus)
+      )
+    if (!waitingForLineart) return undefined
     const poll = () => { reloadOrder().catch(() => {}) }
     poll()
-    const t = setInterval(poll, 5000)
+    const t = setInterval(poll, order.studioGenerateActive ? 5000 : 30000)
     return () => clearInterval(t)
-  }, [orderToken, lineartUrl, order?.previewUrl, order?.isPaid, order?.workflowStatus, order?.studioGenerateActive, reloadOrder])
+  }, [
+    orderToken,
+    lineartUrl,
+    order?.previewUrl,
+    order?.isPaid,
+    order?.workflowStatus,
+    order?.studioGenerateActive,
+    reloadOrder,
+  ])
 
   useEffect(() => {
     if (!order?.previewUrl || lineartUrl) return
@@ -158,13 +192,9 @@ export default function StudioCustomerFlow({
     setLineartUrl(null)
     setBusy(true)
     setError(null)
-    const phaseLabel = order.studioGeneratePhase === 'step2'
-      ? 'Traitement du tracé…'
-      : order.studioGeneratePhase === 'step1'
-        ? 'Mise en scène atelier…'
-        : 'Préparation de votre photo…'
-    setStatusMsg(phaseLabel)
-  }, [order?.studioGenerateActive, order?.studioGeneratePhase])
+    setStatusMsg(studioStatusLabel(order))
+    setPhase('upload')
+  }, [order?.studioGenerateActive, order?.studioGeneratePhase, order?.studioGenerateMode])
 
   const runPipeline = useCallback(async (file) => {
     if (!order?.isPaid) return
@@ -219,15 +249,18 @@ export default function StudioCustomerFlow({
     if (!caps.canAutoAdjust) return
     setError(null)
     setBusy(true)
+    setLineartUrl(null)
+    setPhase('upload')
+    setStatusMsg('Envoi de vos retours — regénération du tracé v2…')
     try {
       await orderAction(orderToken, 'regen', bearerToken, { characters })
-      setLineartUrl(null)
-      setPhase('upload')
-      setStatusMsg('Regénération en cours côté serveur…')
+      lastParentSyncKey.current = ''
       await reloadOrder()
     } catch (e) {
       setError(e.message)
       setBusy(false)
+      if (order?.previewUrl) setLineartUrl(order.previewUrl)
+      setPhase('review')
     }
   }
 
