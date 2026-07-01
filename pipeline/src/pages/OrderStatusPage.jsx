@@ -74,16 +74,28 @@ export default function OrderStatusPage() {
     }
   }, [orderToken, bearerToken])
 
+  const shipLabel = order?.deliveryDateLabel ?? null
+
+  const showStudioFlow = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
+  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioFlow
+  const showNps = order?.isPaid
+    && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
+    && !order?.npsSubmittedAt
+  const showShare = order?.isPaid && order?.workflowStatus === 'shipped' && !order?.mininousShareUrl
+
+  const autoStart = autoParam || (!order?.previewUrl && order?.workflowStatus === 'in_studio')
+
   const pollMs = !order
     ? 30000
-    : order.isPaid === false
-      ? 5000
-      : (order.studioGenerateActive || ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order.workflowStatus))
+    : showStudioFlow
+      ? null
+      : order.isPaid === false
         ? 5000
         : 30000
 
   useEffect(() => {
     load()
+    if (!pollMs) return undefined
     const t = setInterval(load, pollMs)
     return () => clearInterval(t)
   }, [load, pollMs])
@@ -131,17 +143,6 @@ export default function OrderStatusPage() {
     const el = document.getElementById('avis')
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [order, loading])
-
-  const shipLabel = order?.deliveryDateLabel ?? null
-
-  const showStudioFlow = order?.isPaid && ['awaiting_photo', 'in_studio', 'pending_validation', 'revision_requested'].includes(order?.workflowStatus)
-  const showGallery = order?.isPaid && (order?.sourcePhotoUrl || order?.validatedLineartUrl || order?.previewUrl) && !showStudioFlow
-  const showNps = order?.isPaid
-    && ['approved', 'in_production', 'shipped'].includes(order?.workflowStatus)
-    && !order?.npsSubmittedAt
-  const showShare = order?.isPaid && order?.workflowStatus === 'shipped' && !order?.mininousShareUrl
-
-  const autoStart = autoParam || (!order?.previewUrl && order?.workflowStatus === 'in_studio')
 
   return (
     <CustomerLayout
@@ -211,7 +212,7 @@ export default function OrderStatusPage() {
             </div>
           )}
 
-          <OrderTimeline order={order} />
+          {!showStudioFlow && <OrderTimeline order={order} />}
 
           {showStudioFlow && (
             <StudioCustomerFlow

@@ -27,6 +27,20 @@ const PROCESSING_STEPS = [
   { key: 'line', label: 'Traitement du tracé' },
 ]
 
+function orderSyncKey(o) {
+  if (!o) return ''
+  return [
+    o.workflowStatus,
+    o.previewUrl,
+    o.studioGenerateActive,
+    o.studioGeneratePhase,
+    o.generationStatus,
+    o.generationError,
+    o.lineartVersion,
+    o.lineartVersions?.length ?? 0,
+  ].join('|')
+}
+
 export default function StudioCustomerFlow({
   orderToken,
   bearerToken = null,
@@ -46,6 +60,7 @@ export default function StudioCustomerFlow({
   const [selectedVersionId, setSelectedVersionId] = useState(null)
   const autoStarted = useRef(false)
   const confirmTried = useRef(false)
+  const lastParentSyncKey = useRef('')
 
   const applyOrder = useCallback((o) => {
     setOrder(o)
@@ -60,7 +75,11 @@ export default function StudioCustomerFlow({
       setError(o.generationError)
     }
     setPhase(phaseForOrder(o))
-    onOrderChange?.(o)
+    const syncKey = orderSyncKey(o)
+    if (syncKey !== lastParentSyncKey.current) {
+      lastParentSyncKey.current = syncKey
+      onOrderChange?.(o)
+    }
     return o
   }, [onOrderChange])
 
