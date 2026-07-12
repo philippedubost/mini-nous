@@ -24,6 +24,12 @@ alwaysApply: false
 Valeurs : `solo`, `duo`, `famille`, `grande_famille`. Utiliser `packTypeForDatabase()` à l’insert.
 Metadata : `base_pack` garde l’id réel (ex. `solo`).
 
+## Marque WoodTribe (défaut)
+
+- Brand par défaut commandes : `woodtribe`
+- Cancel URL WoodTribe : `/commander` · MiniNous : `/mininous/commander`
+- Success URL : `/pipeline/commande?order=TOKEN&auto=1&session_id=…`
+
 ## Stripe URLs
 
-`lib/server/stripe-client.js` → prod = `https://mininous.app`
+`lib/server/stripe-client.js` → prod = `https://woodtribe.fr`

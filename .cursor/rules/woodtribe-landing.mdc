@@ -1,0 +1,30 @@
+---
+description: Landing WoodTribe — sync depuis index.html, home /
+globs: woodtribe.html,scripts/gen-woodtribe-html.mjs
+alwaysApply: false
+---
+
+# WoodTribe landing (home)
+
+## Règle d'or
+
+**Ne jamais modifier `woodtribe.html` à la main.** Généré depuis `index.html`.
+
+1. Modifier `index.html` (base partagée — contient aussi les constantes MiniNous `/mininous`)
+2. `npm run gen:woodtribe` ou `npm run dev` (watch auto)
+
+## Générateur
+
+`scripts/gen-woodtribe-html.mjs` produit WoodTribe :
+- `BASE_PATH = ''`, `PAYWALL_PATH = '/commander'`, `BRAND_ID = 'woodtribe'`
+- Canonical `https://woodtribe.fr/`
+- Copy, typo Fraunces/DM Sans, `brand` dans payloads API
+
+## Build prod
+
+- `dist/index.html` ← contenu `woodtribe.html` (home `/`)
+- `dist/mininous.html` ← contenu `index.html` (legacy `/mininous`)
+
+## Stripe cancel
+
+WoodTribe : `/commander` · MiniNous : `/mininous/commander`

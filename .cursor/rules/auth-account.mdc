@@ -1,0 +1,34 @@
+---
+description: Compte client Supabase — AuthContext, /api/me
+globs: pipeline/src/context/AuthContext.jsx,pipeline/src/pages/AccountPage.jsx,pipeline/src/pages/AccountLoginPage.jsx,pipeline/src/pages/AuthCallbackPage.jsx,lib/api/handlers/me.js,lib/server/auth.js,lib/server/order-access.js
+alwaysApply: false
+---
+
+# Compte client
+
+## Routes
+
+- `/pipeline/compte` — historique commandes
+- `/pipeline/compte/connexion` — magic link Supabase
+- `/pipeline/compte/auth/callback` — retour OAuth
+
+## API
+
+`GET/POST /api/me` :
+- `GET` — commandes liées au JWT
+- `POST claim` — rattacher commande (token) au compte
+- Actions admin via header `X-MiniNous-Admin`
+
+## Client
+
+- `AuthContext.jsx` — session Supabase (`pipeline/src/lib/supabase.js`)
+- Env client : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+## Serveur
+
+- `lib/server/auth.js` — validation JWT
+- `lib/server/order-access.js` — auth token commande + lien user_id
+
+## Piège
+
+Service role (`SUPABASE_SERVICE_ROLE_KEY`) **serveur uniquement**, jamais côté client.

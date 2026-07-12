@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { submitEngagement } from '../lib/storage'
 
-const TRUSTPILOT_URL = 'https://fr.trustpilot.com/evaluate/mininous.app'
+const TRUSTPILOT_URL = 'https://fr.trustpilot.com/evaluate/woodtribe.fr'
 
 export default function NpsSurvey({ orderToken, submitted, initialScore }) {
   const [score, setScore] = useState(initialScore ?? null)

@@ -33,6 +33,10 @@ Handlers restent **minces** : pas de logique métier lourde inline.
 2. Ajouter clé dans `lib/api/router.js` → `routes`
 3. Compter les fonctions Vercel (limite ~12)
 
+## Routes lazy
+
+`trace-autotrace`, `studio-laser` — import dynamique dans `router.js` (évite de charger deps lourdes au boot).
+
 ## Modules serveur clés
 
 | Module | Rôle |
@@ -40,6 +44,12 @@ Handlers restent **minces** : pas de logique métier lourde inline.
 | `packs.js` | Tarifs + `formatQuoteForClient` |
 | `orders.js` | CRUD commandes |
 | `paywall-order.js` | Brouillon landing |
+| `checkout-fulfill.js` | Post-paiement Stripe |
+| `order-workflow.js` | Statuts workflow client |
 | `pipeline-settings.js` | Prompts globaux |
+| `studio-generate.js` | Orchestration FAL atelier |
+| `order-email.js` | Emails Resend |
 | `r2.js` | Upload assets |
 | `stripe-client.js` | Stripe + SITE_URL |
+
+Registre complet : voir `AGENTS.md` section API.

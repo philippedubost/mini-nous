@@ -1,26 +1,33 @@
 ---
-description: Carte MiniNous — toujours lire avant un changement multi-fichiers
+description: Carte Wood-Tribe / MiniNous — lire avant un changement multi-fichiers
 alwaysApply: true
 ---
 
-# MiniNous — scope agent
+# Wood-Tribe — scope agent
 
 Lire `AGENTS.md` à la racine pour la carte complète.
 
 ## Couches (ne pas mélanger)
 
-- **Landing** : `index.html` — marketing + paywall uniquement
-- **Pipeline** : `pipeline/src/` — React Vite, studio réel
+- **Landing** : `index.html` (MiniNous `/mininous`) + `woodtribe.html` généré (home `/`)
+- **Pipeline** : `pipeline/src/` — 3 SPAs React (client `/pipeline`, admin `/admin`, atelier `/server`)
 - **Serveur** : `lib/server/` — vérité métier
 - **API** : `lib/api/handlers/` — HTTP mince
 
+## Rebrand WoodTribe
+
+- Éditer **`index.html`**, jamais `woodtribe.html` directement
+- Regénérer : `npm run gen:woodtribe` (auto en dev)
+- Code/DB restent `mini_nous_*` — ne pas renommer en masse
+
 ## Interdits fréquents
 
-- Dupliquer tarifs dans `index.html` → utiliser `/api/quote?faces=N` + `lib/server/packs.js`
-- Traiter `Editor`/`Success` (landing) comme le studio production → c’est `StudioPage.jsx`
-- Modifier prompts sans passer par `pipeline-settings` (Supabase)
-- Ajouter des routes Vercel sans vérifier la limite (~12 fonctions)
+- Dupliquer tarifs dans landing → `/api/quote?faces=N` + `lib/server/packs.js`
+- Traiter `Editor`/`Success` (landing) comme le studio → c'est **`OrderStatusPage`** (`/pipeline/commande`)
+- Confondre `/pipeline/studio` (redirect) avec le flux réel
+- Modifier prompts sans `pipeline-settings` (Supabase)
+- Routes Vercel sans vérifier la limite (~12 fonctions)
 
 ## Dev
 
-`npm run dev` → port 3333. API rechargée à chaque requête en dev (`scripts/gateway.mjs`).
+`npm run dev` → port 3333. API rechargée à chaque requête (`scripts/gateway.mjs`).

@@ -12,11 +12,16 @@
     }
   },
   "redirects": [
+    { "source": "/woodtribe", "destination": "/", "permanent": true },
+    { "source": "/woodtribe/commander", "destination": "/commander", "permanent": true },
+    { "source": "/mes-figurines", "destination": "/commander", "permanent": true },
     { "source": "/pipeline/admin", "destination": "/admin", "permanent": true },
     { "source": "/pipeline/admin/:path*", "destination": "/admin/:path*", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/mes-figurines", "destination": "/index.html" },
+    { "source": "/commander", "destination": "/index.html" },
+    { "source": "/mininous", "destination": "/mininous.html" },
+    { "source": "/mininous/commander", "destination": "/mininous.html" },
     { "source": "/api/:route((?!stripe-webhook)[^/]+)", "destination": "/api/index?route=:route" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/admin/:path*", "destination": "/admin/index.html" },

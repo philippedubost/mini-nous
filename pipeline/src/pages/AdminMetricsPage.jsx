@@ -113,7 +113,7 @@ export default function AdminMetricsPage() {
       <section className="space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-stone-400">Semaine en cours</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Paywall ouverts" value={funnel?.thisWeek?.counts?.paywall_opened} tone="stone" sub="Vue /mes-figurines" />
+          <StatCard label="Paywall ouverts" value={funnel?.thisWeek?.counts?.paywall_opened} tone="stone" sub="Vue /commander" />
           <StatCard label="Studio ouverts" value={funnel?.thisWeek?.counts?.studio_opened} tone="stone" sub="Page commande" />
           <StatCard label="Photos uploadées" value={wk.uploads} tone="blue" sub="POST order-start réussi" />
           <StatCard label="Checkouts Stripe" value={wk.checkouts} tone="amber" sub="Sessions créées" />

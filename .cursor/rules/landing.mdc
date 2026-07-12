@@ -1,34 +1,31 @@
 ---
-description: Landing marketing et paywall (index.html)
-globs: index.html
+description: Landing marketing et paywall (index.html + woodtribe.html)
+globs: index.html,woodtribe.html
 alwaysApply: false
 ---
 
-# Landing (`index.html`)
+# Landing
 
-Monolithe ~2500 lignes : CSS + React inline (Babel CDN). Minimiser le diff — extraire seulement si demandé.
+Monolithe ~3600 lignes : CSS + React inline (Babel CDN). Minimiser le diff.
 
-## Responsabilités
+## Marques
 
-- Marketing, upload photo, paywall, appel API checkout
-- **Pas** le pipeline FAL réel post-paiement
+| Fichier | Marque | Routes | Paywall |
+|---------|--------|--------|---------|
+| `woodtribe.html` | **WoodTribe** (généré, home prod) | `/`, `/commander` | `/commander` |
+| `index.html` | MiniNous legacy | `/mininous` | `/mininous/commander` |
+
+Modifs WoodTribe → éditer `index.html` puis `npm run gen:woodtribe`. Voir `woodtribe-landing.mdc`.
+
+Domaine prod : **woodtribe.fr**. Brand par défaut API : `woodtribe`.
 
 ## API utilisées
 
-- `GET /api/week-status` — packs catalogue, places, dates livraison
-- `GET /api/quote?faces=N` — devis paywall (source de vérité prix)
-- `POST /api/order-start` — brouillon commande + photo R2
-- `PATCH /api/order-start` — maj faceCount
-- `POST /api/checkout` — session Stripe (`faceCount` requis)
+- `GET /api/week-status`, `GET /api/quote?faces=N`
+- `POST /api/order-start`, `PATCH /api/order-start`
+- `POST /api/checkout` — inclure `brand: BRAND_ID`
 
 ## Pièges
 
-- `Editor`, `Success`, `PEOPLE` = **démo UI**, non branchés à `/api/generations`
-- Flux réel post-paiement : `/pipeline/studio?order=TOKEN`
-- Face detection : face-api.js CDN (landing) ≠ MediaPipe (`pipeline/src/lib/faceDetect.js`)
-
-## Paywall (composant `Paywall`)
-
-- Composition : `FamilyCompositionQuestion` + carte pricing à droite
-- Photo uploadée : header carte composition (`photoHeader`), pas de triptyque photo
-- Prix affiché : figurines TTC sans port ; port en note discrète (Stripe)
+- `Editor`/`Success` = démo UI ; flux réel → `/pipeline/commande`
+- Redirections legacy : `/mes-figurines` → `/commander`, `/woodtribe` → `/`

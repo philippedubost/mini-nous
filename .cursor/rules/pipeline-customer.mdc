@@ -1,6 +1,6 @@
 ---
-description: Studio client, commandes, parcours post-paiement
-globs: pipeline/src/pages/StudioPage.jsx,pipeline/src/pages/OrderStatusPage.jsx,pipeline/src/pages/PaymentSuccessPage.jsx,pipeline/src/pages/NewOrderPage.jsx,pipeline/src/components/CustomerLayout.jsx,pipeline/src/components/RevisionPanel.jsx
+description: Studio client post-paiement — OrderStatusPage /commande
+globs: pipeline/src/pages/OrderStatusPage.jsx,pipeline/src/pages/StudioPage.jsx,pipeline/src/components/StudioCustomerFlow.jsx,pipeline/src/components/CustomerLayout.jsx,pipeline/src/components/RevisionPanel.jsx,pipeline/src/lib/storage.js,pipeline/src/lib/studioFlow.js
 alwaysApply: false
 ---
 
@@ -8,14 +8,20 @@ alwaysApply: false
 
 ## Page principale
 
-**`StudioPage.jsx`** — flux post-paiement canonique (`/pipeline/studio?order=`).
+**`OrderStatusPage.jsx`** — flux post-paiement canonique (`/pipeline/commande?order=`).
 
-## Autres pages
+Contient `StudioCustomerFlow.jsx` (génération FAL, validation line art, révisions).
 
-- `OrderStatusPage.jsx` — suivi commande par token
-- `PaymentSuccessPage.jsx` — redirect après Stripe (legacy path)
-- `NewOrderPage.jsx` — nouvelle commande (admin/tests)
-- `PipelinePage.jsx` — **legacy** `/legacy` — ne pas étendre
+## Redirect legacy
+
+**`StudioPage.jsx`** (`/pipeline/studio`) → redirect vers `/commande?…`. Ne pas y ajouter de logique.
+
+## Autres pages client
+
+- `AccountPage.jsx` — `/compte` (historique, claim)
+- `NewOrderPage.jsx` — `/nouvelle-commande` (admin/tests)
+- `PipelinePage.jsx` — `/legacy` — **ne pas étendre**
+- `PaymentSuccessPage.jsx`, `PaymentCancelPage.jsx` — chemins legacy
 
 ## Settings & FAL
 
@@ -25,8 +31,6 @@ alwaysApply: false
 
 ## API client
 
-`pipeline/src/lib/storage.js` — préférer n’y toucher que pour les endpoints concernés.
+`pipeline/src/lib/storage.js` — endpoints commande, checkout-confirm, orders, revisions.
 
-## Checkout confirm
-
-Au load studio avec `session_id` : `confirmCheckout()` dans `storage.js`
+Au load avec `session_id` : `confirmCheckout()` puis flux studio.

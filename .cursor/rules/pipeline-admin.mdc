@@ -6,11 +6,24 @@ alwaysApply: false
 
 # Admin pipeline
 
+SPA : `admin-main.jsx`, basename `/admin`. Entrée Vite : `pipeline/admin.html`.
+
 ## Auth
 
 - Mot de passe : header `X-MiniNous-Admin` (`pipeline/src/lib/adminAuth.js`)
 - Serveur : `hasAdminAccess()` dans `lib/server/admin.js`
 - Layout gate : `AdminLayout.jsx`
+
+## Pages principales
+
+| Route | Page |
+|-------|------|
+| `/` | `AdminHomePage` |
+| `/serveur` | Kanban atelier (même UI que `/server`) |
+| `/generations`, `/g/:id` | Liste + détail génération |
+| `/settings` | Prompts FAL + ref line art |
+| `/metrics` | Funnel (`/api/metrics`) |
+| `/lab/trace` | Trace lab |
 
 ## Paramètres globaux
 
@@ -27,3 +40,4 @@ alwaysApply: false
 ## Production hebdo
 
 - `lib/api/handlers/production-weeks.js` + `lib/server/batch.js`
+- Kanban atelier détaillé : voir `.cursor/rules/worker-server.mdc`

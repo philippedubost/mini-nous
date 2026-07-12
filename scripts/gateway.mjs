@@ -47,9 +47,22 @@ const LEGAL_REWRITES = {
   '/cookies': '/legal/cookies.html',
 }
 
+function redirect(res, location) {
+  res.writeHead(301, { Location: location })
+  res.end()
+}
+
 function serveStatic(req, res) {
   let path = req.url?.split('?')[0] || '/'
-  if (path === '/' || path === '/mes-figurines') path = '/index.html'
+  const query = req.url?.includes('?') ? `?${req.url.split('?')[1]}` : ''
+
+  // Anciennes URLs → WoodTribe (home)
+  if (path === '/woodtribe') return redirect(res, `/${query}`)
+  if (path === '/woodtribe/commander') return redirect(res, `/commander${query}`)
+  if (path === '/mes-figurines') return redirect(res, `/commander${query}`)
+
+  if (path === '/' || path === '/commander') path = '/woodtribe.html'
+  if (path === '/mininous' || path === '/mininous/commander') path = '/index.html'
   if (LEGAL_REWRITES[path]) path = LEGAL_REWRITES[path]
   const filePath = join(root, path.replace(/^\//, ''))
   if (!filePath.startsWith(root) || !existsSync(filePath)) {

@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeBuildInfo } from './gen-build-info.mjs'
+import { regenerateWoodtribe } from './gen-woodtribe-html.mjs'
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const dist = join(root, 'dist')
@@ -14,12 +15,21 @@ mkdirSync(dist, { recursive: true })
 const buildInfo = writeBuildInfo(root)
 cpSync(join(root, 'build-info.json'), join(dist, 'build-info.json'))
 
-let landingHtml = readFileSync(join(root, 'index.html'), 'utf8')
+regenerateWoodtribe({ quiet: true })
+
 const buildInfoScript = `<script>window.__MININOUS_BUILD_INFO__=${JSON.stringify(buildInfo)}</script>`
-landingHtml = landingHtml.includes('<!-- BUILD_INFO -->')
-  ? landingHtml.replace('<!-- BUILD_INFO -->', buildInfoScript)
-  : landingHtml.replace('</head>', `${buildInfoScript}\n</head>`)
+
+function injectBuildInfo(html) {
+  return html.includes('<!-- BUILD_INFO -->')
+    ? html.replace('<!-- BUILD_INFO -->', buildInfoScript)
+    : html.replace('</head>', `${buildInfoScript}\n</head>`)
+}
+
+let landingHtml = injectBuildInfo(readFileSync(join(root, 'woodtribe.html'), 'utf8'))
 writeFileSync(join(dist, 'index.html'), landingHtml)
+
+const mininousHtml = injectBuildInfo(readFileSync(join(root, 'index.html'), 'utf8'))
+writeFileSync(join(dist, 'mininous.html'), mininousHtml)
 for (const f of ['robots.txt', 'sitemap.xml']) {
   const src = join(root, f)
   if (existsSync(src)) cpSync(src, join(dist, f))

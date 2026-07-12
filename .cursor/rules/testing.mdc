@@ -1,0 +1,25 @@
+---
+description: Tests E2E Playwright et harness test-flow
+globs: tests/**/*.mjs,playwright.config.js,pipeline/src/pages/TestFlowPage.jsx,lib/api/handlers/test-flow.js,lib/server/test-flow.js
+alwaysApply: false
+---
+
+# Tests
+
+## E2E Playwright
+
+- Spec : `tests/e2e/full-flow.spec.mjs`
+- Config : `playwright.config.js` — démarre `npm run dev`, base `:3333`, timeout 180s
+- Run : `npm run test:e2e` ou `npm run test:e2e:ui`
+- Env : `PLAYWRIGHT_BASE_URL`, `PLAYWRIGHT_SKIP_SERVER`
+
+## Harness test-flow
+
+- UI : `/pipeline/test` (`TestFlowPage.jsx`) — gate mot de passe admin
+- API : `/api/test-flow` — actions `create_draft`, `checkout`, `confirm_payment`, `run_after_payment`, `full_start`
+- Serveur : `lib/server/test-flow.js`
+- Actif en dev/preview ou avec `ENABLE_TEST_FLOW` / header admin
+
+## Pas de tests unitaires
+
+Ne pas ajouter de framework unitaire sans demande — Playwright couvre le flux complet.

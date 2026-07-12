@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { startGateway } from './gateway.mjs'
+import { regenerateWoodtribe, watchWoodtribeSync } from './gen-woodtribe-html.mjs'
 import { loadEnv } from './lib/load-env.mjs'
 import { warnIfSupabaseUnreachable, isSupabaseReachable } from './lib/supabase-check.mjs'
 import { writeBuildInfo } from './gen-build-info.mjs'
@@ -66,6 +67,8 @@ async function main() {
   loadEnv()
   const buildInfo = writeBuildInfo(rootDir)
   console.log(`  Build ${buildInfo.version} · ${buildInfo.committedAtLabel}`)
+  regenerateWoodtribe()
+  watchWoodtribeSync({ rootDir })
   await warnIfSupabaseUnreachable()
   if (!isSupabaseReachable()) {
     process.env.SUPABASE_REACHABLE = '0'
@@ -102,8 +105,10 @@ async function main() {
   await startGateway({ port: PORT, vitePort: VITE_PORT, devReload: true })
 
   console.log('')
-  console.log(`  Mini-Nous → http://localhost:${PORT}`)
-  console.log(`    /              landing`)
+  console.log(`  WoodTribe → http://localhost:${PORT}`)
+  console.log(`    /              landing WoodTribe (home)`)
+  console.log(`    /commander     paywall WoodTribe`)
+  console.log(`    /mininous      landing MiniNous (legacy)`)
   console.log(`    /pipeline/     studio client + compte`)
   console.log(`    /admin/        admin + carte produit`)
   console.log(`    /server/       worker studio (pico PC)`)

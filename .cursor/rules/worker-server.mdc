@@ -1,0 +1,33 @@
+---
+description: Atelier /server — kanban motor, studio-worker, laser
+globs: pipeline/src/pages/ServerWorkerPage.jsx,pipeline/src/pages/ServerOrderPage.jsx,pipeline/src/server-main.jsx,pipeline/src/lib/studioWorker.js,pipeline/src/lib/serverKanbanActions.js,pipeline/src/components/ServerKanban.jsx,pipeline/src/components/ServerUi.jsx,lib/api/handlers/studio-worker.js,lib/api/handlers/studio-generate.js,lib/api/handlers/studio-laser.js,lib/server/studio-board.js,lib/server/studio-worker-actions.js,lib/server/motor-lock.js,lib/server/studio-generate.js
+alwaysApply: false
+---
+
+# Atelier `/server`
+
+SPA dédiée atelier (`server-main.jsx`, basename `/server`). Même kanban accessible via `/admin/serveur`.
+
+## Auth
+
+- Mot de passe atelier : `ADMIN_PASSWORD` (défaut `admininous`)
+- Header : `Authorization: Bearer <password>` ou `STUDIO_GENERATE_SECRET`
+- Client : `pipeline/src/lib/studioWorker.js`
+
+## API
+
+| Route | Rôle |
+|-------|------|
+| `studio-worker` | GET kanban, POST/PATCH actions motor (locks) |
+| `studio-generate` | POST tick génération FAL (chaînage auto optionnel) |
+| `studio-laser` | POST pipeline SVG laser (lazy import) |
+
+## Serveur
+
+- `studio-board.js` — modèle données kanban
+- `motor-lock.js` — verrous jobs distribués
+- `studio-worker-actions.js` — transitions bulk statut
+
+## Piège
+
+Ne pas confondre avec admin settings (`pipeline-settings`) ni trace lab (`trace-laser` côté algo ≠ prompts FAL).

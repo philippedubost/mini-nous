@@ -5,4 +5,4 @@ Disallow: /admin/
 Disallow: /pipeline/admin
 Disallow: /api/
 
-Sitemap: https://mininous.app/sitemap.xml
+Sitemap: https://woodtribe.fr/sitemap.xml
