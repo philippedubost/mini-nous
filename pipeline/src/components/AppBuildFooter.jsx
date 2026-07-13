@@ -16,7 +16,7 @@ export default function AppBuildFooter({ variant = 'light' }) {
 
   return (
     <footer className={`app-build-footer app-build-footer--${variant}`} aria-label="Version de l'application">
-      <span>Les MiniNous</span>
+      <span>WoodTribe</span>
       <span className="app-build-footer-sep" aria-hidden> · </span>
       <span>
         commit{' '}

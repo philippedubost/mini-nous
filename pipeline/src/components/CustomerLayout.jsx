@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import AppBuildFooter from './AppBuildFooter'
+import BrandLogo from './BrandLogo'
 
 export default function CustomerLayout({ children, navRight, title, subtitle, center }) {
   return (
     <div className="customer-page flex flex-col min-h-screen">
       <header className="customer-nav">
-        <Link to="/" className="customer-logo">
-          <span>Mini</span>Nous
+        <Link to="/compte" className="customer-logo brand-logo" aria-label="WoodTribe — accueil">
+          <BrandLogo />
         </Link>
         {navRight}
       </header>

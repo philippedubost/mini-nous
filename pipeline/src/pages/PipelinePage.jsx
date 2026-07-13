@@ -175,7 +175,7 @@ export default function PipelinePage() {
         <div className="flex items-center justify-between">
           <div>
             <a href="/" className="text-xs text-stone-600 hover:text-stone-400 block mb-1">← Accueil</a>
-            <h1 className="text-xl font-bold text-stone-100">Mini-Nous Pipeline</h1>
+            <h1 className="text-xl font-bold text-stone-100">WoodTribe Pipeline</h1>
             <p className="text-sm text-stone-500 mt-0.5">Génération figurines bois</p>
           </div>
           <Link

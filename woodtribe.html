@@ -49,7 +49,7 @@
         "addressCountry": "FR"
       },
       "sameAs": [
-        "https://www.instagram.com/atelier.mininous/",
+        "https://www.instagram.com/atelier.woodtribe/",
         "https://www.tiktok.com/@atelier.mininous"
       ]
     },
@@ -197,6 +197,7 @@ input{font-family:inherit}
   .hero-text h1{font-size:1.65rem !important;margin-bottom:10px !important;line-height:1.15 !important}
   .hero-cta-block .btn-clay{width:100%;justify-content:center;padding:13px 20px !important;font-size:.92rem !important;display:flex;align-items:center;gap:10px}
   .hero-photo-wrap{height:240px !important;max-height:none !important;aspect-ratio:unset !important;border-radius:12px !important;box-shadow:0 8px 20px rgba(44,31,20,.1) !important}
+  .hero-photo-slide.img-crop-center{object-position:center !important}
   .hero-mobile-rating{display:flex !important}
   .hide-mobile{display:none !important}
   .nav-glass{padding:10px 14px !important}
@@ -339,6 +340,7 @@ input{font-family:inherit}
 .demo-chip:hover{border-color:var(--clay);transform:translateY(-2px);box-shadow:0 6px 20px rgba(192,104,74,.15)}
 .demo-chip img{width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:top center}
 .img-crop-top{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.img-crop-center{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .hero-photo-wrap{position:relative;border-radius:24px;overflow:hidden;box-shadow:0 36px 80px rgba(44,31,20,.18);aspect-ratio:4/5;max-height:520px}
 .hero-photo-rotator{position:absolute;inset:0;width:100%;height:100%}
 .hero-photo-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;opacity:0;transition:opacity 2.8s ease-in-out}
@@ -876,12 +878,17 @@ function MadeInFranceBadge() {
 }
 
 function BrandLogo({ onClick, compact }) {
+  const woodtribe = typeof BRAND_ID !== 'undefined' && BRAND_ID === 'woodtribe';
   return (
     <button type="button" onClick={onClick} aria-label="Retour à l'accueil"
-      style={{ fontFamily:'Fraunces', fontWeight:700,
+      style={{ fontFamily: "var(--font-display, 'Quicksand'), sans-serif", fontWeight:700,
         fontSize: compact ? '1.25rem' : '1.35rem', color:'var(--dark)',
         background:'none', border:'none', padding:0, cursor:'pointer' }}>
-      <span style={{ color:'var(--clay)' }}>Wood</span>Tribe
+      {woodtribe ? (
+        <><span style={{ color:'var(--clay)' }}>Wood</span>Tribe</>
+      ) : (
+        <><span style={{ color:'var(--clay)' }}>Wood</span>Tribe</>
+      )}
     </button>
   );
 }
@@ -897,7 +904,7 @@ function HeroCtaMeta() {
 }
 
 const HERO_ROTATION_SLIDES = [
-  { src: 'images/heronew.webp', eager: true },
+  { src: 'images/heronew.webp', eager: true, crop: 'center' },
   { src: 'images/famille5-objet.webp' },
   { src: 'images/groupe4_objet.webp' },
   { src: 'images/famille3-objet.webp' },
@@ -917,7 +924,7 @@ function HeroPhotoRotator() {
           src={s.src}
           alt=""
           draggable="false"
-          className={`hero-photo-slide img-crop-top${i === idx ? ' active' : ''}`}
+          className={`hero-photo-slide ${s.crop === 'center' ? 'img-crop-center' : 'img-crop-top'}${i === idx ? ' active' : ''}`}
           loading={s.eager ? 'eager' : 'lazy'}
           fetchPriority={s.eager ? 'high' : 'low'}
         />
@@ -935,7 +942,7 @@ function HeroInstaBadge() {
         <circle cx="12" cy="12" r="4.2"/>
         <circle className="icon-fill" cx="17.2" cy="6.8" r="1.1"/>
       </svg>
-      atelier.mininous
+      atelier.woodtribe
     </a>
   );
 }
@@ -1032,7 +1039,7 @@ const TESTIMONIALS = [
 ];
 
 const SOCIAL_LINKS = {
-  instagram: 'https://www.instagram.com/atelier.mininous/',
+  instagram: 'https://www.instagram.com/atelier.woodtribe/',
   tiktok: 'https://www.tiktok.com/@atelier.mininous',
 };
 

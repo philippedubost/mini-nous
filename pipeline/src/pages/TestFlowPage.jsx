@@ -147,7 +147,7 @@ export default function TestFlowPage() {
 
   return (
     <CustomerLayout
-      title="Test E2E MiniNous"
+      title="Test E2E WoodTribe"
       subtitle="Upload placeholder → Stripe test → tracé → validation → expédition"
       navRight={<a href="/admin" className="customer-link text-xs">Admin →</a>}
     >

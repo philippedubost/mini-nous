@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import CustomerLayout from '../components/CustomerLayout'
 import AppBuildFooter from '../components/AppBuildFooter'
+import BrandLogo from '../components/BrandLogo'
 import { checkAdminPassword, isAdminAuthed, setAdminAuthed } from '../lib/adminAuth'
 
 const NAV = [
@@ -18,7 +19,7 @@ function AdminLogin() {
   const [error, setError] = useState(null)
 
   return (
-    <CustomerLayout center title="Admin MiniNous" subtitle="Carte produit · production · labo">
+    <CustomerLayout center title="Admin WoodTribe" subtitle="Carte produit · production · labo">
       <form
         className="customer-card w-full max-w-sm space-y-4"
         onSubmit={(e) => {
@@ -58,7 +59,10 @@ export default function AdminLayout() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <Link to="/" className="text-sm text-stone-500 hover:text-stone-300 shrink-0">← Boutique</Link>
-            <h1 className="text-lg font-bold text-stone-100 truncate">Admin Mini-Nous</h1>
+            <Link to="/" className="shrink-0 no-underline" aria-label="WoodTribe Admin">
+              <BrandLogo dark compact />
+            </Link>
+            <h1 className="text-lg font-bold text-stone-100 truncate hidden sm:block">Admin</h1>
           </div>
           <nav className="flex gap-1 p-1 bg-stone-800 rounded-xl shrink-0">
             {NAV.map(({ to, label, end }) => (

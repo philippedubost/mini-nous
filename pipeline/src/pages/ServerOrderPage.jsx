@@ -56,6 +56,12 @@ export default function ServerOrderPage() {
       .finally(() => setLoading(false))
   }, [secret, orderId])
 
+  useEffect(() => {
+    document.title = order
+      ? `Atelier WoodTribe · ${order.email || 'Commande'}`
+      : 'Atelier WoodTribe · Commande'
+  }, [order])
+
   if (loading) {
     return <p className="text-stone-500 text-center py-16">Chargement…</p>
   }

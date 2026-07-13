@@ -29,7 +29,7 @@ export default function AdminHomePage() {
     <div className="space-y-8 max-w-6xl">
       <header className="space-y-4">
         <p className="text-xs font-semibold uppercase tracking-widest text-amber-500">Carte du produit</p>
-        <h2 className="text-2xl font-bold text-stone-100">MiniNous — de la photo à la figurine</h2>
+        <h2 className="text-2xl font-bold text-stone-100">WoodTribe — de la photo à la figurine</h2>
         <p className="text-stone-400 leading-relaxed max-w-3xl">
           Trois apps distinctes. Le vrai studio est dans <code className="text-stone-300">/pipeline/studio</code>
           {' '}— pas la maquette « Editor » de la landing.
@@ -68,7 +68,7 @@ export default function AdminHomePage() {
               detail="Email tracé validé + coupon -10 %." tag="Admin" />
             <FlowArrowRight label="post-livraison" />
             <FlowCard tone="pipeline" icon="⭐" title="Engagement" path="/pipeline/commande"
-              detail="NPS Trustpilot · #MiniNous -20 %." tag="Fidélité" />
+              detail="NPS Trustpilot · #WoodTribe -20 %." tag="Fidélité" />
           </div>
         </div>
       </FlowPanel>

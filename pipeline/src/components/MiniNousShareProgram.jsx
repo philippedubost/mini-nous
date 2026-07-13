@@ -11,7 +11,7 @@ export default function MiniNousShareProgram({ orderToken, submitted }) {
   if (done) {
     return (
       <div className="customer-card-muted !p-5 space-y-2 text-center">
-        <p className="text-sm font-semibold text-[#2C1F14]">#MiniNous</p>
+        <p className="text-sm font-semibold text-[#2C1F14]">#WoodTribe</p>
         <p className="text-xs customer-muted">
           {message || 'Merci ! Nous vérifions votre publication et vous enverrons un code −20 % sous 48 h.'}
         </p>
@@ -37,9 +37,9 @@ export default function MiniNousShareProgram({ orderToken, submitted }) {
   return (
     <form onSubmit={submit} className="customer-card-muted !p-5 space-y-4">
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-[#2C1F14]">Partagez vos MiniNous — #MiniNous</p>
+        <p className="text-sm font-semibold text-[#2C1F14]">Partagez vos figurines — #WoodTribe</p>
         <p className="text-xs customer-muted leading-relaxed">
-          Publiez une photo de vos figurines sur Instagram ou Facebook avec #MiniNous,
+          Publiez une photo de vos figurines sur Instagram ou Facebook avec #WoodTribe,
           puis collez le lien ici pour recevoir <strong>−20 %</strong> sur votre prochaine commande.
         </p>
       </div>

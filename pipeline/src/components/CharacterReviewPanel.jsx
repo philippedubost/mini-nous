@@ -117,7 +117,7 @@ export default function CharacterReviewPanel({
 
         {canManualAdjust && (
           <p className="text-xs customer-muted text-center">
-            Dernier ajustement — reprise manuelle par l&apos;équipe MiniNous sous 24 h.
+            Dernier ajustement — reprise manuelle par l&apos;équipe WoodTribe sous 24 h.
           </p>
         )}
       </div>
@@ -220,7 +220,7 @@ export default function CharacterReviewPanel({
         className="customer-btn-clay w-full"
       >
         {canManualAdjust
-          ? '↻ Envoyer à l\'équipe MiniNous (24 h)'
+          ? '↻ Envoyer à l\'équipe WoodTribe (24 h)'
           : '↻ Regénérer le tracé v2'}
       </button>
     </div>

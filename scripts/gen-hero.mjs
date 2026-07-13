@@ -16,9 +16,9 @@ const zoom = join(outDir, 'heronewZoom.webp')
 
 const base = sharp(src).rotate()
 
-// Hero 4/5 — crop haut (enveloppe + cadre visibles)
+// Hero 4/5 — crop centré (enveloppe + figurines visibles mobile & desktop)
 await base.clone()
-  .resize(1200, 1500, { fit: 'cover', position: 'top' })
+  .resize(1200, 1500, { fit: 'cover', position: 'centre' })
   .webp({ quality: 84, effort: 6 })
   .toFile(heronew)
 

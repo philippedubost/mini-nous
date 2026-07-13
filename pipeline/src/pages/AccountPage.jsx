@@ -95,7 +95,7 @@ export default function AccountPage() {
       {isAdmin && (
         <div className="customer-card-muted flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#2C1F14]">
-            Mode admin — créez un MiniNous depuis une photo (studio), régénérations illimitées.
+            Mode admin — créez une figurine WoodTribe depuis une photo (studio), régénérations illimitées.
           </p>
           <button
             type="button"
@@ -103,7 +103,7 @@ export default function AccountPage() {
             onClick={() => handleNewOrder(null)}
             className="customer-btn-clay !py-2 !px-4 !text-xs"
           >
-            {creatingId === 'new' ? 'Ouverture…' : '+ Nouveau MiniNous'}
+            {creatingId === 'new' ? 'Ouverture…' : '+ Nouvelle figurine'}
           </button>
         </div>
       )}
@@ -166,7 +166,7 @@ export default function AccountPage() {
                       onClick={() => handleNewOrder(o)}
                       className="customer-btn-ghost"
                     >
-                      {creatingId === o.id ? 'Ouverture…' : 'Nouveau MiniNous'}
+                      {creatingId === o.id ? 'Ouverture…' : 'Nouvelle figurine'}
                     </button>
                   )}
                 </>

@@ -21,7 +21,7 @@ export default function NpsSurvey({ orderToken, submitted, initialScore }) {
             rel="noopener noreferrer"
             className="customer-btn-ghost text-xs !py-2 !px-4 inline-block"
           >
-            Aidez-nous à faire connaître les MiniNous en laissant un avis rapide sur Trustpilot 🙏
+            Aidez-nous à faire connaître WoodTribe en laissant un avis rapide sur Trustpilot 🙏
           </a>
         )}
       </div>

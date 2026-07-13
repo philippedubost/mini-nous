@@ -23,6 +23,7 @@ import {
 import { useBoxSelect } from '../hooks/useBoxSelect'
 import { mergeBoardOptimistic, optimisticFromMotorResult } from '../lib/serverBoardMerge'
 import AppBuildFooter from '../components/AppBuildFooter'
+import BrandLogo from '../components/BrandLogo'
 import { ServerBtn, ServerConfirmModal } from '../components/ServerUi'
 
 function formatTime(d = new Date()) {
@@ -46,6 +47,7 @@ export default function ServerWorkerPage() {
   const workerId = useMemo(() => getOrCreateWorkerId(), [])
   const [secret, setSecret] = useState(loadWorkerSecret)
   const [secretDraft, setSecretDraft] = useState(secret)
+  const [authError, setAuthError] = useState(null)
   const [running, setRunning] = useState(true)
   const [weekKey, setWeekKey] = useState('')
   const [weeks, setWeeks] = useState([])
@@ -492,12 +494,34 @@ export default function ServerWorkerPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedIds, secret, deleteConfirm])
 
-  const handleSaveSecret = (e) => {
+  const handleSaveSecret = async (e) => {
     e.preventDefault()
-    saveWorkerSecret(secretDraft.trim())
-    setSecret(secretDraft.trim())
-    pushLog('Mot de passe enregistré localement')
+    const trimmed = secretDraft.trim()
+    if (!trimmed) {
+      setAuthError('Indiquez le mot de passe atelier.')
+      return
+    }
+    setAuthError(null)
+    try {
+      const res = await fetch('/api/studio-worker?identity=1', {
+        headers: { Authorization: `Bearer ${trimmed}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setAuthError(data.error || 'Mot de passe incorrect — vérifiez ADMIN_PASSWORD sur Vercel ou utilisez admininous.')
+        return
+      }
+      saveWorkerSecret(trimmed)
+      setSecret(trimmed)
+      pushLog('Connexion atelier WoodTribe OK')
+    } catch (err) {
+      setAuthError(err.message || 'Impossible de joindre l’API — essayez www.woodtribe.fr/server')
+    }
   }
+
+  useEffect(() => {
+    document.title = secret ? 'Atelier WoodTribe · Moteur' : 'Atelier WoodTribe'
+  }, [secret])
 
   const bulkActions = bulkActionsForSelection(allCards, selectedIds)
 
@@ -506,7 +530,8 @@ export default function ServerWorkerPage() {
       <div className="flex-1 max-w-[100vw] mx-auto px-4 py-6 space-y-5 w-full">
         <header className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-800 pb-5">
           <div className="space-y-2 max-w-2xl">
-            <h1 className="text-2xl font-semibold tracking-tight">Moteur Studio</h1>
+            <BrandLogo dark />
+            <h1 className="text-xl font-semibold tracking-tight text-stone-200">Atelier · Moteur studio</h1>
             <p className="text-sm text-stone-400">
               Kanban atelier — sélection (clic, Maj+clic, rectangle Maj+glisser), clic droit pour les actions.
               Double-clic pour ouvrir le détail.
@@ -529,18 +554,21 @@ export default function ServerWorkerPage() {
         {!secret && (
           <form onSubmit={handleSaveSecret} className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-4 space-y-3 max-w-lg">
             <p className="text-sm text-amber-100">
-              Mot de passe atelier
+              Mot de passe atelier (défaut : <code className="font-mono text-amber-200/90">admininous</code>)
             </p>
             <input
               type="password"
               value={secretDraft}
-              onChange={e => setSecretDraft(e.target.value)}
+              onChange={e => { setSecretDraft(e.target.value); setAuthError(null) }}
               placeholder="admininous"
               className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm font-mono"
               autoComplete="off"
             />
+            {authError && (
+              <p className="text-sm text-red-300" role="alert">{authError}</p>
+            )}
             <ServerBtn type="submit" variant="primary" className="px-4 py-2 text-sm w-full sm:w-auto">
-              Enregistrer
+              Se connecter
             </ServerBtn>
           </form>
         )}

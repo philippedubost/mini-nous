@@ -69,13 +69,13 @@ body {
   .customer-page {
     @apply min-h-screen text-[#3D3530];
     background: #FAF7F2;
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: 'DM Sans', 'Montserrat', system-ui, sans-serif;
   }
 
   .customer-page h1,
   .customer-page h2,
   .customer-page h3 {
-    font-family: 'Quicksand', system-ui, sans-serif;
+    font-family: 'Fraunces', Georgia, serif;
     color: #2C1F14;
   }
 
@@ -88,13 +88,31 @@ body {
   }
 
   .customer-logo {
-    @apply font-bold text-lg no-underline;
-    font-family: 'Quicksand', sans-serif;
-    color: #2C1F14;
+    @apply no-underline;
   }
 
-  .customer-logo span {
+  .brand-logo {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    color: #2C1F14;
+    line-height: 1.1;
+  }
+
+  .brand-logo--compact {
+    font-size: 1.25rem;
+  }
+
+  .brand-logo-wood {
     color: #C0684A;
+  }
+
+  .brand-logo--on-dark {
+    color: #f5f5f4;
+  }
+
+  .brand-logo--on-dark .brand-logo-wood {
+    color: #e8a088;
   }
 
   .customer-main {
