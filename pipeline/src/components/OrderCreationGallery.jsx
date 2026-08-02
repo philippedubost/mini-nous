@@ -89,7 +89,7 @@ export default function OrderCreationGallery({
       )}
 
       {readonly && (
-        <p className="text-xs customer-muted text-center">
+        <p className="hidden sm:block text-xs customer-muted text-center">
           Cliquez sur la loupe pour agrandir et vérifier le détail.
         </p>
       )}
